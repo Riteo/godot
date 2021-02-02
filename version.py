@@ -1,5 +1,5 @@
-short_name = "godot"
-name = "Godot Engine"
+short_name = "godot-riteo"
+name = "Godot Engine - Riteo Edition"
 major = 4
 minor = 0
 patch = 0
