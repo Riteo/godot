@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  math_defs.h                                                          */
+/*  audio_effect_capture.h                                               */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,39 +28,55 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef GODOT_GDNATIVE_MATH_DEFS_H
-#define GODOT_GDNATIVE_MATH_DEFS_H
+#ifndef AUDIO_EFFECT_CAPTURE_H
+#define AUDIO_EFFECT_CAPTURE_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "core/config/engine.h"
+#include "core/math/audio_frame.h"
+#include "core/object/reference.h"
+#include "core/templates/vector.h"
+#include "servers/audio/audio_effect.h"
+#include "servers/audio_server.h"
 
-#include <stdbool.h>
-#include <stdint.h>
+class AudioEffectCapture;
 
-////// bool
+class AudioEffectCaptureInstance : public AudioEffectInstance {
+	GDCLASS(AudioEffectCaptureInstance, AudioEffectInstance);
+	friend class AudioEffectCapture;
+	Ref<AudioEffectCapture> base;
 
-typedef bool godot_bool;
+public:
+	virtual void process(const AudioFrame *p_src_frames, AudioFrame *p_dst_frames, int p_frame_count) override;
+	virtual bool process_silence() const override;
+};
 
-#define GODOT_TRUE 1
-#define GODOT_FALSE 0
+class AudioEffectCapture : public AudioEffect {
+	GDCLASS(AudioEffectCapture, AudioEffect)
+	friend class AudioEffectCaptureInstance;
 
-/////// int
+	RingBuffer<AudioFrame> buffer;
+	uint64_t discarded_frames = 0;
+	uint64_t pushed_frames = 0;
+	float buffer_length_seconds = 0.1f;
+	bool buffer_initialized = false;
 
-typedef int64_t godot_int;
+protected:
+	static void _bind_methods();
 
-/////// float
+public:
+	virtual Ref<AudioEffectInstance> instance() override;
 
-typedef double godot_float;
+	void set_buffer_length(float p_buffer_length_seconds);
+	float get_buffer_length();
 
-#ifdef REAL_T_IS_DOUBLE
-typedef double godot_real_t;
-#else
-typedef float godot_real_t;
-#endif
+	bool can_get_buffer(int p_frames) const;
+	PackedVector2Array get_buffer(int p_len);
+	void clear_buffer();
 
-#ifdef __cplusplus
-}
-#endif
+	int get_frames_available() const;
+	int64_t get_discarded_frames() const;
+	int get_buffer_length_frames() const;
+	int64_t get_pushed_frames() const;
+};
 
-#endif // GODOT_C_H
+#endif // AUDIO_EFFECT_CAPTURE_H
