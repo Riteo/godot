@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Godot Engine - Riteo Edition
+GenericName=Libre game engine
+Comment=Riteo's own branch of Godot, a multi-platform 2D and 3D game engine with a feature-rich editor
+Exec=godot-riteo %f
+Icon=godot-riteo
+Terminal=false
+PrefersNonDefaultGPU=true
+Type=Application
+MimeType=application/x-godot-project;
+Categories=Development;IDE;

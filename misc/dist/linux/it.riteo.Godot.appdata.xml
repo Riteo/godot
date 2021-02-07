@@ -1,22 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Copyright 2017-2021 Rémi Verschelde <remi@godotengine.org> -->
 <component type="desktop">
-  <id>org.godotengine.Godot</id>
+  <id>it.riteo.Godot</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
-  <name>Godot Engine</name>
-  <summary>Multi-platform 2D and 3D game engine with a feature-rich editor</summary>
-  ​<launchable type="desktop-id">org.godotengine.Godot.desktop</launchable>
+  <name>Godot Engine - Riteo Edition</name>
+  <summary>Riteo's own fork of Godot, a multi-platform 2D and 3D game engine with a feature-rich editor</summary>
+  ​<launchable type="desktop-id">it.riteo.Godot.desktop</launchable>
   <description>
     <p>
-      Godot is an advanced, feature-packed, multi-platform 2D and 3D game
-      engine. It provides a huge set of common tools, so you can just focus on
-      making your game without reinventing the wheel.
-    </p>
-    <p>
-      Godot is completely free and open source under the very permissive MIT
-      license. No strings attached, no royalties, nothing. Your game is yours,
-      down to the last line of engine code.
+      This is Riteo's own fork of Godot, an advanced, feature-packed,
+      multi-platform 2D and 3D game engine. This version has all the patches
+      that they find useful for their projects. Still, it aims for reasonable
+      compatibility and contributes to the main project wherever possible.
     </p>
   </description>
   <screenshots>
@@ -25,12 +21,11 @@
       <image>https://download.tuxfamily.org/godotengine/media/screenshots/editor_3d_fracteed-720p.jpg</image>
     </screenshot>
   </screenshots>
-  <url type="homepage">https://godotengine.org</url>
-  <url type="bugtracker">https://github.com/godotengine/godot/issues</url>
+  <url type="homepage">https://github.com/Riteo/godot</url>
+  <url type="bugtracker">https://github.com/Riteo/godot/issues</url>
   <url type="faq">https://docs.godotengine.org/en/latest/about/faq.html</url>
   <url type="help">https://docs.godotengine.org</url>
   <url type="donation">https://godotengine.org/donate</url>
   <url type="translate">https://hosted.weblate.org/projects/godot-engine/godot</url>
   <developer_name>The Godot Engine Community</developer_name>
-  <update_contact>akien_at_godotengine_dot_org</update_contact>
 </component>
