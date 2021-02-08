@@ -204,12 +204,12 @@ def configure_msvc(env, manual_msvc_config):
         env.Append(LINKFLAGS=["/OPT:REF"])
 
     elif env["target"] == "debug":
-        env.AppendUnique(CCFLAGS=["/Z7", "/Od", "/EHsc"])
+        env.AppendUnique(CCFLAGS=["/Zi", "/FS", "/Od", "/EHsc"])
         env.AppendUnique(CPPDEFINES=["DEBUG_ENABLED"])
         env.Append(LINKFLAGS=["/DEBUG"])
 
-    if env["debug_symbols"] == "yes":
-        env.AppendUnique(CCFLAGS=["/Z7"])
+    if env["debug_symbols"]:
+        env.AppendUnique(CCFLAGS=["/Zi", "/FS"])
         env.AppendUnique(LINKFLAGS=["/DEBUG"])
 
     if env["windows_subsystem"] == "gui":
@@ -224,6 +224,7 @@ def configure_msvc(env, manual_msvc_config):
         env.AppendUnique(CCFLAGS=["/MT"])
     else:
         env.AppendUnique(CCFLAGS=["/MD"])
+
     env.AppendUnique(CCFLAGS=["/Gd", "/GR", "/nologo"])
     # Force to use Unicode encoding
     env.AppendUnique(CCFLAGS=["/utf-8"])
@@ -339,13 +340,13 @@ def configure_mingw(env):
         else:  # optimize for size
             env.Prepend(CCFLAGS=["-Os"])
 
-        if env["debug_symbols"] == "yes":
+        if env["debug_symbols"]:
             env.Prepend(CCFLAGS=["-g2"])
 
     elif env["target"] == "release_debug":
         env.Append(CCFLAGS=["-O2"])
         env.Append(CPPDEFINES=["DEBUG_ENABLED"])
-        if env["debug_symbols"] == "yes":
+        if env["debug_symbols"]:
             env.Prepend(CCFLAGS=["-g2"])
         if env["optimize"] == "speed":  # optimize for speed (default)
             env.Append(CCFLAGS=["-O2"])

@@ -142,12 +142,6 @@ void AnimationNodeStateMachineTransition::_bind_methods() {
 }
 
 AnimationNodeStateMachineTransition::AnimationNodeStateMachineTransition() {
-	switch_mode = SWITCH_MODE_IMMEDIATE;
-	auto_advance = false;
-	invert_condition = false;
-	xfade = 0;
-	disabled = false;
-	priority = 1;
 }
 
 ////////////////////////////////////////////////////////
@@ -521,16 +515,6 @@ void AnimationNodeStateMachinePlayback::_bind_methods() {
 
 AnimationNodeStateMachinePlayback::AnimationNodeStateMachinePlayback() {
 	set_local_to_scene(true); //only one per instanced scene
-
-	playing = false;
-	len_current = 0;
-	fading_time = 0;
-	stop_request = false;
-	len_total = 0.0;
-	pos_current = 0.0;
-	loops_current = 0;
-	fading_pos = 0.0;
-	start_request_travel = false;
 }
 
 ///////////////////////////////////////////////////////
@@ -994,5 +978,4 @@ void AnimationNodeStateMachine::_bind_methods() {
 }
 
 AnimationNodeStateMachine::AnimationNodeStateMachine() {
-	playback = "playback";
 }
