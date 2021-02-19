@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  editor_sub_scene.h                                                   */
+/*  variant_struct.h                                                     */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,44 +28,26 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef EDITOR_SUB_SCENE_H
-#define EDITOR_SUB_SCENE_H
+#ifndef GODOT_VARIANT_STRUCT_H
+#define GODOT_VARIANT_STRUCT_H
 
-#include "editor/editor_file_dialog.h"
-#include "scene/gui/dialogs.h"
-#include "scene/gui/tree.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-class EditorSubScene : public ConfirmationDialog {
-	GDCLASS(EditorSubScene, ConfirmationDialog);
+#include <gdnative/math_defs.h>
 
-	List<Node *> selection;
-	LineEdit *path;
-	Tree *tree;
-	Node *scene;
-	bool is_root;
+#define GODOT_VARIANT_SIZE (sizeof(godot_real_t) * 4 + sizeof(int64_t))
 
-	EditorFileDialog *file_dialog;
+#ifndef GODOT_CORE_API_GODOT_VARIANT_TYPE_DEFINED
+#define GODOT_CORE_API_GODOT_VARIANT_TYPE_DEFINED
+typedef struct {
+	uint8_t _dont_touch_that[GODOT_VARIANT_SIZE];
+} godot_variant;
+#endif
 
-	void _fill_tree(Node *p_node, TreeItem *p_parent);
-	void _selected_changed();
-	void _item_multi_selected(Object *p_object, int p_cell, bool p_selected);
-	void _item_activated();
-	void _remove_selection_child(Node *p_node);
-	void _reown(Node *p_node, List<Node *> *p_to_reown);
+#ifdef __cplusplus
+}
+#endif
 
-	void ok_pressed() override;
-
-protected:
-	void _notification(int p_what);
-	static void _bind_methods();
-	void _path_browse();
-	void _path_selected(const String &p_path);
-	void _path_changed(const String &p_path);
-
-public:
-	void move(Node *p_new_parent, Node *p_new_owner);
-	void clear();
-	EditorSubScene();
-};
-
-#endif // EDITOR_SUB_SCENE_H
+#endif

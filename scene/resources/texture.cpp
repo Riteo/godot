@@ -94,7 +94,7 @@ void ImageTexture::reload_from_file() {
 		create_from_image(img);
 	} else {
 		Resource::reload_from_file();
-		_change_notify();
+		notify_property_list_changed();
 		emit_changed();
 	}
 }
@@ -146,7 +146,7 @@ void ImageTexture::_reload_hook(const RID &p_hook) {
 	RID new_texture = RenderingServer::get_singleton()->texture_2d_create(img);
 	RenderingServer::get_singleton()->texture_replace(texture, new_texture);
 
-	_change_notify();
+	notify_property_list_changed();
 	emit_changed();
 }
 
@@ -163,7 +163,7 @@ void ImageTexture::create_from_image(const Ref<Image> &p_image) {
 		RID new_texture = RenderingServer::get_singleton()->texture_2d_create(p_image);
 		RenderingServer::get_singleton()->texture_replace(texture, new_texture);
 	}
-	_change_notify();
+	notify_property_list_changed();
 	emit_changed();
 
 	image_stored = true;
@@ -189,7 +189,7 @@ void ImageTexture::update(const Ref<Image> &p_image, bool p_immediate) {
 		RenderingServer::get_singleton()->texture_2d_update(texture, p_image);
 	}
 
-	_change_notify();
+	notify_property_list_changed();
 	emit_changed();
 
 	alpha_cache.unref();
@@ -310,12 +310,7 @@ void ImageTexture::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_reload_hook", "rid"), &ImageTexture::_reload_hook);
 }
 
-ImageTexture::ImageTexture() {
-	w = h = 0;
-	image_stored = false;
-	mipmaps = false;
-	format = Image::FORMAT_L8;
-}
+ImageTexture::ImageTexture() {}
 
 ImageTexture::~ImageTexture() {
 	if (texture.is_valid()) {
@@ -617,7 +612,7 @@ Error StreamTexture2D::load(const String &p_path) {
 	}
 
 #endif
-	_change_notify();
+	notify_property_list_changed();
 	emit_changed();
 	return OK;
 }
@@ -733,11 +728,7 @@ void StreamTexture2D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "load_path", PROPERTY_HINT_FILE, "*.stex"), "load", "get_load_path");
 }
 
-StreamTexture2D::StreamTexture2D() {
-	format = Image::FORMAT_MAX;
-	w = 0;
-	h = 0;
-}
+StreamTexture2D::StreamTexture2D() {}
 
 StreamTexture2D::~StreamTexture2D() {
 	if (texture.is_valid()) {
@@ -745,7 +736,7 @@ StreamTexture2D::~StreamTexture2D() {
 	}
 }
 
-RES ResourceFormatLoaderStreamTexture2D::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, bool p_no_cache) {
+RES ResourceFormatLoaderStreamTexture2D::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
 	Ref<StreamTexture2D> st;
 	st.instance();
 	Error err = st->load(p_path);
@@ -968,7 +959,7 @@ Error StreamTexture3D::load(const String &p_path) {
 		RenderingServer::get_singleton()->texture_set_path(texture, p_path);
 	}
 
-	_change_notify();
+	notify_property_list_changed();
 	emit_changed();
 	return OK;
 }
@@ -1033,13 +1024,7 @@ void StreamTexture3D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "load_path", PROPERTY_HINT_FILE, "*.stex"), "load", "get_load_path");
 }
 
-StreamTexture3D::StreamTexture3D() {
-	format = Image::FORMAT_MAX;
-	w = 0;
-	h = 0;
-	d = 0;
-	mipmaps = false;
-}
+StreamTexture3D::StreamTexture3D() {}
 
 StreamTexture3D::~StreamTexture3D() {
 	if (texture.is_valid()) {
@@ -1049,7 +1034,7 @@ StreamTexture3D::~StreamTexture3D() {
 
 /////////////////////////////
 
-RES ResourceFormatLoaderStreamTexture3D::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, bool p_no_cache) {
+RES ResourceFormatLoaderStreamTexture3D::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
 	Ref<StreamTexture3D> st;
 	st.instance();
 	Error err = st->load(p_path);
@@ -1125,7 +1110,6 @@ void AtlasTexture::set_atlas(const Ref<Texture2D> &p_atlas) {
 	}
 	atlas = p_atlas;
 	emit_changed();
-	_change_notify("atlas");
 }
 
 Ref<Texture2D> AtlasTexture::get_atlas() const {
@@ -1138,7 +1122,6 @@ void AtlasTexture::set_region(const Rect2 &p_region) {
 	}
 	region = p_region;
 	emit_changed();
-	_change_notify("region");
 }
 
 Rect2 AtlasTexture::get_region() const {
@@ -1151,7 +1134,6 @@ void AtlasTexture::set_margin(const Rect2 &p_margin) {
 	}
 	margin = p_margin;
 	emit_changed();
-	_change_notify("margin");
 }
 
 Rect2 AtlasTexture::get_margin() const {
@@ -1161,7 +1143,6 @@ Rect2 AtlasTexture::get_margin() const {
 void AtlasTexture::set_filter_clip(const bool p_enable) {
 	filter_clip = p_enable;
 	emit_changed();
-	_change_notify("filter_clip");
 }
 
 bool AtlasTexture::has_filter_clip() const {
@@ -1295,9 +1276,7 @@ bool AtlasTexture::is_pixel_opaque(int p_x, int p_y) const {
 	return atlas->is_pixel_opaque(x, y);
 }
 
-AtlasTexture::AtlasTexture() {
-	filter_clip = false;
-}
+AtlasTexture::AtlasTexture() {}
 
 /////////////////////////////////////////
 
@@ -1698,9 +1677,7 @@ RID CurveTexture::get_rid() const {
 	return _texture;
 }
 
-CurveTexture::CurveTexture() {
-	_width = 2048;
-}
+CurveTexture::CurveTexture() {}
 
 CurveTexture::~CurveTexture() {
 	if (_texture.is_valid()) {
@@ -1711,9 +1688,6 @@ CurveTexture::~CurveTexture() {
 //////////////////
 
 GradientTexture::GradientTexture() {
-	update_pending = false;
-	width = 2048;
-
 	_queue_update();
 }
 
@@ -1926,7 +1900,7 @@ void AnimatedTexture::_update_proxy() {
 				}
 			}
 			time -= frame_limit;
-			_change_notify("current_frame");
+
 		} else {
 			break;
 		}
@@ -2128,13 +2102,6 @@ AnimatedTexture::AnimatedTexture() {
 	proxy = RS::get_singleton()->texture_proxy_create(proxy_ph);
 
 	RenderingServer::get_singleton()->texture_set_force_redraw_if_visible(proxy, true);
-	time = 0;
-	frame_count = 1;
-	fps = 4;
-	prev_ticks = 0;
-	current_frame = 0;
-	pause = false;
-	oneshot = false;
 	RenderingServer::get_singleton()->connect("frame_pre_draw", callable_mp(this, &AnimatedTexture::_update_proxy));
 }
 
@@ -2288,11 +2255,6 @@ void ImageTextureLayered::_bind_methods() {
 
 ImageTextureLayered::ImageTextureLayered(LayeredType p_layered_type) {
 	layered_type = p_layered_type;
-	format = Image::FORMAT_MAX;
-
-	width = 0;
-	height = 0;
-	layers = 0;
 }
 
 ImageTextureLayered::~ImageTextureLayered() {
@@ -2389,7 +2351,7 @@ Error StreamTextureLayered::load(const String &p_path) {
 		RenderingServer::get_singleton()->texture_set_path(texture, p_path);
 	}
 
-	_change_notify();
+	notify_property_list_changed();
 	emit_changed();
 	return OK;
 }
@@ -2460,11 +2422,6 @@ void StreamTextureLayered::_bind_methods() {
 
 StreamTextureLayered::StreamTextureLayered(LayeredType p_type) {
 	layered_type = p_type;
-	format = Image::FORMAT_MAX;
-	w = 0;
-	h = 0;
-	layers = 0;
-	mipmaps = false;
 }
 
 StreamTextureLayered::~StreamTextureLayered() {
@@ -2475,7 +2432,7 @@ StreamTextureLayered::~StreamTextureLayered() {
 
 /////////////////////////////////////////////////
 
-RES ResourceFormatLoaderStreamTextureLayered::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, bool p_no_cache) {
+RES ResourceFormatLoaderStreamTextureLayered::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
 	Ref<StreamTextureLayered> st;
 	if (p_path.get_extension().to_lower() == "stexarray") {
 		Ref<StreamTexture2DArray> s;
@@ -2593,7 +2550,7 @@ Ref<Image> CameraTexture::get_data() const {
 
 void CameraTexture::set_camera_feed_id(int p_new_id) {
 	camera_feed_id = p_new_id;
-	_change_notify();
+	notify_property_list_changed();
 }
 
 int CameraTexture::get_camera_feed_id() const {
@@ -2602,7 +2559,7 @@ int CameraTexture::get_camera_feed_id() const {
 
 void CameraTexture::set_which_feed(CameraServer::FeedImage p_which) {
 	which_feed = p_which;
-	_change_notify();
+	notify_property_list_changed();
 }
 
 CameraServer::FeedImage CameraTexture::get_which_feed() const {
@@ -2613,7 +2570,7 @@ void CameraTexture::set_camera_active(bool p_active) {
 	Ref<CameraFeed> feed = CameraServer::get_singleton()->get_feed_by_id(camera_feed_id);
 	if (feed.is_valid()) {
 		feed->set_active(p_active);
-		_change_notify();
+		notify_property_list_changed();
 	}
 }
 
@@ -2626,10 +2583,7 @@ bool CameraTexture::get_camera_active() const {
 	}
 }
 
-CameraTexture::CameraTexture() {
-	camera_feed_id = 0;
-	which_feed = CameraServer::FEED_RGBA_IMAGE;
-}
+CameraTexture::CameraTexture() {}
 
 CameraTexture::~CameraTexture() {
 	// nothing to do here yet

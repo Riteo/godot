@@ -911,7 +911,7 @@ void ParticlesMaterial::set_color_ramp(const Ref<Texture2D> &p_texture) {
 	color_ramp = p_texture;
 	RenderingServer::get_singleton()->material_set_param(_get_material(), shader_names->color_ramp, p_texture);
 	_queue_shader_change();
-	_change_notify();
+	notify_property_list_changed();
 }
 
 Ref<Texture2D> ParticlesMaterial::get_color_ramp() const {
@@ -923,7 +923,7 @@ void ParticlesMaterial::set_particle_flag(ParticleFlags p_particle_flag, bool p_
 	particle_flags[p_particle_flag] = p_enable;
 	_queue_shader_change();
 	if (p_particle_flag == PARTICLE_FLAG_DISABLE_Z) {
-		_change_notify();
+		notify_property_list_changed();
 	}
 }
 
@@ -935,7 +935,7 @@ bool ParticlesMaterial::get_particle_flag(ParticleFlags p_particle_flag) const {
 void ParticlesMaterial::set_emission_shape(EmissionShape p_shape) {
 	ERR_FAIL_INDEX(p_shape, EMISSION_SHAPE_MAX);
 	emission_shape = p_shape;
-	_change_notify();
+	notify_property_list_changed();
 	_queue_shader_change();
 }
 
@@ -1066,7 +1066,7 @@ void ParticlesMaterial::_validate_property(PropertyInfo &property) const {
 void ParticlesMaterial::set_sub_emitter_mode(SubEmitterMode p_sub_emitter_mode) {
 	sub_emitter_mode = p_sub_emitter_mode;
 	_queue_shader_change();
-	_change_notify();
+	notify_property_list_changed();
 }
 
 ParticlesMaterial::SubEmitterMode ParticlesMaterial::get_sub_emitter_mode() const {
@@ -1370,7 +1370,6 @@ ParticlesMaterial::ParticlesMaterial() :
 	set_emission_box_extents(Vector3(1, 1, 1));
 	set_gravity(Vector3(0, -9.8, 0));
 	set_lifetime_randomness(0);
-	emission_point_count = 1;
 
 	set_sub_emitter_mode(SUB_EMITTER_DISABLED);
 	set_sub_emitter_frequency(4);
@@ -1393,7 +1392,6 @@ ParticlesMaterial::ParticlesMaterial() :
 
 	set_color(Color(1, 1, 1, 1));
 
-	current_key.key = 0;
 	current_key.invalid_key = 1;
 
 	_queue_shader_change();

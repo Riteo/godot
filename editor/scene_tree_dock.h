@@ -34,7 +34,6 @@
 #include "editor/connections_dialog.h"
 #include "editor/create_dialog.h"
 #include "editor/editor_data.h"
-#include "editor/editor_sub_scene.h"
 #include "editor/groups_editor.h"
 #include "editor/quick_open.h"
 #include "editor/rename_dialog.h"
@@ -58,6 +57,9 @@ class SceneTreeDock : public VBoxContainer {
 		TOOL_NEW,
 		TOOL_INSTANCE,
 		TOOL_EXPAND_COLLAPSE,
+		TOOL_CUT,
+		TOOL_COPY,
+		TOOL_PASTE,
 		TOOL_RENAME,
 		TOOL_BATCH_RENAME,
 		TOOL_REPLACE,
@@ -71,7 +73,6 @@ class SceneTreeDock : public VBoxContainer {
 		TOOL_REPARENT_TO_NEW_NODE,
 		TOOL_MAKE_ROOT,
 		TOOL_NEW_SCENE_FROM,
-		TOOL_MERGE_FROM_SCENE,
 		TOOL_MULTI_EDIT,
 		TOOL_ERASE,
 		TOOL_COPY_NODE_PATH,
@@ -126,6 +127,10 @@ class SceneTreeDock : public VBoxContainer {
 	EditorData *editor_data;
 	EditorSelection *editor_selection;
 
+	List<Node *> node_clipboard;
+	String clipboard_source_scene;
+	HashMap<String, Map<RES, RES>> clipboard_resource_remap;
+
 	ScriptCreateDialog *script_create_dialog;
 	AcceptDialog *accept;
 	ConfirmationDialog *delete_dialog;
@@ -134,7 +139,6 @@ class SceneTreeDock : public VBoxContainer {
 
 	ReparentDialog *reparent_dialog;
 	EditorQuickOpen *quick_open;
-	EditorSubScene *import_subscene_dialog;
 	EditorFileDialog *new_scene_from_dialog;
 
 	LineEdit *filter;
@@ -183,7 +187,7 @@ class SceneTreeDock : public VBoxContainer {
 	void _script_created(Ref<Script> p_script);
 	void _script_creation_closed();
 
-	void _delete_confirm();
+	void _delete_confirm(bool p_cut = false);
 
 	void _toggle_editable_children_from_selection();
 	void _toggle_editable_children(Node *p_node);
@@ -230,6 +234,10 @@ class SceneTreeDock : public VBoxContainer {
 
 	void _feature_profile_changed();
 
+	void _clear_clipboard();
+	void _create_remap_for_node(Node *p_node, Map<RES, RES> &r_remap);
+	void _create_remap_for_resource(RES p_resource, Map<RES, RES> &r_remap);
+
 	bool profile_allow_editing;
 	bool profile_allow_script_editing;
 
@@ -267,6 +275,7 @@ public:
 	ScriptCreateDialog *get_script_create_dialog() { return script_create_dialog; }
 
 	SceneTreeDock(EditorNode *p_editor, Node *p_scene_root, EditorSelection *p_editor_selection, EditorData &p_editor_data);
+	~SceneTreeDock();
 };
 
 #endif // SCENE_TREE_DOCK_H

@@ -380,6 +380,9 @@
 		<theme_item name="font_color" type="Color" default="Color( 0.88, 0.88, 0.88, 1 )">
 			Default font color.
 		</theme_item>
+		<theme_item name="font_outline_color" type="Color" default="Color( 1, 1, 1, 1 )">
+			The tint of text outline of the [LineEdit].
+		</theme_item>
 		<theme_item name="font_selected_color" type="Color" default="Color( 0, 0, 0, 1 )">
 			Font color for selected text (inside the selection rectangle).
 		</theme_item>
@@ -389,11 +392,14 @@
 		<theme_item name="font_uneditable_color" type="Color" default="Color( 0.88, 0.88, 0.88, 0.5 )">
 			Font color when editing is disabled.
 		</theme_item>
-		<theme_item name="minimum_spaces" type="int" default="12">
-			Minimum horizontal space for the text (not counting the clear button and content margins). This value is measured in count of space characters (i.e. this amount of space characters can be displayed without scrolling).
+		<theme_item name="minimum_character_width" type="int" default="4">
+			Minimum horizontal space for the text (not counting the clear button and content margins). This value is measured in count of 'M' characters (i.e. this amount of 'M' characters can be displayed without scrolling).
 		</theme_item>
 		<theme_item name="normal" type="StyleBox">
 			Default background for the [LineEdit].
+		</theme_item>
+		<theme_item name="outline_size" type="int" default="0">
+			The size of the text outline.
 		</theme_item>
 		<theme_item name="read_only" type="StyleBox">
 			Background used when [LineEdit] is in read-only mode ([member editable] is set to [code]false[/code]).

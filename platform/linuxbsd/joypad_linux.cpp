@@ -39,7 +39,7 @@
 #include <unistd.h>
 
 #ifdef UDEV_ENABLED
-#include <libudev.h>
+#include "libudev-so_wrap.h"
 #endif
 
 #define LONG_BITS (sizeof(long) * 8)
@@ -72,13 +72,22 @@ void JoypadLinux::Joypad::reset() {
 }
 
 JoypadLinux::JoypadLinux(Input *in) {
-	exit_udev = false;
+#ifdef UDEV_ENABLED
+	use_udev = initialize_libudev() == 0;
+	if (use_udev) {
+		print_verbose("JoypadLinux: udev enabled and loaded successfully.");
+	} else {
+		print_verbose("JoypadLinux: udev enabled, but couldn't be loaded. Falling back to /dev/input to detect joypads.");
+	}
+#else
+	print_verbose("JoypadLinux: udev disabled, parsing /dev/input to detect joypads.");
+#endif
 	input = in;
 	joy_thread.start(joy_thread_func, this);
 }
 
 JoypadLinux::~JoypadLinux() {
-	exit_udev = true;
+	exit_monitor.set();
 	joy_thread.wait_to_finish();
 	close_joypad();
 }
@@ -92,11 +101,20 @@ void JoypadLinux::joy_thread_func(void *p_user) {
 
 void JoypadLinux::run_joypad_thread() {
 #ifdef UDEV_ENABLED
-	udev *_udev = udev_new();
-	ERR_FAIL_COND(!_udev);
-	enumerate_joypads(_udev);
-	monitor_joypads(_udev);
-	udev_unref(_udev);
+	if (use_udev) {
+		udev *_udev = udev_new();
+		if (!_udev) {
+			use_udev = false;
+			ERR_PRINT("Failed getting an udev context, falling back to parsing /dev/input.");
+			monitor_joypads();
+		} else {
+			enumerate_joypads(_udev);
+			monitor_joypads(_udev);
+			udev_unref(_udev);
+		}
+	} else {
+		monitor_joypads();
+	}
 #else
 	monitor_joypads();
 #endif
@@ -137,7 +155,7 @@ void JoypadLinux::monitor_joypads(udev *p_udev) {
 	udev_monitor_enable_receiving(mon);
 	int fd = udev_monitor_get_fd(mon);
 
-	while (!exit_udev) {
+	while (!exit_monitor.is_set()) {
 		fd_set fds;
 		struct timeval tv;
 		int ret;
@@ -179,7 +197,7 @@ void JoypadLinux::monitor_joypads(udev *p_udev) {
 #endif
 
 void JoypadLinux::monitor_joypads() {
-	while (!exit_udev) {
+	while (!exit_monitor.is_set()) {
 		{
 			MutexLock lock(joy_mutex);
 

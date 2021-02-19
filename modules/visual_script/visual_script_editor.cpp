@@ -61,7 +61,7 @@ protected:
 	}
 
 	void _sig_changed() {
-		_change_notify();
+		notify_property_list_changed();
 		emit_signal("changed");
 	}
 
@@ -172,7 +172,7 @@ protected:
 public:
 	void edit(const StringName &p_sig) {
 		sig = p_sig;
-		_change_notify();
+		notify_property_list_changed();
 	}
 
 	VisualScriptEditorSignalEdit() { undo_redo = nullptr; }
@@ -195,11 +195,10 @@ protected:
 	}
 
 	void _var_changed() {
-		_change_notify();
+		notify_property_list_changed();
 		emit_signal("changed");
 	}
 	void _var_value_changed() {
-		_change_notify("value"); // So the whole tree is not redrawn, makes editing smoother in general.
 		emit_signal("changed");
 	}
 
@@ -331,7 +330,7 @@ protected:
 public:
 	void edit(const StringName &p_var) {
 		var = p_var;
-		_change_notify();
+		notify_property_list_changed();
 	}
 
 	VisualScriptEditorVariableEdit() { undo_redo = nullptr; }
@@ -4275,13 +4274,13 @@ VisualScriptEditor::VisualScriptEditor() {
 	edit_menu->set_shortcut_context(this);
 	edit_menu->set_text(TTR("Edit"));
 	edit_menu->set_switch_on_hover(true);
-	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("visual_script_editor/delete_selected"), EDIT_DELETE_NODES);
+	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("ui_graph_delete"), EDIT_DELETE_NODES);
 	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("visual_script_editor/toggle_breakpoint"), EDIT_TOGGLE_BREAKPOINT);
 	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("visual_script_editor/find_node_type"), EDIT_FIND_NODE_TYPE);
 	edit_menu->get_popup()->add_separator();
-	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("visual_script_editor/copy_nodes"), EDIT_COPY_NODES);
-	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("visual_script_editor/cut_nodes"), EDIT_CUT_NODES);
-	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("visual_script_editor/paste_nodes"), EDIT_PASTE_NODES);
+	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("ui_copy"), EDIT_COPY_NODES);
+	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("ui_cut"), EDIT_CUT_NODES);
+	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("ui_paste"), EDIT_PASTE_NODES);
 	edit_menu->get_popup()->add_separator();
 	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("visual_script_editor/create_function"), EDIT_CREATE_FUNCTION);
 	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("visual_script_editor/refresh_nodes"), REFRESH_GRAPH);
@@ -4521,12 +4520,8 @@ void VisualScriptEditor::free_clipboard() {
 static void register_editor_callback() {
 	ScriptEditor::register_create_script_editor_function(create_editor);
 
-	ED_SHORTCUT("visual_script_editor/delete_selected", TTR("Delete Selected"), KEY_DELETE);
 	ED_SHORTCUT("visual_script_editor/toggle_breakpoint", TTR("Toggle Breakpoint"), KEY_F9);
 	ED_SHORTCUT("visual_script_editor/find_node_type", TTR("Find Node Type"), KEY_MASK_CMD + KEY_F);
-	ED_SHORTCUT("visual_script_editor/copy_nodes", TTR("Copy Nodes"), KEY_MASK_CMD + KEY_C);
-	ED_SHORTCUT("visual_script_editor/cut_nodes", TTR("Cut Nodes"), KEY_MASK_CMD + KEY_X);
-	ED_SHORTCUT("visual_script_editor/paste_nodes", TTR("Paste Nodes"), KEY_MASK_CMD + KEY_V);
 	ED_SHORTCUT("visual_script_editor/create_function", TTR("Make Function"), KEY_MASK_CMD + KEY_G);
 	ED_SHORTCUT("visual_script_editor/refresh_nodes", TTR("Refresh Graph"), KEY_MASK_CMD + KEY_R);
 	ED_SHORTCUT("visual_script_editor/edit_member", TTR("Edit Member"), KEY_MASK_CMD + KEY_E);

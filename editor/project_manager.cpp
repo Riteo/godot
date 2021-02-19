@@ -474,15 +474,15 @@ private:
 					}
 					ProjectSettings::CustomMap initial_settings;
 					if (rasterizer_button_group->get_pressed_button()->get_meta("driver_name") == "Vulkan") {
-						initial_settings["rendering/quality/driver/driver_name"] = "Vulkan";
+						initial_settings["rendering/driver/driver_name"] = "Vulkan";
 					} else {
-						initial_settings["rendering/quality/driver/driver_name"] = "GLES2";
-						initial_settings["rendering/vram_compression/import_etc2"] = false;
-						initial_settings["rendering/vram_compression/import_etc"] = true;
+						initial_settings["rendering/driver/driver_name"] = "GLES2";
+						initial_settings["rendering/textures/vram_compression/import_etc2"] = false;
+						initial_settings["rendering/textures/vram_compression/import_etc"] = true;
 					}
 					initial_settings["application/config/name"] = project_name->get_text();
 					initial_settings["application/config/icon"] = "res://icon.png";
-					initial_settings["rendering/environment/default_environment"] = "res://default_env.tres";
+					initial_settings["rendering/environment/defaults/default_environment"] = "res://default_env.tres";
 
 					if (ProjectSettings::get_singleton()->save_custom(dir.plus_file("project.godot"), initial_settings, Vector<String>(), false) != OK) {
 						set_message(TTR("Couldn't create project.godot in project path."), MESSAGE_ERROR);
@@ -2015,6 +2015,10 @@ void ProjectManager::_confirm_update_settings() {
 }
 
 void ProjectManager::_open_selected_projects() {
+	// Show loading text to tell the user that the project manager is busy loading.
+	// This is especially important for the HTML5 project manager.
+	loading_label->set_modulate(Color(1, 1, 1));
+
 	const Set<String> &selected_list = _project_list->get_selected_project_keys();
 
 	for (const Set<String>::Element *E = selected_list.front(); E; E = E->next()) {
@@ -2268,11 +2272,6 @@ void ProjectManager::_restart_confirm() {
 	get_tree()->quit();
 }
 
-void ProjectManager::_exit_dialog() {
-	_dim_window();
-	get_tree()->quit();
-}
-
 void ProjectManager::_install_project(const String &p_zip_path, const String &p_title) {
 	npdialog->set_mode(ProjectDialog::MODE_INSTALL);
 	npdialog->set_zip_path(p_zip_path);
@@ -2351,7 +2350,6 @@ void ProjectManager::_on_search_term_changed(const String &p_term) {
 }
 
 void ProjectManager::_bind_methods() {
-	ClassDB::bind_method("_exit_dialog", &ProjectManager::_exit_dialog);
 	ClassDB::bind_method("_unhandled_key_input", &ProjectManager::_unhandled_key_input);
 	ClassDB::bind_method("_update_project_buttons", &ProjectManager::_update_project_buttons);
 }
@@ -2385,6 +2383,10 @@ ProjectManager::ProjectManager() {
 				if (DisplayServer::get_singleton()->screen_get_dpi(screen) >= 192 && DisplayServer::get_singleton()->screen_get_size(screen).y >= 1400) {
 					// hiDPI display.
 					scale = 2.0;
+				} else if (DisplayServer::get_singleton()->screen_get_size(screen).y >= 1700) {
+					// Likely a hiDPI display, but we aren't certain due to the returned DPI.
+					// Use an intermediate scale to handle this situation.
+					scale = 1.5;
 				} else if (DisplayServer::get_singleton()->screen_get_size(screen).y <= 800) {
 					// Small loDPI display. Use a smaller display scale so that editor elements fit more easily.
 					// Icons won't look great, but this is better than having editor elements overflow from its window.
@@ -2481,7 +2483,12 @@ ProjectManager::ProjectManager() {
 		search_box->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 		hb->add_child(search_box);
 
-		hb->add_spacer();
+		loading_label = memnew(Label(TTR("Loading, please wait...")));
+		loading_label->add_theme_font_override("font", get_theme_font("bold", "EditorFonts"));
+		loading_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+		hb->add_child(loading_label);
+		// Hide the label but make it still take up space. This prevents reflows when showing the label.
+		loading_label->set_modulate(Color(0, 0, 0, 0));
 
 		Label *sort_label = memnew(Label);
 		sort_label->set_text(TTR("Sort:"));

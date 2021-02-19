@@ -158,7 +158,7 @@ float AnimationNode::blend_input(int p_input, float p_time, bool p_seek, float p
 	Ref<AnimationNode> node = blend_tree->get_node(node_name);
 
 	//inputs.write[p_input].last_pass = state->last_pass;
-	float activity = 0;
+	float activity = 0.0;
 	float ret = _blend_node(node_name, blend_tree->get_node_connection_array(node_name), nullptr, node, p_time, p_seek, p_blend, p_filter, p_optimize, &activity);
 
 	Vector<AnimationTree::Activity> *activity_ptr = state->tree->input_activity_map.getptr(base_path);
@@ -473,7 +473,7 @@ void AnimationTree::set_active(bool p_active) {
 	active = p_active;
 	started = active;
 
-	if (process_mode == ANIMATION_PROCESS_IDLE) {
+	if (process_callback == ANIMATION_PROCESS_IDLE) {
 		set_process_internal(active);
 	} else {
 		set_physics_process_internal(active);
@@ -494,8 +494,8 @@ bool AnimationTree::is_active() const {
 	return active;
 }
 
-void AnimationTree::set_process_mode(AnimationProcessMode p_mode) {
-	if (process_mode == p_mode) {
+void AnimationTree::set_process_callback(AnimationProcessCallback p_mode) {
+	if (process_callback == p_mode) {
 		return;
 	}
 
@@ -504,15 +504,15 @@ void AnimationTree::set_process_mode(AnimationProcessMode p_mode) {
 		set_active(false);
 	}
 
-	process_mode = p_mode;
+	process_callback = p_mode;
 
 	if (was_active) {
 		set_active(true);
 	}
 }
 
-AnimationTree::AnimationProcessMode AnimationTree::get_process_mode() const {
-	return process_mode;
+AnimationTree::AnimationProcessCallback AnimationTree::get_process_callback() const {
+	return process_callback;
 }
 
 void AnimationTree::_node_removed(Node *p_node) {
@@ -1234,11 +1234,11 @@ void AnimationTree::advance(float p_time) {
 }
 
 void AnimationTree::_notification(int p_what) {
-	if (active && p_what == NOTIFICATION_INTERNAL_PHYSICS_PROCESS && process_mode == ANIMATION_PROCESS_PHYSICS) {
+	if (active && p_what == NOTIFICATION_INTERNAL_PHYSICS_PROCESS && process_callback == ANIMATION_PROCESS_PHYSICS) {
 		_process_graph(get_physics_process_delta_time());
 	}
 
-	if (active && p_what == NOTIFICATION_INTERNAL_PROCESS && process_mode == ANIMATION_PROCESS_IDLE) {
+	if (active && p_what == NOTIFICATION_INTERNAL_PROCESS && process_callback == ANIMATION_PROCESS_IDLE) {
 		_process_graph(get_process_delta_time());
 	}
 
@@ -1394,7 +1394,7 @@ void AnimationTree::_update_properties() {
 
 	properties_dirty = false;
 
-	_change_notify();
+	notify_property_list_changed();
 }
 
 bool AnimationTree::_set(const StringName &p_name, const Variant &p_value) {
@@ -1404,9 +1404,6 @@ bool AnimationTree::_set(const StringName &p_name, const Variant &p_value) {
 
 	if (property_map.has(p_name)) {
 		property_map[p_name] = p_value;
-#ifdef TOOLS_ENABLED
-		_change_notify(p_name.operator String().utf8().get_data());
-#endif
 		return true;
 	}
 
@@ -1474,8 +1471,8 @@ void AnimationTree::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_tree_root", "root"), &AnimationTree::set_tree_root);
 	ClassDB::bind_method(D_METHOD("get_tree_root"), &AnimationTree::get_tree_root);
 
-	ClassDB::bind_method(D_METHOD("set_process_mode", "mode"), &AnimationTree::set_process_mode);
-	ClassDB::bind_method(D_METHOD("get_process_mode"), &AnimationTree::get_process_mode);
+	ClassDB::bind_method(D_METHOD("set_process_callback", "mode"), &AnimationTree::set_process_callback);
+	ClassDB::bind_method(D_METHOD("get_process_callback"), &AnimationTree::get_process_callback);
 
 	ClassDB::bind_method(D_METHOD("set_animation_player", "root"), &AnimationTree::set_animation_player);
 	ClassDB::bind_method(D_METHOD("get_animation_player"), &AnimationTree::get_animation_player);
@@ -1494,7 +1491,7 @@ void AnimationTree::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "tree_root", PROPERTY_HINT_RESOURCE_TYPE, "AnimationRootNode"), "set_tree_root", "get_tree_root");
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "anim_player", PROPERTY_HINT_NODE_PATH_VALID_TYPES, "AnimationPlayer"), "set_animation_player", "get_animation_player");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "active"), "set_active", "is_active");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "process_mode", PROPERTY_HINT_ENUM, "Physics,Idle,Manual"), "set_process_mode", "get_process_mode");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "process_callback", PROPERTY_HINT_ENUM, "Physics,Idle,Manual"), "set_process_callback", "get_process_callback");
 	ADD_GROUP("Root Motion", "root_motion_");
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "root_motion_track"), "set_root_motion_track", "get_root_motion_track");
 

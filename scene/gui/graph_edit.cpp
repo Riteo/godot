@@ -385,6 +385,15 @@ void GraphEdit::_graph_node_moved(Node *p_gn) {
 	connections_layer->update();
 }
 
+void GraphEdit::_graph_node_slot_updated(int p_index, Node *p_gn) {
+	GraphNode *gn = Object::cast_to<GraphNode>(p_gn);
+	ERR_FAIL_COND(!gn);
+	top_layer->update();
+	minimap->update();
+	update();
+	connections_layer->update();
+}
+
 void GraphEdit::add_child_notify(Node *p_child) {
 	Control::add_child_notify(p_child);
 
@@ -394,6 +403,7 @@ void GraphEdit::add_child_notify(Node *p_child) {
 	if (gn) {
 		gn->set_scale(Vector2(zoom, zoom));
 		gn->connect("position_offset_changed", callable_mp(this, &GraphEdit::_graph_node_moved), varray(gn));
+		gn->connect("slot_updated", callable_mp(this, &GraphEdit::_graph_node_slot_updated), varray(gn));
 		gn->connect("raise_request", callable_mp(this, &GraphEdit::_graph_node_raised), varray(gn));
 		gn->connect("item_rect_changed", callable_mp((CanvasItem *)connections_layer, &CanvasItem::update));
 		gn->connect("item_rect_changed", callable_mp((CanvasItem *)minimap, &GraphEditMinimap::update));
@@ -419,6 +429,7 @@ void GraphEdit::remove_child_notify(Node *p_child) {
 	GraphNode *gn = Object::cast_to<GraphNode>(p_child);
 	if (gn) {
 		gn->disconnect("position_offset_changed", callable_mp(this, &GraphEdit::_graph_node_moved));
+		gn->disconnect("slot_updated", callable_mp(this, &GraphEdit::_graph_node_slot_updated));
 		gn->disconnect("raise_request", callable_mp(this, &GraphEdit::_graph_node_raised));
 
 		// In case of the whole GraphEdit being destroyed these references can already be freed.
@@ -1319,25 +1330,17 @@ void GraphEdit::_gui_input(const Ref<InputEvent> &p_ev) {
 		}
 	}
 
-	Ref<InputEventKey> k = p_ev;
-
-	if (k.is_valid()) {
-		if (k->get_keycode() == KEY_D && k->is_pressed() && k->get_command()) {
+	if (p_ev->is_pressed()) {
+		if (p_ev->is_action("ui_graph_duplicate")) {
 			emit_signal("duplicate_nodes_request");
 			accept_event();
-		}
-
-		if (k->get_keycode() == KEY_C && k->is_pressed() && k->get_command()) {
+		} else if (p_ev->is_action("ui_copy")) {
 			emit_signal("copy_nodes_request");
 			accept_event();
-		}
-
-		if (k->get_keycode() == KEY_V && k->is_pressed() && k->get_command()) {
+		} else if (p_ev->is_action("ui_paste")) {
 			emit_signal("paste_nodes_request");
 			accept_event();
-		}
-
-		if (k->get_keycode() == KEY_DELETE && k->is_pressed()) {
+		} else if (p_ev->is_action("ui_graph_delete")) {
 			emit_signal("delete_nodes_request");
 			accept_event();
 		}
@@ -1657,8 +1660,6 @@ void GraphEdit::_bind_methods() {
 GraphEdit::GraphEdit() {
 	set_focus_mode(FOCUS_ALL);
 
-	awaiting_scroll_offset_update = false;
-	top_layer = nullptr;
 	top_layer = memnew(GraphEditFilter(this));
 	add_child(top_layer);
 	top_layer->set_mouse_filter(MOUSE_FILTER_PASS);
@@ -1681,13 +1682,6 @@ GraphEdit::GraphEdit() {
 	v_scroll->set_name("_v_scroll");
 	top_layer->add_child(v_scroll);
 
-	updating = false;
-	connecting = false;
-	right_disconnects = false;
-
-	box_selecting = false;
-	dragging = false;
-
 	//set large minmax so it can scroll even if not resized yet
 	h_scroll->set_min(-10000);
 	h_scroll->set_max(10000);
@@ -1697,8 +1691,6 @@ GraphEdit::GraphEdit() {
 
 	h_scroll->connect("value_changed", callable_mp(this, &GraphEdit::_scroll_moved));
 	v_scroll->connect("value_changed", callable_mp(this, &GraphEdit::_scroll_moved));
-
-	zoom = 1;
 
 	zoom_hb = memnew(HBoxContainer);
 	top_layer->add_child(zoom_hb);
@@ -1768,7 +1760,5 @@ GraphEdit::GraphEdit() {
 	minimap->set_offset(Side::SIDE_BOTTOM, -MINIMAP_OFFSET);
 	minimap->connect("draw", callable_mp(this, &GraphEdit::_minimap_draw));
 
-	setting_scroll_ofs = false;
-	just_disconnected = false;
 	set_clip_contents(true);
 }

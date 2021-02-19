@@ -529,10 +529,12 @@ RID TextServerAdvanced::create_font_system(const String &p_name, int p_base_size
 RID TextServerAdvanced::create_font_resource(const String &p_filename, int p_base_size) {
 	_THREAD_SAFE_METHOD_
 	FontDataAdvanced *fd = nullptr;
-	if (p_filename.get_extension() == "ttf" || p_filename.get_extension() == "otf" || p_filename.get_extension() == "woff") {
-		fd = memnew(DynamicFontDataAdvanced);
-	} else if (p_filename.get_extension() == "fnt" || p_filename.get_extension() == "font") {
+	if (p_filename.get_extension() == "fnt" || p_filename.get_extension() == "font") {
 		fd = memnew(BitmapFontDataAdvanced);
+#ifdef MODULE_FREETYPE_ENABLED
+	} else if (p_filename.get_extension() == "ttf" || p_filename.get_extension() == "otf" || p_filename.get_extension() == "woff") {
+		fd = memnew(DynamicFontDataAdvanced);
+#endif
 	} else {
 		return RID();
 	}
@@ -549,10 +551,12 @@ RID TextServerAdvanced::create_font_resource(const String &p_filename, int p_bas
 RID TextServerAdvanced::create_font_memory(const uint8_t *p_data, size_t p_size, const String &p_type, int p_base_size) {
 	_THREAD_SAFE_METHOD_
 	FontDataAdvanced *fd = nullptr;
-	if (p_type == "ttf" || p_type == "otf" || p_type == "woff") {
-		fd = memnew(DynamicFontDataAdvanced);
-	} else if (p_type == "fnt" || p_type == "font") {
+	if (p_type == "fnt" || p_type == "font") {
 		fd = memnew(BitmapFontDataAdvanced);
+#ifdef MODULE_FREETYPE_ENABLED
+	} else if (p_type == "ttf" || p_type == "otf" || p_type == "woff") {
+		fd = memnew(DynamicFontDataAdvanced);
+#endif
 	} else {
 		return RID();
 	}
@@ -599,6 +603,34 @@ float TextServerAdvanced::font_get_underline_thickness(RID p_font, int p_size) c
 	const FontDataAdvanced *fd = font_owner.getornull(p_font);
 	ERR_FAIL_COND_V(!fd, 0.f);
 	return fd->get_underline_thickness(p_size);
+}
+
+int TextServerAdvanced::font_get_spacing_space(RID p_font) const {
+	_THREAD_SAFE_METHOD_
+	const FontDataAdvanced *fd = font_owner.getornull(p_font);
+	ERR_FAIL_COND_V(!fd, 0);
+	return fd->get_spacing_space();
+}
+
+void TextServerAdvanced::font_set_spacing_space(RID p_font, int p_value) {
+	_THREAD_SAFE_METHOD_
+	FontDataAdvanced *fd = font_owner.getornull(p_font);
+	ERR_FAIL_COND(!fd);
+	fd->set_spacing_space(p_value);
+}
+
+int TextServerAdvanced::font_get_spacing_glyph(RID p_font) const {
+	_THREAD_SAFE_METHOD_
+	const FontDataAdvanced *fd = font_owner.getornull(p_font);
+	ERR_FAIL_COND_V(!fd, 0);
+	return fd->get_spacing_glyph();
+}
+
+void TextServerAdvanced::font_set_spacing_glyph(RID p_font, int p_value) {
+	_THREAD_SAFE_METHOD_
+	FontDataAdvanced *fd = font_owner.getornull(p_font);
+	ERR_FAIL_COND(!fd);
+	fd->set_spacing_glyph(p_value);
 }
 
 void TextServerAdvanced::font_set_antialiased(RID p_font, bool p_antialiased) {
@@ -2048,6 +2080,11 @@ void TextServerAdvanced::_shape_run(ShapedTextDataAdvanced *p_sd, int32_t p_star
 				}
 				gl.x_off = Math::round(glyph_pos[i].x_offset / (64.0 / fd->get_font_scale(fs)));
 				gl.y_off = -Math::round(glyph_pos[i].y_offset / (64.0 / fd->get_font_scale(fs)));
+			}
+			if (fd->get_spacing_space() && is_whitespace(p_sd->text[glyph_info[i].cluster])) {
+				gl.advance += fd->get_spacing_space();
+			} else {
+				gl.advance += fd->get_spacing_glyph();
 			}
 
 			if (p_sd->preserve_control) {

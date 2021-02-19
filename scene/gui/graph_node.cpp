@@ -51,7 +51,7 @@ bool GraphNode::_set(const StringName &p_name, const Variant &p_value) {
 				update();
 			}
 		}
-		_change_notify();
+		notify_property_list_changed();
 		return true;
 	}
 
@@ -384,6 +384,8 @@ void GraphNode::set_slot(int p_idx, bool p_enable_left, int p_type_left, const C
 	slot_info[p_idx] = s;
 	update();
 	connpos_dirty = true;
+
+	emit_signal("slot_updated", p_idx);
 }
 
 void GraphNode::clear_slot(int p_idx) {
@@ -484,7 +486,6 @@ void GraphNode::set_title(const String &p_title) {
 	_shape();
 
 	update();
-	_change_notify("title");
 	minimum_size_changed();
 }
 
@@ -838,6 +839,7 @@ void GraphNode::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "overlay", PROPERTY_HINT_ENUM, "Disabled,Breakpoint,Position"), "set_overlay", "get_overlay");
 
 	ADD_SIGNAL(MethodInfo("position_offset_changed"));
+	ADD_SIGNAL(MethodInfo("slot_updated", PropertyInfo(Variant::INT, "idx")));
 	ADD_SIGNAL(MethodInfo("dragged", PropertyInfo(Variant::VECTOR2, "from"), PropertyInfo(Variant::VECTOR2, "to")));
 	ADD_SIGNAL(MethodInfo("raise_request"));
 	ADD_SIGNAL(MethodInfo("close_request"));
@@ -850,12 +852,5 @@ void GraphNode::_bind_methods() {
 
 GraphNode::GraphNode() {
 	title_buf.instance();
-	overlay = OVERLAY_DISABLED;
-	show_close = false;
-	connpos_dirty = true;
 	set_mouse_filter(MOUSE_FILTER_STOP);
-	comment = false;
-	resizable = false;
-	resizing = false;
-	selected = false;
 }

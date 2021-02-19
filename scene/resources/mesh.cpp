@@ -1095,6 +1095,15 @@ bool ArrayMesh::_get(const StringName &p_name, Variant &r_ret) const {
 	return true;
 }
 
+void ArrayMesh::reset_state() {
+	clear_surfaces();
+	clear_blend_shapes();
+
+	aabb = AABB();
+	blend_shape_mode = BLEND_SHAPE_MODE_RELATIVE;
+	custom_aabb = AABB();
+}
+
 void ArrayMesh::_get_property_list(List<PropertyInfo> *p_list) const {
 	if (_is_generated()) {
 		return;
@@ -1156,7 +1165,7 @@ void ArrayMesh::add_surface(uint32_t p_format, PrimitiveType p_primitive, const 
 	RenderingServer::get_singleton()->mesh_add_surface(mesh, sd);
 
 	clear_cache();
-	_change_notify();
+	notify_property_list_changed();
 	emit_changed();
 }
 
@@ -1278,7 +1287,6 @@ void ArrayMesh::surface_set_material(int p_idx, const Ref<Material> &p_material)
 	surfaces.write[p_idx].material = p_material;
 	RenderingServer::get_singleton()->mesh_surface_set_material(mesh, p_idx, p_material.is_null() ? RID() : p_material->get_rid());
 
-	_change_notify("material");
 	emit_changed();
 }
 
@@ -1375,8 +1383,8 @@ bool (*array_mesh_lightmap_unwrap_callback)(float p_texel_size, const float *p_v
 struct ArrayMeshLightmapSurface {
 	Ref<Material> material;
 	LocalVector<SurfaceTool::Vertex> vertices;
-	Mesh::PrimitiveType primitive;
-	uint32_t format;
+	Mesh::PrimitiveType primitive = Mesh::PrimitiveType::PRIMITIVE_MAX;
+	uint32_t format = 0;
 };
 
 Error ArrayMesh::lightmap_unwrap(const Transform &p_base_transform, float p_texel_size) {
@@ -1633,13 +1641,12 @@ void ArrayMesh::reload_from_file() {
 
 	Resource::reload_from_file();
 
-	_change_notify();
+	notify_property_list_changed();
 }
 
 ArrayMesh::ArrayMesh() {
 	//mesh is now created on demand
 	//mesh = RenderingServer::get_singleton()->mesh_create();
-	blend_shape_mode = BLEND_SHAPE_MODE_RELATIVE;
 }
 
 ArrayMesh::~ArrayMesh() {

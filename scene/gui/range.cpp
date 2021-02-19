@@ -47,7 +47,6 @@ void Range::_value_changed_notify() {
 	_value_changed(shared->val);
 	emit_signal("value_changed", shared->val);
 	update();
-	_change_notify("value");
 }
 
 void Range::Shared::emit_value_changed() {
@@ -63,7 +62,6 @@ void Range::Shared::emit_value_changed() {
 void Range::_changed_notify(const char *p_what) {
 	emit_signal("changed");
 	update();
-	_change_notify(p_what);
 }
 
 void Range::Shared::emit_changed(const char *p_what) {
@@ -314,17 +312,7 @@ bool Range::is_lesser_allowed() const {
 
 Range::Range() {
 	shared = memnew(Shared);
-	shared->min = 0;
-	shared->max = 100;
-	shared->val = 0;
-	shared->step = 1;
-	shared->page = 0;
 	shared->owners.insert(this);
-	shared->exp_ratio = false;
-	shared->allow_greater = false;
-	shared->allow_lesser = false;
-
-	_rounded_values = false;
 }
 
 Range::~Range() {

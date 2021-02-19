@@ -128,11 +128,11 @@ public:
 	void set_device(int p_device);
 	int get_device() const;
 
-	bool is_action(const StringName &p_action) const;
-	bool is_action_pressed(const StringName &p_action, bool p_allow_echo = false) const;
-	bool is_action_released(const StringName &p_action) const;
-	float get_action_strength(const StringName &p_action) const;
-	float get_action_raw_strength(const StringName &p_action) const;
+	bool is_action(const StringName &p_action, bool p_exact_match = false) const;
+	bool is_action_pressed(const StringName &p_action, bool p_allow_echo = false, bool p_exact_match = false) const;
+	bool is_action_released(const StringName &p_action, bool p_exact_match = false) const;
+	float get_action_strength(const StringName &p_action, bool p_exact_match = false) const;
+	float get_action_raw_strength(const StringName &p_action, bool p_exact_match = false) const;
 
 	// To be removed someday, since they do not make sense for all events
 	virtual bool is_pressed() const;
@@ -259,6 +259,8 @@ public:
 
 	virtual String as_text() const override;
 	virtual String to_string() override;
+
+	static Ref<InputEventKey> create_reference(uint32_t p_keycode_with_modifier_masks);
 
 	InputEventKey() {}
 };
@@ -405,6 +407,8 @@ public:
 	virtual bool is_action_type() const override { return true; }
 	virtual String as_text() const override;
 	virtual String to_string() override;
+
+	static Ref<InputEventJoypadButton> create_reference(int p_btn_index);
 
 	InputEventJoypadButton() {}
 };

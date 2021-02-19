@@ -1059,6 +1059,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(Vector3, min_axis, sarray(), varray());
 	bind_method(Vector3, max_axis, sarray(), varray());
 	bind_method(Vector3, angle_to, sarray("to"), varray());
+	bind_method(Vector3, signed_angle_to, sarray("to", "axis"), varray());
 	bind_method(Vector3, direction_to, sarray("b"), varray());
 	bind_method(Vector3, distance_to, sarray("b"), varray());
 	bind_method(Vector3, distance_squared_to, sarray("b"), varray());
@@ -1256,7 +1257,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(Transform, rotated, sarray("axis", "phi"), varray());
 	bind_method(Transform, scaled, sarray("scale"), varray());
 	bind_method(Transform, translated, sarray("offset"), varray());
-	bind_method(Transform, looking_at, sarray("target", "up"), varray());
+	bind_method(Transform, looking_at, sarray("target", "up"), varray(Vector3(0, 1, 0)));
 	bind_method(Transform, interpolate_with, sarray("xform", "weight"), varray());
 	bind_method(Transform, is_equal_approx, sarray("xform"), varray());
 

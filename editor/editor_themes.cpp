@@ -106,7 +106,7 @@ static Ref<Texture2D> flip_icon(Ref<Texture2D> p_texture, bool p_flip_y = false,
 }
 
 #ifdef MODULE_SVG_ENABLED
-static Ref<ImageTexture> editor_generate_icon(int p_index, bool p_convert_color, float p_scale = EDSCALE, bool p_force_filter = false) {
+static Ref<ImageTexture> editor_generate_icon(int p_index, bool p_convert_color, float p_scale = EDSCALE, float p_saturation = 1.0) {
 	Ref<ImageTexture> icon = memnew(ImageTexture);
 	Ref<Image> img = memnew(Image);
 
@@ -116,6 +116,9 @@ static Ref<ImageTexture> editor_generate_icon(int p_index, bool p_convert_color,
 	const bool upsample = !Math::is_equal_approx(Math::round(p_scale), p_scale);
 	ImageLoaderSVG::create_image_from_string(img, editor_icons_sources[p_index], p_scale, upsample, p_convert_color);
 
+	if (p_saturation != 1.0) {
+		img->adjust_bcs(1.0, 1.0, p_saturation);
+	}
 	icon->create_from_image(img); // in this case filter really helps
 
 	return icon;
@@ -126,7 +129,7 @@ static Ref<ImageTexture> editor_generate_icon(int p_index, bool p_convert_color,
 #define ADD_CONVERT_COLOR(dictionary, old_color, new_color) dictionary[Color::html(old_color)] = Color::html(new_color)
 #endif
 
-void editor_register_and_generate_icons(Ref<Theme> p_theme, bool p_dark_theme = true, int p_thumb_size = 32, bool p_only_thumbs = false) {
+void editor_register_and_generate_icons(Ref<Theme> p_theme, bool p_dark_theme = true, int p_thumb_size = 32, bool p_only_thumbs = false, float p_icon_saturation = 1.0) {
 #ifdef MODULE_SVG_ENABLED
 	// The default icon theme is designed to be used for a dark theme.
 	// This dictionary stores color codes to convert to other colors
@@ -239,14 +242,19 @@ void editor_register_and_generate_icons(Ref<Theme> p_theme, bool p_dark_theme = 
 	if (!p_only_thumbs) {
 		for (int i = 0; i < editor_icons_count; i++) {
 			float icon_scale = EDSCALE;
+			float saturation = p_icon_saturation;
 
 			// Always keep the DefaultProjectIcon at the default size
 			if (strcmp(editor_icons_names[i], "DefaultProjectIcon") == 0) {
 				icon_scale = 1.0f;
 			}
 
+			if (strcmp(editor_icons_names[i], "DefaultProjectIcon") == 0 || strcmp(editor_icons_names[i], "Godot") == 0 || strcmp(editor_icons_names[i], "Logo") == 0) {
+				saturation = 1.0;
+			}
+
 			const int is_exception = exceptions.has(editor_icons_names[i]);
-			const Ref<ImageTexture> icon = editor_generate_icon(i, !is_exception, icon_scale);
+			const Ref<ImageTexture> icon = editor_generate_icon(i, !is_exception, icon_scale, saturation);
 
 			p_theme->set_icon(editor_icons_names[i], "EditorIcons", icon);
 		}
@@ -290,6 +298,7 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	Color accent_color = EDITOR_GET("interface/theme/accent_color");
 	Color base_color = EDITOR_GET("interface/theme/base_color");
 	float contrast = EDITOR_GET("interface/theme/contrast");
+	float icon_saturation = EDITOR_GET("interface/theme/icon_saturation");
 	float relationship_line_opacity = EDITOR_GET("interface/theme/relationship_line_opacity");
 
 	String preset = EDITOR_GET("interface/theme/preset");
@@ -393,6 +402,9 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 
 	const Color highlight_color = Color(mono_color.r, mono_color.g, mono_color.b, 0.2);
 
+	float prev_icon_saturation = theme->has_color("icon_saturation", "Editor") ? theme->get_color("icon_saturation", "Editor").r : 1.0;
+
+	theme->set_color("icon_saturation", "Editor", Color(icon_saturation, icon_saturation, icon_saturation)); //can't save single float in theme, so using color
 	theme->set_color("accent_color", "Editor", accent_color);
 	theme->set_color("highlight_color", "Editor", highlight_color);
 	theme->set_color("base_color", "Editor", base_color);
@@ -444,13 +456,13 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	//Register icons + font
 
 	// the resolution and the icon color (dark_theme bool) has not changed, so we do not regenerate the icons
-	if (p_theme != nullptr && fabs(p_theme->get_constant("scale", "Editor") - EDSCALE) < 0.00001 && (bool)p_theme->get_constant("dark_theme", "Editor") == dark_theme) {
+	if (p_theme != nullptr && fabs(p_theme->get_constant("scale", "Editor") - EDSCALE) < 0.00001 && (bool)p_theme->get_constant("dark_theme", "Editor") == dark_theme && prev_icon_saturation == icon_saturation) {
 		// register already generated icons
 		for (int i = 0; i < editor_icons_count; i++) {
 			theme->set_icon(editor_icons_names[i], "EditorIcons", p_theme->get_icon(editor_icons_names[i], "EditorIcons"));
 		}
 	} else {
-		editor_register_and_generate_icons(theme, dark_theme, thumb_size);
+		editor_register_and_generate_icons(theme, dark_theme, thumb_size, false, icon_saturation);
 	}
 	// thumbnail size has changed, so we regenerate the medium sizes
 	if (p_theme != nullptr && fabs((double)p_theme->get_constant("thumb_size", "Editor") - thumb_size) > 0.00001) {
@@ -698,9 +710,12 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	// PopupMenu
 	const int popup_menu_margin_size = default_margin_size * 1.5 * EDSCALE;
 	Ref<StyleBoxFlat> style_popup_menu = style_popup->duplicate();
-	style_popup_menu->set_default_margin(SIDE_LEFT, popup_menu_margin_size);
+	// Use 1 pixel for the sides, since if 0 is used, the highlight of hovered items is drawn
+	// on top of the popup border. This causes a 'gap' in the panel border when an item is highlighted,
+	// and it looks weird. 1px solves this.
+	style_popup_menu->set_default_margin(SIDE_LEFT, 1 * EDSCALE);
 	style_popup_menu->set_default_margin(SIDE_TOP, popup_menu_margin_size);
-	style_popup_menu->set_default_margin(SIDE_RIGHT, popup_menu_margin_size);
+	style_popup_menu->set_default_margin(SIDE_RIGHT, 1 * EDSCALE);
 	style_popup_menu->set_default_margin(SIDE_BOTTOM, popup_menu_margin_size);
 
 	theme->set_stylebox("panel", "PopupMenu", style_popup_menu);
@@ -722,16 +737,63 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	theme->set_icon("visibility_hidden", "PopupMenu", theme->get_icon("GuiVisibilityHidden", "EditorIcons"));
 	theme->set_icon("visibility_visible", "PopupMenu", theme->get_icon("GuiVisibilityVisible", "EditorIcons"));
 	theme->set_icon("visibility_xray", "PopupMenu", theme->get_icon("GuiVisibilityXray", "EditorIcons"));
+
 	theme->set_constant("vseparation", "PopupMenu", (extra_spacing + default_margin_size + 1) * EDSCALE);
+	theme->set_constant("item_start_padding", "PopupMenu", popup_menu_margin_size * EDSCALE);
+	theme->set_constant("item_end_padding", "PopupMenu", popup_menu_margin_size * EDSCALE);
 
-	Ref<StyleBoxFlat> sub_inspector_bg = make_flat_stylebox(dark_color_1.lerp(accent_color, 0.08), 2, 0, 2, 2);
-	sub_inspector_bg->set_border_width(SIDE_LEFT, 2);
-	sub_inspector_bg->set_border_width(SIDE_RIGHT, 2);
-	sub_inspector_bg->set_border_width(SIDE_BOTTOM, 2);
-	sub_inspector_bg->set_border_color(accent_color * Color(1, 1, 1, 0.3));
-	sub_inspector_bg->set_draw_center(true);
+	for (int i = 0; i < 16; i++) {
+		Color si_base_color = accent_color;
 
-	theme->set_stylebox("sub_inspector_bg", "Editor", sub_inspector_bg);
+		float hue_rotate = (i * 2 % 16) / 16.0;
+		si_base_color.set_hsv(Math::fmod(float(si_base_color.get_h() + hue_rotate), float(1.0)), si_base_color.get_s(), si_base_color.get_v());
+		si_base_color = accent_color.lerp(si_base_color, float(EDITOR_GET("docks/property_editor/subresource_hue_tint")));
+
+		Ref<StyleBoxFlat> sub_inspector_bg;
+
+		sub_inspector_bg = make_flat_stylebox(dark_color_1.lerp(si_base_color, 0.08), 2, 0, 2, 2);
+
+		sub_inspector_bg->set_border_width(SIDE_LEFT, 2);
+		sub_inspector_bg->set_border_width(SIDE_RIGHT, 2);
+		sub_inspector_bg->set_border_width(SIDE_BOTTOM, 2);
+		sub_inspector_bg->set_border_width(SIDE_TOP, 2);
+		sub_inspector_bg->set_default_margin(SIDE_LEFT, 3);
+		sub_inspector_bg->set_default_margin(SIDE_RIGHT, 3);
+		sub_inspector_bg->set_default_margin(SIDE_BOTTOM, 10);
+		sub_inspector_bg->set_default_margin(SIDE_TOP, 5);
+		sub_inspector_bg->set_border_color(si_base_color * Color(0.7, 0.7, 0.7, 0.8));
+		sub_inspector_bg->set_draw_center(true);
+
+		theme->set_stylebox("sub_inspector_bg" + itos(i), "Editor", sub_inspector_bg);
+
+		Ref<StyleBoxFlat> bg_color;
+		bg_color.instance();
+		bg_color->set_bg_color(si_base_color * Color(0.7, 0.7, 0.7, 0.8));
+		bg_color->set_border_width_all(0);
+
+		Ref<StyleBoxFlat> bg_color_selected;
+		bg_color_selected.instance();
+		bg_color_selected->set_border_width_all(0);
+		bg_color_selected->set_bg_color(si_base_color * Color(0.8, 0.8, 0.8, 0.8));
+
+		theme->set_stylebox("sub_inspector_property_bg" + itos(i), "Editor", bg_color);
+		theme->set_stylebox("sub_inspector_property_bg_selected" + itos(i), "Editor", bg_color_selected);
+	}
+
+	theme->set_color("sub_inspector_property_color", "Editor", dark_theme ? Color(1, 1, 1, 1) : Color(0, 0, 0, 1));
+	theme->set_constant("sub_inspector_font_offset", "Editor", 4 * EDSCALE);
+
+	Ref<StyleBoxFlat> style_property_bg = style_default->duplicate();
+	style_property_bg->set_bg_color(highlight_color);
+	style_property_bg->set_border_width_all(0);
+
+	theme->set_constant("font_offset", "EditorProperty", 1 * EDSCALE);
+	theme->set_stylebox("bg_selected", "EditorProperty", style_property_bg);
+	theme->set_stylebox("bg", "EditorProperty", Ref<StyleBoxEmpty>(memnew(StyleBoxEmpty)));
+	theme->set_constant("vseparation", "EditorProperty", (extra_spacing + default_margin_size) * EDSCALE);
+	theme->set_color("error_color", "EditorProperty", error_color);
+	theme->set_color("property_color", "EditorProperty", property_color);
+
 	theme->set_constant("inspector_margin", "Editor", 8 * EDSCALE);
 
 	// Tree & ItemList background

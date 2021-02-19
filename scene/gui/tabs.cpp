@@ -275,6 +275,9 @@ void Tabs::_notification(int p_what) {
 			Color font_unselected_color = get_theme_color("font_unselected_color");
 			Color font_disabled_color = get_theme_color("font_disabled_color");
 			Ref<Texture2D> close = get_theme_icon("close");
+			Color font_outline_color = get_theme_color("font_outline_color");
+			int outline_size = get_theme_constant("outline_size");
+
 			Vector2 size = get_size();
 			bool rtl = is_layout_rtl();
 
@@ -357,9 +360,17 @@ void Tabs::_notification(int p_what) {
 				}
 
 				if (rtl) {
-					tabs[i].text_buf->draw(ci, Point2i(size.width - w - tabs[i].text_buf->get_size().x, sb->get_margin(SIDE_TOP) + ((sb_rect.size.y - sb_ms.y) - tabs[i].text_buf->get_size().y) / 2), col);
+					Vector2 text_pos = Point2i(size.width - w - tabs[i].text_buf->get_size().x, sb->get_margin(SIDE_TOP) + ((sb_rect.size.y - sb_ms.y) - tabs[i].text_buf->get_size().y) / 2);
+					if (outline_size > 0 && font_outline_color.a > 0) {
+						tabs[i].text_buf->draw_outline(ci, text_pos, outline_size, font_outline_color);
+					}
+					tabs[i].text_buf->draw(ci, text_pos, col);
 				} else {
-					tabs[i].text_buf->draw(ci, Point2i(w, sb->get_margin(SIDE_TOP) + ((sb_rect.size.y - sb_ms.y) - tabs[i].text_buf->get_size().y) / 2), col);
+					Vector2 text_pos = Point2i(w, sb->get_margin(SIDE_TOP) + ((sb_rect.size.y - sb_ms.y) - tabs[i].text_buf->get_size().y) / 2);
+					if (outline_size > 0 && font_outline_color.a > 0) {
+						tabs[i].text_buf->draw_outline(ci, text_pos, outline_size, font_outline_color);
+					}
+					tabs[i].text_buf->draw(ci, text_pos, col);
 				}
 
 				w += tabs[i].size_text;
@@ -481,7 +492,6 @@ void Tabs::set_current_tab(int p_current) {
 	previous = current;
 	current = p_current;
 
-	_change_notify("current_tab");
 	_update_cache();
 	update();
 
@@ -1137,27 +1147,5 @@ void Tabs::_bind_methods() {
 }
 
 Tabs::Tabs() {
-	current = 0;
-	previous = 0;
-	tab_align = ALIGN_CENTER;
-	rb_hover = -1;
-	rb_pressing = false;
-	highlight_arrow = -1;
-
-	cb_hover = -1;
-	cb_pressing = false;
-	cb_displaypolicy = CLOSE_BUTTON_SHOW_NEVER;
-	offset = 0;
-	max_drawn_tab = 0;
-
-	select_with_rmb = false;
-
-	min_width = 0;
-	scrolling_enabled = true;
-	buttons_visible = false;
-	hover = -1;
-	drag_to_rearrange_enabled = false;
-	tabs_rearrange_group = -1;
-
 	connect("mouse_exited", callable_mp(this, &Tabs::_on_mouse_exited));
 }

@@ -71,8 +71,7 @@ public:
 
 	/* SHADOW ATLAS API */
 
-	virtual RID
-	shadow_atlas_create() = 0;
+	virtual RID shadow_atlas_create() = 0;
 	virtual void shadow_atlas_set_size(RID p_atlas, int p_size, bool p_16_bits = false) = 0;
 	virtual void shadow_atlas_set_quadrant_subdivision(RID p_atlas, int p_quadrant, int p_subdivision) = 0;
 	virtual bool shadow_atlas_update_light(RID p_atlas, RID p_light_intance, float p_coverage, uint64_t p_light_version) = 0;
@@ -90,7 +89,9 @@ public:
 
 	/* SKY API */
 
-	virtual RID sky_create() = 0;
+	virtual RID sky_allocate() = 0;
+	virtual void sky_initialize(RID p_rid) = 0;
+
 	virtual void sky_set_radiance_size(RID p_sky, int p_radiance_size) = 0;
 	virtual void sky_set_mode(RID p_sky, RS::SkyMode p_samples) = 0;
 	virtual void sky_set_material(RID p_sky, RID p_material) = 0;
@@ -98,7 +99,8 @@ public:
 
 	/* ENVIRONMENT API */
 
-	virtual RID environment_create() = 0;
+	virtual RID environment_allocate() = 0;
+	virtual void environment_initialize(RID p_rid) = 0;
 
 	virtual void environment_set_background(RID p_env, RS::EnvironmentBG p_bg) = 0;
 	virtual void environment_set_sky(RID p_env, RID p_sky) = 0;
@@ -128,7 +130,7 @@ public:
 
 	virtual void environment_set_ssao_quality(RS::EnvironmentSSAOQuality p_quality, bool p_half_size, float p_adaptive_target, int p_blur_passes, float p_fadeout_from, float p_fadeout_to) = 0;
 
-	virtual void environment_set_sdfgi(RID p_env, bool p_enable, RS::EnvironmentSDFGICascades p_cascades, float p_min_cell_size, RS::EnvironmentSDFGIYScale p_y_scale, bool p_use_occlusion, bool p_use_multibounce, bool p_read_sky, float p_energy, float p_normal_bias, float p_probe_bias) = 0;
+	virtual void environment_set_sdfgi(RID p_env, bool p_enable, RS::EnvironmentSDFGICascades p_cascades, float p_min_cell_size, RS::EnvironmentSDFGIYScale p_y_scale, bool p_use_occlusion, float p_bounce_feedback, bool p_read_sky, float p_energy, float p_normal_bias, float p_probe_bias) = 0;
 
 	virtual void environment_set_sdfgi_ray_count(RS::EnvironmentSDFGIRayCount p_ray_count) = 0;
 	virtual void environment_set_sdfgi_frames_to_converge(RS::EnvironmentSDFGIFramesToConverge p_frames) = 0;
@@ -146,7 +148,8 @@ public:
 	virtual RS::EnvironmentBG environment_get_background(RID p_env) const = 0;
 	virtual int environment_get_canvas_max_layer(RID p_env) const = 0;
 
-	virtual RID camera_effects_create() = 0;
+	virtual RID camera_effects_allocate() = 0;
+	virtual void camera_effects_initialize(RID p_rid) = 0;
 
 	virtual void camera_effects_set_dof_blur_quality(RS::DOFBlurQuality p_quality, bool p_use_jitter) = 0;
 	virtual void camera_effects_set_dof_blur_bokeh_shape(RS::DOFBokehShape p_shape) = 0;

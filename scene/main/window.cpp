@@ -881,10 +881,6 @@ bool Window::_can_consume_input_events() const {
 }
 
 void Window::_window_input(const Ref<InputEvent> &p_ev) {
-	if (Engine::get_singleton()->is_editor_hint() && (Object::cast_to<InputEventJoypadButton>(p_ev.ptr()) || Object::cast_to<InputEventJoypadMotion>(*p_ev))) {
-		return; //avoid joy input on editor
-	}
-
 	if (EngineDebugger::is_active()) {
 		//quit from game window using F8
 		Ref<InputEventKey> k = p_ev;
@@ -1283,14 +1279,14 @@ bool Window::is_layout_rtl() const {
 		if (parent) {
 			return parent->is_layout_rtl();
 		} else {
-			if (GLOBAL_GET("display/window/force_right_to_left_layout_direction")) {
+			if (GLOBAL_GET("internationalization/rendering/force_right_to_left_layout_direction")) {
 				return true;
 			}
 			String locale = TranslationServer::get_singleton()->get_tool_locale();
 			return TS->is_locale_right_to_left(locale);
 		}
 	} else if (layout_dir == LAYOUT_DIRECTION_LOCALE) {
-		if (GLOBAL_GET("display/window/force_right_to_left_layout_direction")) {
+		if (GLOBAL_GET("internationalization/rendering/force_right_to_left_layout_direction")) {
 			return true;
 		}
 		String locale = TranslationServer::get_singleton()->get_tool_locale();
@@ -1349,8 +1345,8 @@ void Window::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("has_focus"), &Window::has_focus);
 	ClassDB::bind_method(D_METHOD("grab_focus"), &Window::grab_focus);
 
-	ClassDB::bind_method(D_METHOD("set_ime_active"), &Window::set_ime_active);
-	ClassDB::bind_method(D_METHOD("set_ime_position"), &Window::set_ime_position);
+	ClassDB::bind_method(D_METHOD("set_ime_active", "active"), &Window::set_ime_active);
+	ClassDB::bind_method(D_METHOD("set_ime_position", "position"), &Window::set_ime_position);
 
 	ClassDB::bind_method(D_METHOD("is_embedded"), &Window::is_embedded);
 
@@ -1466,11 +1462,6 @@ void Window::_bind_methods() {
 }
 
 Window::Window() {
-	for (int i = 0; i < FLAG_MAX; i++) {
-		flags[i] = false;
-	}
-	content_scale_mode = CONTENT_SCALE_MODE_DISABLED;
-	content_scale_aspect = CONTENT_SCALE_ASPECT_IGNORE;
 	RS::get_singleton()->viewport_set_update_mode(get_viewport_rid(), RS::VIEWPORT_UPDATE_DISABLED);
 }
 

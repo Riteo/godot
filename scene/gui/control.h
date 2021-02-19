@@ -179,13 +179,14 @@ private:
 
 		LayoutDirection layout_dir = LAYOUT_DIRECTION_INHERITED;
 
-		float rotation = 0;
+		float rotation = 0.0;
 		Vector2 scale = Vector2(1, 1);
 		Vector2 pivot_offset;
+		bool size_warning = true;
 
 		int h_size_flags = SIZE_FILL;
 		int v_size_flags = SIZE_FILL;
-		float expand = 1;
+		float expand = 1.0;
 		Point2 custom_minimum_size;
 
 		MouseFilter mouse_filter = MOUSE_FILTER_STOP;
@@ -233,9 +234,9 @@ private:
 
 	void _theme_changed();
 
-	void _change_notify_offsets();
 	void _update_minimum_size();
 
+	void _clear_size_warning();
 	void _update_scroll();
 
 	void _compute_offsets(Rect2 p_rect, const float p_anchors[4], float (&r_offsets)[4]);

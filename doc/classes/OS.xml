@@ -54,7 +54,7 @@
 			<argument index="0" name="msec" type="int">
 			</argument>
 			<description>
-				Delay execution of the current thread by [code]msec[/code] milliseconds.
+				Delay execution of the current thread by [code]msec[/code] milliseconds. [code]usec[/code] must be greater than or equal to [code]0[/code]. Otherwise, [method delay_msec] will do nothing and will print an error message.
 			</description>
 		</method>
 		<method name="delay_usec" qualifiers="const">
@@ -63,7 +63,7 @@
 			<argument index="0" name="usec" type="int">
 			</argument>
 			<description>
-				Delay execution of the current thread by [code]usec[/code] microseconds.
+				Delay execution of the current thread by [code]usec[/code] microseconds. [code]usec[/code] must be greater than or equal to [code]0[/code]. Otherwise, [method delay_usec] will do nothing and will print an error message.
 			</description>
 		</method>
 		<method name="dump_memory_to_file">
@@ -302,24 +302,6 @@
 			<description>
 				Returns the actual path to commonly used folders across different platforms. Available locations are specified in [enum SystemDir].
 				[b]Note:[/b] This method is implemented on Android, Linux, macOS and Windows.
-			</description>
-		</method>
-		<method name="get_tablet_driver_count" qualifiers="const">
-			<return type="int">
-			</return>
-			<description>
-				Returns the total number of available tablet drivers.
-				[b]Note:[/b] This method is implemented on Windows.
-			</description>
-		</method>
-		<method name="get_tablet_driver_name" qualifiers="const">
-			<return type="String">
-			</return>
-			<argument index="0" name="idx" type="int">
-			</argument>
-			<description>
-				Returns the tablet driver name for the given index.
-				[b]Note:[/b] This method is implemented on Windows.
 			</description>
 		</method>
 		<method name="get_thread_caller_id" qualifiers="const">
@@ -562,9 +544,6 @@
 		</member>
 		<member name="low_processor_usage_mode_sleep_usec" type="int" setter="set_low_processor_usage_mode_sleep_usec" getter="get_low_processor_usage_mode_sleep_usec" default="6900">
 			The amount of sleeping between frames when the low-processor usage mode is enabled (in microseconds). Higher values will result in lower CPU usage.
-		</member>
-		<member name="tablet_driver" type="String" setter="set_current_tablet_driver" getter="get_current_tablet_driver" default="&quot;&quot;">
-			The current tablet driver in use.
 		</member>
 	</members>
 	<constants>

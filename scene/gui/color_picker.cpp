@@ -578,6 +578,10 @@ void ColorPicker::_preset_input(const Ref<InputEvent> &p_event) {
 }
 
 void ColorPicker::_screen_input(const Ref<InputEvent> &p_event) {
+	if (!is_inside_tree()) {
+		return;
+	}
+
 	Ref<InputEventMouseButton> bev = p_event;
 	if (bev.is_valid() && bev->get_button_index() == BUTTON_LEFT && !bev->is_pressed()) {
 		emit_signal("color_changed", color);
@@ -607,6 +611,10 @@ void ColorPicker::_add_preset_pressed() {
 }
 
 void ColorPicker::_screen_pick_pressed() {
+	if (!is_inside_tree()) {
+		return;
+	}
+
 	Viewport *r = get_tree()->get_root();
 	if (!screen) {
 		screen = memnew(Control);
@@ -719,17 +727,6 @@ void ColorPicker::_bind_methods() {
 
 ColorPicker::ColorPicker() :
 		BoxContainer(true) {
-	updating = true;
-	edit_alpha = true;
-	text_is_constructor = false;
-	hsv_mode_enabled = false;
-	raw_mode_enabled = false;
-	deferred_mode_enabled = false;
-	changing_color = false;
-	presets_enabled = true;
-	presets_visible = true;
-	screen = nullptr;
-
 	HBoxContainer *hb_edit = memnew(HBoxContainer);
 	add_child(hb_edit);
 	hb_edit->set_v_size_flags(SIZE_EXPAND_FILL);
@@ -1002,12 +999,5 @@ void ColorPickerButton::_bind_methods() {
 }
 
 ColorPickerButton::ColorPickerButton() {
-	// Initialization is now done deferred,
-	// this improves performance in the inspector as the color picker
-	// can be expensive to initialize.
-	picker = nullptr;
-	popup = nullptr;
-	edit_alpha = true;
-
 	set_toggle_mode(true);
 }

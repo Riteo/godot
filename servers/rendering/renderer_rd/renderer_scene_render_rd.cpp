@@ -667,6 +667,13 @@ void RendererSceneRenderRD::sdfgi_update(RID p_render_buffers, RID p_environment
 				u.ids.push_back(rb->sdfgi->lightprobe_texture);
 				uniforms.push_back(u);
 			}
+			{
+				RD::Uniform u;
+				u.binding = 11;
+				u.uniform_type = RD::UNIFORM_TYPE_TEXTURE;
+				u.ids.push_back(rb->sdfgi->occlusion_texture);
+				uniforms.push_back(u);
+			}
 
 			cascade.sdf_direct_light_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, sdfgi_shader.direct_light.version_get_shader(sdfgi_shader.direct_light_shader, 0), 0);
 		}
@@ -949,7 +956,7 @@ void RendererSceneRenderRD::sdfgi_update(RID p_render_buffers, RID p_environment
 			sdfgi->cascades[i].integrate_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, sdfgi_shader.integrate.version_get_shader(sdfgi_shader.integrate_shader, 0), 0);
 		}
 
-		sdfgi->uses_multibounce = env->sdfgi_use_multibounce;
+		sdfgi->bounce_feedback = env->sdfgi_bounce_feedback;
 		sdfgi->energy = env->sdfgi_energy;
 		sdfgi->normal_bias = env->sdfgi_normal_bias;
 		sdfgi->probe_bias = env->sdfgi_probe_bias;
@@ -962,7 +969,7 @@ void RendererSceneRenderRD::sdfgi_update(RID p_render_buffers, RID p_environment
 
 	//check for updates
 
-	sdfgi->uses_multibounce = env->sdfgi_use_multibounce;
+	sdfgi->bounce_feedback = env->sdfgi_bounce_feedback;
 	sdfgi->energy = env->sdfgi_energy;
 	sdfgi->normal_bias = env->sdfgi_normal_bias;
 	sdfgi->probe_bias = env->sdfgi_probe_bias;
@@ -1172,8 +1179,9 @@ void RendererSceneRenderRD::_sdfgi_update_light(RID p_render_buffers, RID p_envi
 	push_constant.grid_size[2] = rb->sdfgi->cascade_size;
 	push_constant.max_cascades = rb->sdfgi->cascades.size();
 	push_constant.probe_axis_size = rb->sdfgi->probe_axis_count;
-	push_constant.multibounce = rb->sdfgi->uses_multibounce;
+	push_constant.bounce_feedback = rb->sdfgi->bounce_feedback;
 	push_constant.y_mult = rb->sdfgi->y_mult;
+	push_constant.use_occlusion = rb->sdfgi->uses_occlusion;
 
 	for (uint32_t i = 0; i < rb->sdfgi->cascades.size(); i++) {
 		SDFGI::Cascade &cascade = rb->sdfgi->cascades[i];
@@ -1873,8 +1881,11 @@ void RendererSceneRenderRD::_process_gi(RID p_render_buffers, RID p_normal_rough
 	RD::get_singleton()->draw_command_end_label();
 }
 
-RID RendererSceneRenderRD::sky_create() {
-	return sky_owner.make_rid(Sky());
+RID RendererSceneRenderRD::sky_allocate() {
+	return sky_owner.allocate_rid();
+}
+void RendererSceneRenderRD::sky_initialize(RID p_rid) {
+	sky_owner.initialize_rid(p_rid, Sky());
 }
 
 void RendererSceneRenderRD::_sky_invalidate(Sky *p_sky) {
@@ -2898,8 +2909,11 @@ RendererStorageRD::MaterialData *RendererSceneRenderRD::_create_sky_material_fun
 	return material_data;
 }
 
-RID RendererSceneRenderRD::environment_create() {
-	return environment_owner.make_rid(Environment());
+RID RendererSceneRenderRD::environment_allocate() {
+	return environment_owner.allocate_rid();
+}
+void RendererSceneRenderRD::environment_initialize(RID p_rid) {
+	environment_owner.initialize_rid(p_rid, Environment());
 }
 
 void RendererSceneRenderRD::environment_set_background(RID p_env, RS::EnvironmentBG p_bg) {
@@ -3073,7 +3087,7 @@ void RendererSceneRenderRD::environment_glow_set_use_high_quality(bool p_enable)
 	glow_high_quality = p_enable;
 }
 
-void RendererSceneRenderRD::environment_set_sdfgi(RID p_env, bool p_enable, RS::EnvironmentSDFGICascades p_cascades, float p_min_cell_size, RS::EnvironmentSDFGIYScale p_y_scale, bool p_use_occlusion, bool p_use_multibounce, bool p_read_sky, float p_energy, float p_normal_bias, float p_probe_bias) {
+void RendererSceneRenderRD::environment_set_sdfgi(RID p_env, bool p_enable, RS::EnvironmentSDFGICascades p_cascades, float p_min_cell_size, RS::EnvironmentSDFGIYScale p_y_scale, bool p_use_occlusion, float p_bounce_feedback, bool p_read_sky, float p_energy, float p_normal_bias, float p_probe_bias) {
 	Environment *env = environment_owner.getornull(p_env);
 	ERR_FAIL_COND(!env);
 
@@ -3085,7 +3099,7 @@ void RendererSceneRenderRD::environment_set_sdfgi(RID p_env, bool p_enable, RS::
 	env->sdfgi_cascades = p_cascades;
 	env->sdfgi_min_cell_size = p_min_cell_size;
 	env->sdfgi_use_occlusion = p_use_occlusion;
-	env->sdfgi_use_multibounce = p_use_multibounce;
+	env->sdfgi_bounce_feedback = p_bounce_feedback;
 	env->sdfgi_read_sky_light = p_read_sky;
 	env->sdfgi_energy = p_energy;
 	env->sdfgi_normal_bias = p_normal_bias;
@@ -3315,8 +3329,8 @@ Ref<Image> RendererSceneRenderRD::environment_bake_panorama(RID p_env, bool p_ba
 
 RID RendererSceneRenderRD::reflection_atlas_create() {
 	ReflectionAtlas ra;
-	ra.count = GLOBAL_GET("rendering/quality/reflection_atlas/reflection_count");
-	ra.size = GLOBAL_GET("rendering/quality/reflection_atlas/reflection_size");
+	ra.count = GLOBAL_GET("rendering/reflections/reflection_atlas/reflection_count");
+	ra.size = GLOBAL_GET("rendering/reflections/reflection_atlas/reflection_size");
 
 	ra.cluster_builder = memnew(ClusterBuilderRD);
 	ra.cluster_builder->set_shared(&cluster_builder_shared);
@@ -3983,8 +3997,11 @@ int RendererSceneRenderRD::get_directional_light_shadow_size(RID p_light_intance
 
 //////////////////////////////////////////////////
 
-RID RendererSceneRenderRD::camera_effects_create() {
-	return camera_effects_owner.make_rid(CameraEffects());
+RID RendererSceneRenderRD::camera_effects_allocate() {
+	return camera_effects_owner.allocate_rid();
+}
+void RendererSceneRenderRD::camera_effects_initialize(RID p_rid) {
+	camera_effects_owner.initialize_rid(p_rid, CameraEffects());
 }
 
 void RendererSceneRenderRD::camera_effects_set_dof_blur_quality(RS::DOFBlurQuality p_quality, bool p_use_jitter) {
@@ -7782,7 +7799,7 @@ void RendererSceneRenderRD::_render_sdfgi_region(RID p_render_buffers, int p_reg
 
 				RD::get_singleton()->compute_list_add_barrier(compute_list);
 
-				if (rb->sdfgi->uses_multibounce) {
+				if (rb->sdfgi->bounce_feedback > 0.0) {
 					//multibounce requires this to be stored so direct light can read from it
 
 					RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, sdfgi_shader.integrate_pipeline[SDGIShader::INTEGRATE_MODE_STORE]);
@@ -8120,8 +8137,9 @@ void RendererSceneRenderRD::_render_sdfgi_static_lights(RID p_render_buffers, ui
 	dl_push_constant.grid_size[2] = rb->sdfgi->cascade_size;
 	dl_push_constant.max_cascades = rb->sdfgi->cascades.size();
 	dl_push_constant.probe_axis_size = rb->sdfgi->probe_axis_count;
-	dl_push_constant.multibounce = false; // this is static light, do not multibounce yet
+	dl_push_constant.bounce_feedback = 0.0; // this is static light, do not multibounce yet
 	dl_push_constant.y_mult = rb->sdfgi->y_mult;
+	dl_push_constant.use_occlusion = rb->sdfgi->uses_occlusion;
 
 	//all must be processed
 	dl_push_constant.process_offset = 0;
@@ -8418,25 +8436,25 @@ bool RendererSceneRenderRD::is_low_end() const {
 }
 
 RendererSceneRenderRD::RendererSceneRenderRD(RendererStorageRD *p_storage) {
-	max_cluster_elements = GLOBAL_GET("rendering/cluster_builder/max_clustered_elements");
+	max_cluster_elements = GLOBAL_GET("rendering/limits/cluster_builder/max_clustered_elements");
 
 	storage = p_storage;
 	singleton = this;
 
-	roughness_layers = GLOBAL_GET("rendering/quality/reflections/roughness_layers");
-	sky_ggx_samples_quality = GLOBAL_GET("rendering/quality/reflections/ggx_samples");
-	sky_use_cubemap_array = GLOBAL_GET("rendering/quality/reflections/texture_array_reflections");
+	roughness_layers = GLOBAL_GET("rendering/reflections/sky_reflections/roughness_layers");
+	sky_ggx_samples_quality = GLOBAL_GET("rendering/reflections/sky_reflections/ggx_samples");
+	sky_use_cubemap_array = GLOBAL_GET("rendering/reflections/sky_reflections/texture_array_reflections");
 
-	sdfgi_ray_count = RS::EnvironmentSDFGIRayCount(CLAMP(int32_t(GLOBAL_GET("rendering/sdfgi/probe_ray_count")), 0, int32_t(RS::ENV_SDFGI_RAY_COUNT_MAX - 1)));
-	sdfgi_frames_to_converge = RS::EnvironmentSDFGIFramesToConverge(CLAMP(int32_t(GLOBAL_GET("rendering/sdfgi/frames_to_converge")), 0, int32_t(RS::ENV_SDFGI_CONVERGE_MAX - 1)));
-	sdfgi_frames_to_update_light = RS::EnvironmentSDFGIFramesToUpdateLight(CLAMP(int32_t(GLOBAL_GET("rendering/sdfgi/frames_to_update_lights")), 0, int32_t(RS::ENV_SDFGI_UPDATE_LIGHT_MAX - 1)));
+	sdfgi_ray_count = RS::EnvironmentSDFGIRayCount(CLAMP(int32_t(GLOBAL_GET("rendering/global_illumination/sdfgi/probe_ray_count")), 0, int32_t(RS::ENV_SDFGI_RAY_COUNT_MAX - 1)));
+	sdfgi_frames_to_converge = RS::EnvironmentSDFGIFramesToConverge(CLAMP(int32_t(GLOBAL_GET("rendering/global_illumination/sdfgi/frames_to_converge")), 0, int32_t(RS::ENV_SDFGI_CONVERGE_MAX - 1)));
+	sdfgi_frames_to_update_light = RS::EnvironmentSDFGIFramesToUpdateLight(CLAMP(int32_t(GLOBAL_GET("rendering/global_illumination/sdfgi/frames_to_update_lights")), 0, int32_t(RS::ENV_SDFGI_UPDATE_LIGHT_MAX - 1)));
 
-	directional_shadow.size = GLOBAL_GET("rendering/quality/directional_shadow/size");
-	directional_shadow.use_16_bits = GLOBAL_GET("rendering/quality/directional_shadow/16_bits");
+	directional_shadow.size = GLOBAL_GET("rendering/shadows/directional_shadow/size");
+	directional_shadow.use_16_bits = GLOBAL_GET("rendering/shadows/directional_shadow/16_bits");
 
 	uint32_t textures_per_stage = RD::get_singleton()->limit_get(RD::LIMIT_MAX_TEXTURES_PER_SHADER_STAGE);
 
-	low_end = GLOBAL_GET("rendering/quality/rd_renderer/use_low_end_renderer");
+	low_end = GLOBAL_GET("rendering/driver/rd_renderer/use_low_end_renderer");
 
 	if (textures_per_stage < 48) {
 		low_end = true;
@@ -8449,7 +8467,7 @@ RendererSceneRenderRD::RendererSceneRenderRD(RendererStorageRD *p_storage) {
 
 		gi_probe_lights = memnew_arr(GIProbeLight, gi_probe_max_lights);
 		gi_probe_lights_uniform = RD::get_singleton()->uniform_buffer_create(gi_probe_max_lights * sizeof(GIProbeLight));
-		gi_probe_quality = RS::GIProbeQuality(CLAMP(int(GLOBAL_GET("rendering/quality/gi_probes/quality")), 0, 1));
+		gi_probe_quality = RS::GIProbeQuality(CLAMP(int(GLOBAL_GET("rendering/global_illumination/gi_probes/quality")), 0, 1));
 
 		String defines = "\n#define MAX_LIGHTS " + itos(gi_probe_max_lights) + "\n";
 
@@ -8580,9 +8598,14 @@ RendererSceneRenderRD::RendererSceneRenderRD(RendererStorageRD *p_storage) {
 
 	{
 		// default material and shader for sky shader
-		sky_shader.default_shader = storage->shader_create();
+		sky_shader.default_shader = storage->shader_allocate();
+		storage->shader_initialize(sky_shader.default_shader);
+
 		storage->shader_set_code(sky_shader.default_shader, "shader_type sky; void fragment() { COLOR = vec3(0.0); } \n");
-		sky_shader.default_material = storage->material_create();
+
+		sky_shader.default_material = storage->material_allocate();
+		storage->material_initialize(sky_shader.default_material);
+
 		storage->material_set_shader(sky_shader.default_material, sky_shader.default_shader);
 
 		SkyMaterialData *md = (SkyMaterialData *)storage->material_get_data(sky_shader.default_material, RendererStorageRD::SHADER_TYPE_SKY);
@@ -8656,9 +8679,13 @@ RendererSceneRenderRD::RendererSceneRenderRD(RendererStorageRD *p_storage) {
 
 	{
 		// Need defaults for using fog with clear color
-		sky_scene_state.fog_shader = storage->shader_create();
+		sky_scene_state.fog_shader = storage->shader_allocate();
+		storage->shader_initialize(sky_scene_state.fog_shader);
+
 		storage->shader_set_code(sky_scene_state.fog_shader, "shader_type sky; uniform vec4 clear_color; void fragment() { COLOR = clear_color.rgb; } \n");
-		sky_scene_state.fog_material = storage->material_create();
+		sky_scene_state.fog_material = storage->material_allocate();
+		storage->material_initialize(sky_scene_state.fog_material);
+
 		storage->material_set_shader(sky_scene_state.fog_material, sky_scene_state.fog_shader);
 
 		Vector<RD::Uniform> uniforms;
@@ -8876,31 +8903,31 @@ RendererSceneRenderRD::RendererSceneRenderRD(RendererStorageRD *p_storage) {
 		shadow_sampler = RD::get_singleton()->sampler_create(sampler);
 	}
 
-	camera_effects_set_dof_blur_bokeh_shape(RS::DOFBokehShape(int(GLOBAL_GET("rendering/quality/depth_of_field/depth_of_field_bokeh_shape"))));
-	camera_effects_set_dof_blur_quality(RS::DOFBlurQuality(int(GLOBAL_GET("rendering/quality/depth_of_field/depth_of_field_bokeh_quality"))), GLOBAL_GET("rendering/quality/depth_of_field/depth_of_field_use_jitter"));
-	environment_set_ssao_quality(RS::EnvironmentSSAOQuality(int(GLOBAL_GET("rendering/quality/ssao/quality"))), GLOBAL_GET("rendering/quality/ssao/half_size"), GLOBAL_GET("rendering/quality/ssao/adaptive_target"), GLOBAL_GET("rendering/quality/ssao/blur_passes"), GLOBAL_GET("rendering/quality/ssao/fadeout_from"), GLOBAL_GET("rendering/quality/ssao/fadeout_to"));
-	screen_space_roughness_limiter = GLOBAL_GET("rendering/quality/screen_filters/screen_space_roughness_limiter_enabled");
-	screen_space_roughness_limiter_amount = GLOBAL_GET("rendering/quality/screen_filters/screen_space_roughness_limiter_amount");
-	screen_space_roughness_limiter_limit = GLOBAL_GET("rendering/quality/screen_filters/screen_space_roughness_limiter_limit");
-	glow_bicubic_upscale = int(GLOBAL_GET("rendering/quality/glow/upscale_mode")) > 0;
-	glow_high_quality = GLOBAL_GET("rendering/quality/glow/use_high_quality");
-	ssr_roughness_quality = RS::EnvironmentSSRRoughnessQuality(int(GLOBAL_GET("rendering/quality/screen_space_reflection/roughness_quality")));
-	sss_quality = RS::SubSurfaceScatteringQuality(int(GLOBAL_GET("rendering/quality/subsurface_scattering/subsurface_scattering_quality")));
-	sss_scale = GLOBAL_GET("rendering/quality/subsurface_scattering/subsurface_scattering_scale");
-	sss_depth_scale = GLOBAL_GET("rendering/quality/subsurface_scattering/subsurface_scattering_depth_scale");
+	camera_effects_set_dof_blur_bokeh_shape(RS::DOFBokehShape(int(GLOBAL_GET("rendering/camera/depth_of_field/depth_of_field_bokeh_shape"))));
+	camera_effects_set_dof_blur_quality(RS::DOFBlurQuality(int(GLOBAL_GET("rendering/camera/depth_of_field/depth_of_field_bokeh_quality"))), GLOBAL_GET("rendering/camera/depth_of_field/depth_of_field_use_jitter"));
+	environment_set_ssao_quality(RS::EnvironmentSSAOQuality(int(GLOBAL_GET("rendering/environment/ssao/quality"))), GLOBAL_GET("rendering/environment/ssao/half_size"), GLOBAL_GET("rendering/environment/ssao/adaptive_target"), GLOBAL_GET("rendering/environment/ssao/blur_passes"), GLOBAL_GET("rendering/environment/ssao/fadeout_from"), GLOBAL_GET("rendering/environment/ssao/fadeout_to"));
+	screen_space_roughness_limiter = GLOBAL_GET("rendering/anti_aliasing/screen_space_roughness_limiter/enabled");
+	screen_space_roughness_limiter_amount = GLOBAL_GET("rendering/anti_aliasing/screen_space_roughness_limiter/amount");
+	screen_space_roughness_limiter_limit = GLOBAL_GET("rendering/anti_aliasing/screen_space_roughness_limiter/limit");
+	glow_bicubic_upscale = int(GLOBAL_GET("rendering/environment/glow/upscale_mode")) > 0;
+	glow_high_quality = GLOBAL_GET("rendering/environment/glow/use_high_quality");
+	ssr_roughness_quality = RS::EnvironmentSSRRoughnessQuality(int(GLOBAL_GET("rendering/environment/screen_space_reflection/roughness_quality")));
+	sss_quality = RS::SubSurfaceScatteringQuality(int(GLOBAL_GET("rendering/environment/subsurface_scattering/subsurface_scattering_quality")));
+	sss_scale = GLOBAL_GET("rendering/environment/subsurface_scattering/subsurface_scattering_scale");
+	sss_depth_scale = GLOBAL_GET("rendering/environment/subsurface_scattering/subsurface_scattering_depth_scale");
 	directional_penumbra_shadow_kernel = memnew_arr(float, 128);
 	directional_soft_shadow_kernel = memnew_arr(float, 128);
 	penumbra_shadow_kernel = memnew_arr(float, 128);
 	soft_shadow_kernel = memnew_arr(float, 128);
-	shadows_quality_set(RS::ShadowQuality(int(GLOBAL_GET("rendering/quality/shadows/soft_shadow_quality"))));
-	directional_shadow_quality_set(RS::ShadowQuality(int(GLOBAL_GET("rendering/quality/directional_shadow/soft_shadow_quality"))));
+	shadows_quality_set(RS::ShadowQuality(int(GLOBAL_GET("rendering/shadows/shadows/soft_shadow_quality"))));
+	directional_shadow_quality_set(RS::ShadowQuality(int(GLOBAL_GET("rendering/shadows/directional_shadow/soft_shadow_quality"))));
 
-	environment_set_volumetric_fog_volume_size(GLOBAL_GET("rendering/volumetric_fog/volume_size"), GLOBAL_GET("rendering/volumetric_fog/volume_depth"));
-	environment_set_volumetric_fog_filter_active(GLOBAL_GET("rendering/volumetric_fog/use_filter"));
+	environment_set_volumetric_fog_volume_size(GLOBAL_GET("rendering/environment/volumetric_fog/volume_size"), GLOBAL_GET("rendering/environment/volumetric_fog/volume_depth"));
+	environment_set_volumetric_fog_filter_active(GLOBAL_GET("rendering/environment/volumetric_fog/use_filter"));
 
 	cull_argument.set_page_pool(&cull_argument_pool);
 
-	gi.half_resolution = GLOBAL_GET("rendering/quality/gi/use_half_resolution");
+	gi.half_resolution = GLOBAL_GET("rendering/global_illumination/gi/use_half_resolution");
 }
 
 RendererSceneRenderRD::~RendererSceneRenderRD() {

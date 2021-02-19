@@ -883,6 +883,8 @@ void ItemList::_notification(int p_what) {
 		int vseparation = get_theme_constant("vseparation");
 		int icon_margin = get_theme_constant("icon_margin");
 		int line_separation = get_theme_constant("line_separation");
+		Color font_outline_color = get_theme_color("font_outline_color");
+		int outline_size = get_theme_constant("outline_size");
 
 		Ref<StyleBox> sbsel = has_focus() ? get_theme_stylebox("selected_focus") : get_theme_stylebox("selected");
 		Ref<StyleBox> cursor = has_focus() ? get_theme_stylebox("cursor") : get_theme_stylebox("cursor_unfocused");
@@ -899,7 +901,7 @@ void ItemList::_notification(int p_what) {
 		}
 
 		if (shape_changed) {
-			float max_column_width = 0;
+			float max_column_width = 0.0;
 
 			//1- compute item minimum sizes
 			for (int i = 0; i < items.size(); i++) {
@@ -1204,6 +1206,10 @@ void ItemList::_notification(int p_what) {
 					items.write[i].text_buf->set_width(max_len);
 					items.write[i].text_buf->set_align(HALIGN_CENTER);
 
+					if (outline_size > 0 && font_outline_color.a > 0) {
+						items[i].text_buf->draw_outline(get_canvas_item(), text_ofs, outline_size, font_outline_color);
+					}
+
 					items[i].text_buf->draw(get_canvas_item(), text_ofs, modulate);
 				} else {
 					if (fixed_column_width > 0) {
@@ -1230,6 +1236,11 @@ void ItemList::_notification(int p_what) {
 					} else {
 						items.write[i].text_buf->set_align(HALIGN_LEFT);
 					}
+
+					if (outline_size > 0 && font_outline_color.a > 0) {
+						items[i].text_buf->draw_outline(get_canvas_item(), text_ofs, outline_size, font_outline_color);
+					}
+
 					items[i].text_buf->draw(get_canvas_item(), text_ofs, modulate);
 				}
 			}
@@ -1615,34 +1626,12 @@ void ItemList::_bind_methods() {
 }
 
 ItemList::ItemList() {
-	current = -1;
-
-	select_mode = SELECT_SINGLE;
-	icon_mode = ICON_MODE_LEFT;
-
-	fixed_column_width = 0;
-	same_column_width = false;
-	max_text_lines = 1;
-	max_columns = 1;
-	auto_height = false;
-	auto_height_value = 0.0f;
-
 	scroll_bar = memnew(VScrollBar);
 	add_child(scroll_bar);
 
-	shape_changed = true;
 	scroll_bar->connect("value_changed", callable_mp(this, &ItemList::_scroll_changed));
 
 	set_focus_mode(FOCUS_ALL);
-	current_columns = 1;
-	search_time_msec = 0;
-	ensure_selected_visible = false;
-	defer_select_single = -1;
-	allow_rmb_select = false;
-	allow_reselect = false;
-	do_autoscroll_to_bottom = false;
-
-	icon_scale = 1.0f;
 	set_clip_contents(true);
 }
 

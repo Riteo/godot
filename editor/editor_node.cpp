@@ -430,6 +430,74 @@ void EditorNode::_unhandled_input(const Ref<InputEvent> &p_event) {
 	}
 }
 
+void EditorNode::_update_from_settings() {
+	int current_filter = GLOBAL_GET("rendering/textures/canvas_textures/default_texture_filter");
+	if (current_filter != scene_root->get_default_canvas_item_texture_filter()) {
+		Viewport::DefaultCanvasItemTextureFilter tf = (Viewport::DefaultCanvasItemTextureFilter)current_filter;
+		scene_root->set_default_canvas_item_texture_filter(tf);
+	}
+	int current_repeat = GLOBAL_GET("rendering/textures/canvas_textures/default_texture_repeat");
+	if (current_repeat != scene_root->get_default_canvas_item_texture_repeat()) {
+		Viewport::DefaultCanvasItemTextureRepeat tr = (Viewport::DefaultCanvasItemTextureRepeat)current_repeat;
+		scene_root->set_default_canvas_item_texture_repeat(tr);
+	}
+
+	RS::DOFBokehShape dof_shape = RS::DOFBokehShape(int(GLOBAL_GET("rendering/camera/depth_of_field/depth_of_field_bokeh_shape")));
+	RS::get_singleton()->camera_effects_set_dof_blur_bokeh_shape(dof_shape);
+	RS::DOFBlurQuality dof_quality = RS::DOFBlurQuality(int(GLOBAL_GET("rendering/camera/depth_of_field/depth_of_field_bokeh_quality")));
+	bool dof_jitter = GLOBAL_GET("rendering/camera/depth_of_field/depth_of_field_use_jitter");
+	RS::get_singleton()->camera_effects_set_dof_blur_quality(dof_quality, dof_jitter);
+	RS::get_singleton()->environment_set_ssao_quality(RS::EnvironmentSSAOQuality(int(GLOBAL_GET("rendering/environment/ssao/quality"))), GLOBAL_GET("rendering/environment/ssao/half_size"), GLOBAL_GET("rendering/environment/ssao/adaptive_target"), GLOBAL_GET("rendering/environment/ssao/blur_passes"), GLOBAL_GET("rendering/environment/ssao/fadeout_from"), GLOBAL_GET("rendering/environment/ssao/fadeout_to"));
+	RS::get_singleton()->screen_space_roughness_limiter_set_active(GLOBAL_GET("rendering/anti_aliasing/screen_space_roughness_limiter/enabled"), GLOBAL_GET("rendering/anti_aliasing/screen_space_roughness_limiter/amount"), GLOBAL_GET("rendering/anti_aliasing/screen_space_roughness_limiter/limit"));
+	bool glow_bicubic = int(GLOBAL_GET("rendering/environment/glow/upscale_mode")) > 0;
+	RS::get_singleton()->environment_glow_set_use_bicubic_upscale(glow_bicubic);
+	bool glow_high_quality = GLOBAL_GET("rendering/environment/glow/use_high_quality");
+	RS::get_singleton()->environment_glow_set_use_high_quality(glow_high_quality);
+	RS::EnvironmentSSRRoughnessQuality ssr_roughness_quality = RS::EnvironmentSSRRoughnessQuality(int(GLOBAL_GET("rendering/environment/screen_space_reflection/roughness_quality")));
+	RS::get_singleton()->environment_set_ssr_roughness_quality(ssr_roughness_quality);
+	RS::SubSurfaceScatteringQuality sss_quality = RS::SubSurfaceScatteringQuality(int(GLOBAL_GET("rendering/environment/subsurface_scattering/subsurface_scattering_quality")));
+	RS::get_singleton()->sub_surface_scattering_set_quality(sss_quality);
+	float sss_scale = GLOBAL_GET("rendering/environment/subsurface_scattering/subsurface_scattering_scale");
+	float sss_depth_scale = GLOBAL_GET("rendering/environment/subsurface_scattering/subsurface_scattering_depth_scale");
+	RS::get_singleton()->sub_surface_scattering_set_scale(sss_scale, sss_depth_scale);
+
+	uint32_t directional_shadow_size = GLOBAL_GET("rendering/shadows/directional_shadow/size");
+	uint32_t directional_shadow_16_bits = GLOBAL_GET("rendering/shadows/directional_shadow/16_bits");
+	RS::get_singleton()->directional_shadow_atlas_set_size(directional_shadow_size, directional_shadow_16_bits);
+
+	RS::ShadowQuality shadows_quality = RS::ShadowQuality(int(GLOBAL_GET("rendering/shadows/shadows/soft_shadow_quality")));
+	RS::get_singleton()->shadows_quality_set(shadows_quality);
+	RS::ShadowQuality directional_shadow_quality = RS::ShadowQuality(int(GLOBAL_GET("rendering/shadows/directional_shadow/soft_shadow_quality")));
+	RS::get_singleton()->directional_shadow_quality_set(directional_shadow_quality);
+	float probe_update_speed = GLOBAL_GET("rendering/lightmapping/probe_capture/update_speed");
+	RS::get_singleton()->lightmap_set_probe_capture_update_speed(probe_update_speed);
+	RS::EnvironmentSDFGIFramesToConverge frames_to_converge = RS::EnvironmentSDFGIFramesToConverge(int(GLOBAL_GET("rendering/global_illumination/sdfgi/frames_to_converge")));
+	RS::get_singleton()->environment_set_sdfgi_frames_to_converge(frames_to_converge);
+	RS::EnvironmentSDFGIRayCount ray_count = RS::EnvironmentSDFGIRayCount(int(GLOBAL_GET("rendering/global_illumination/sdfgi/probe_ray_count")));
+	RS::get_singleton()->environment_set_sdfgi_ray_count(ray_count);
+	RS::GIProbeQuality gi_probe_quality = RS::GIProbeQuality(int(GLOBAL_GET("rendering/global_illumination/gi_probes/quality")));
+	RS::get_singleton()->gi_probe_set_quality(gi_probe_quality);
+	RS::get_singleton()->environment_set_volumetric_fog_volume_size(GLOBAL_GET("rendering/environment/volumetric_fog/volume_size"), GLOBAL_GET("rendering/environment/volumetric_fog/volume_depth"));
+	RS::get_singleton()->environment_set_volumetric_fog_filter_active(bool(GLOBAL_GET("rendering/environment/volumetric_fog/use_filter")));
+	RS::get_singleton()->canvas_set_shadow_texture_size(GLOBAL_GET("rendering/2d/shadow_atlas/size"));
+
+	bool use_half_res_gi = GLOBAL_DEF("rendering/global_illumination/gi/use_half_resolution", false);
+	RS::get_singleton()->gi_set_use_half_resolution(use_half_res_gi);
+
+	bool snap_2d_transforms = GLOBAL_GET("rendering/2d/snap/snap_2d_transforms_to_pixel");
+	scene_root->set_snap_2d_transforms_to_pixel(snap_2d_transforms);
+	bool snap_2d_vertices = GLOBAL_GET("rendering/2d/snap/snap_2d_vertices_to_pixel");
+	scene_root->set_snap_2d_vertices_to_pixel(snap_2d_vertices);
+
+	Viewport::SDFOversize sdf_oversize = Viewport::SDFOversize(int(GLOBAL_GET("rendering/2d/sdf/oversize")));
+	scene_root->set_sdf_oversize(sdf_oversize);
+	Viewport::SDFScale sdf_scale = Viewport::SDFScale(int(GLOBAL_GET("rendering/2d/sdf/scale")));
+	scene_root->set_sdf_scale(sdf_scale);
+
+	float lod_threshold = GLOBAL_GET("rendering/mesh_lod/lod_change/threshold_pixels");
+	scene_root->set_lod_threshold(lod_threshold);
+}
+
 void EditorNode::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_PROCESS: {
@@ -468,75 +536,13 @@ void EditorNode::_notification(int p_what) {
 
 			editor_selection->update();
 
-			{ //TODO should only happen on settings changed
-				int current_filter = GLOBAL_GET("rendering/canvas_textures/default_texture_filter");
-				if (current_filter != scene_root->get_default_canvas_item_texture_filter()) {
-					Viewport::DefaultCanvasItemTextureFilter tf = (Viewport::DefaultCanvasItemTextureFilter)current_filter;
-					scene_root->set_default_canvas_item_texture_filter(tf);
-				}
-				int current_repeat = GLOBAL_GET("rendering/canvas_textures/default_texture_repeat");
-				if (current_repeat != scene_root->get_default_canvas_item_texture_repeat()) {
-					Viewport::DefaultCanvasItemTextureRepeat tr = (Viewport::DefaultCanvasItemTextureRepeat)current_repeat;
-					scene_root->set_default_canvas_item_texture_repeat(tr);
-				}
-
-				RS::DOFBokehShape dof_shape = RS::DOFBokehShape(int(GLOBAL_GET("rendering/quality/depth_of_field/depth_of_field_bokeh_shape")));
-				RS::get_singleton()->camera_effects_set_dof_blur_bokeh_shape(dof_shape);
-				RS::DOFBlurQuality dof_quality = RS::DOFBlurQuality(int(GLOBAL_GET("rendering/quality/depth_of_field/depth_of_field_bokeh_quality")));
-				bool dof_jitter = GLOBAL_GET("rendering/quality/depth_of_field/depth_of_field_use_jitter");
-				RS::get_singleton()->camera_effects_set_dof_blur_quality(dof_quality, dof_jitter);
-				RS::get_singleton()->environment_set_ssao_quality(RS::EnvironmentSSAOQuality(int(GLOBAL_GET("rendering/quality/ssao/quality"))), GLOBAL_GET("rendering/quality/ssao/half_size"), GLOBAL_GET("rendering/quality/ssao/adaptive_target"), GLOBAL_GET("rendering/quality/ssao/blur_passes"), GLOBAL_GET("rendering/quality/ssao/fadeout_from"), GLOBAL_GET("rendering/quality/ssao/fadeout_to"));
-				RS::get_singleton()->screen_space_roughness_limiter_set_active(GLOBAL_GET("rendering/quality/screen_filters/screen_space_roughness_limiter_enabled"), GLOBAL_GET("rendering/quality/screen_filters/screen_space_roughness_limiter_amount"), GLOBAL_GET("rendering/quality/screen_filters/screen_space_roughness_limiter_limit"));
-				bool glow_bicubic = int(GLOBAL_GET("rendering/quality/glow/upscale_mode")) > 0;
-				RS::get_singleton()->environment_glow_set_use_bicubic_upscale(glow_bicubic);
-				bool glow_high_quality = GLOBAL_GET("rendering/quality/glow/use_high_quality");
-				RS::get_singleton()->environment_glow_set_use_high_quality(glow_high_quality);
-				RS::EnvironmentSSRRoughnessQuality ssr_roughness_quality = RS::EnvironmentSSRRoughnessQuality(int(GLOBAL_GET("rendering/quality/screen_space_reflection/roughness_quality")));
-				RS::get_singleton()->environment_set_ssr_roughness_quality(ssr_roughness_quality);
-				RS::SubSurfaceScatteringQuality sss_quality = RS::SubSurfaceScatteringQuality(int(GLOBAL_GET("rendering/quality/subsurface_scattering/subsurface_scattering_quality")));
-				RS::get_singleton()->sub_surface_scattering_set_quality(sss_quality);
-				float sss_scale = GLOBAL_GET("rendering/quality/subsurface_scattering/subsurface_scattering_scale");
-				float sss_depth_scale = GLOBAL_GET("rendering/quality/subsurface_scattering/subsurface_scattering_depth_scale");
-				RS::get_singleton()->sub_surface_scattering_set_scale(sss_scale, sss_depth_scale);
-
-				uint32_t directional_shadow_size = GLOBAL_GET("rendering/quality/directional_shadow/size");
-				uint32_t directional_shadow_16_bits = GLOBAL_GET("rendering/quality/directional_shadow/16_bits");
-				RS::get_singleton()->directional_shadow_atlas_set_size(directional_shadow_size, directional_shadow_16_bits);
-
-				RS::ShadowQuality shadows_quality = RS::ShadowQuality(int(GLOBAL_GET("rendering/quality/shadows/soft_shadow_quality")));
-				RS::get_singleton()->shadows_quality_set(shadows_quality);
-				RS::ShadowQuality directional_shadow_quality = RS::ShadowQuality(int(GLOBAL_GET("rendering/quality/directional_shadow/soft_shadow_quality")));
-				RS::get_singleton()->directional_shadow_quality_set(directional_shadow_quality);
-				float probe_update_speed = GLOBAL_GET("rendering/lightmapper/probe_capture_update_speed");
-				RS::get_singleton()->lightmap_set_probe_capture_update_speed(probe_update_speed);
-				RS::EnvironmentSDFGIFramesToConverge frames_to_converge = RS::EnvironmentSDFGIFramesToConverge(int(GLOBAL_GET("rendering/sdfgi/frames_to_converge")));
-				RS::get_singleton()->environment_set_sdfgi_frames_to_converge(frames_to_converge);
-				RS::EnvironmentSDFGIRayCount ray_count = RS::EnvironmentSDFGIRayCount(int(GLOBAL_GET("rendering/sdfgi/probe_ray_count")));
-				RS::get_singleton()->environment_set_sdfgi_ray_count(ray_count);
-				RS::GIProbeQuality gi_probe_quality = RS::GIProbeQuality(int(GLOBAL_GET("rendering/quality/gi_probes/quality")));
-				RS::get_singleton()->gi_probe_set_quality(gi_probe_quality);
-				RS::get_singleton()->environment_set_volumetric_fog_volume_size(GLOBAL_GET("rendering/volumetric_fog/volume_size"), GLOBAL_GET("rendering/volumetric_fog/volume_depth"));
-				RS::get_singleton()->environment_set_volumetric_fog_filter_active(bool(GLOBAL_GET("rendering/volumetric_fog/use_filter")));
-				RS::get_singleton()->canvas_set_shadow_texture_size(GLOBAL_GET("rendering/quality/2d_shadow_atlas/size"));
-
-				bool use_half_res_gi = GLOBAL_DEF("rendering/quality/gi/use_half_resolution", false);
-				RS::get_singleton()->gi_set_use_half_resolution(use_half_res_gi);
-
-				bool snap_2d_transforms = GLOBAL_GET("rendering/quality/2d/snap_2d_transforms_to_pixel");
-				scene_root->set_snap_2d_transforms_to_pixel(snap_2d_transforms);
-				bool snap_2d_vertices = GLOBAL_GET("rendering/quality/2d/snap_2d_vertices_to_pixel");
-				scene_root->set_snap_2d_vertices_to_pixel(snap_2d_vertices);
-
-				Viewport::SDFOversize sdf_oversize = Viewport::SDFOversize(int(GLOBAL_GET("rendering/quality/2d_sdf/oversize")));
-				scene_root->set_sdf_oversize(sdf_oversize);
-				Viewport::SDFScale sdf_scale = Viewport::SDFScale(int(GLOBAL_GET("rendering/quality/2d_sdf/scale")));
-				scene_root->set_sdf_scale(sdf_scale);
-
-				float lod_threshold = GLOBAL_GET("rendering/quality/mesh_lod/threshold_pixels");
-				scene_root->set_lod_threshold(lod_threshold);
-			}
-
 			ResourceImporterTexture::get_singleton()->update_imports();
+
+			if (settings_changed) {
+				_update_from_settings();
+				settings_changed = false;
+				emit_signal("project_settings_changed");
+			}
 		} break;
 
 		case NOTIFICATION_ENTER_TREE: {
@@ -594,6 +600,7 @@ void EditorNode::_notification(int p_what) {
 			OS::get_singleton()->set_low_processor_usage_mode_sleep_usec(int(EDITOR_GET("interface/editor/low_processor_mode_sleep_usec")));
 
 			EditorFileSystem::get_singleton()->scan_changes();
+			_scan_external_changes();
 		} break;
 
 		case NOTIFICATION_APPLICATION_FOCUS_OUT: {
@@ -886,6 +893,82 @@ void EditorNode::_sources_changed(bool p_exist) {
 	}
 }
 
+void EditorNode::_scan_external_changes() {
+	disk_changed_list->clear();
+	TreeItem *r = disk_changed_list->create_item();
+	disk_changed_list->set_hide_root(true);
+	bool need_reload = false;
+
+	// Check if any edited scene has changed.
+
+	for (int i = 0; i < editor_data.get_edited_scene_count(); i++) {
+		if (editor_data.get_scene_path(i) == "") {
+			continue;
+		}
+
+		uint64_t last_date = editor_data.get_scene_modified_time(i);
+		uint64_t date = FileAccess::get_modified_time(editor_data.get_scene_path(i));
+
+		if (date > last_date) {
+			TreeItem *ti = disk_changed_list->create_item(r);
+			ti->set_text(0, editor_data.get_scene_path(i).get_file());
+			need_reload = true;
+		}
+	}
+
+	String project_settings_path = ProjectSettings::get_singleton()->get_resource_path().plus_file("project.godot");
+	if (FileAccess::get_modified_time(project_settings_path) > ProjectSettings::get_singleton()->get_last_saved_time()) {
+		TreeItem *ti = disk_changed_list->create_item(r);
+		ti->set_text(0, "project.godot");
+		need_reload = true;
+	}
+
+	if (need_reload) {
+		disk_changed->call_deferred("popup_centered_ratio", 0.5);
+	}
+}
+
+void EditorNode::_resave_scenes(String p_str) {
+	save_all_scenes();
+	ProjectSettings::get_singleton()->save();
+	disk_changed->hide();
+}
+
+void EditorNode::_reload_modified_scenes() {
+	int current_idx = editor_data.get_edited_scene();
+
+	for (int i = 0; i < editor_data.get_edited_scene_count(); i++) {
+		if (editor_data.get_scene_path(i) == "") {
+			continue;
+		}
+
+		uint64_t last_date = editor_data.get_scene_modified_time(i);
+		uint64_t date = FileAccess::get_modified_time(editor_data.get_scene_path(i));
+
+		if (date > last_date) {
+			String filename = editor_data.get_scene_path(i);
+			editor_data.set_edited_scene(i);
+			_remove_edited_scene(false);
+
+			Error err = load_scene(filename, false, false, true, false, true);
+			if (err != OK) {
+				ERR_PRINT(vformat("Failed to load scene: %s", filename));
+			}
+			editor_data.move_edited_scene_to_index(i);
+		}
+	}
+
+	get_undo_redo()->clear_history(false);
+	set_current_scene(current_idx);
+	_update_scene_tabs();
+	disk_changed->hide();
+}
+
+void EditorNode::_reload_project_settings() {
+	ProjectSettings::get_singleton()->setup(ProjectSettings::get_singleton()->get_resource_path(), String(), true);
+	settings_changed = true;
+}
+
 void EditorNode::_vp_resized() {
 }
 
@@ -927,7 +1010,7 @@ Error EditorNode::load_resource(const String &p_resource, bool p_ignore_broken_d
 	dependency_errors.clear();
 
 	Error err;
-	RES res = ResourceLoader::load(p_resource, "", false, &err);
+	RES res = ResourceLoader::load(p_resource, "", ResourceFormatLoader::CACHE_MODE_REUSE, &err);
 	ERR_FAIL_COND_V(!res.is_valid(), ERR_CANT_OPEN);
 
 	if (!p_ignore_broken_deps && dependency_errors.has(p_resource)) {
@@ -1511,6 +1594,7 @@ void EditorNode::_save_scene(String p_file, int idx) {
 		} else {
 			editor_data.set_edited_scene_version(0, idx);
 		}
+		editor_data.set_scene_modified_time(idx, FileAccess::get_modified_time(p_file));
 
 		editor_folding.save_scene_folding(scene, p_file);
 
@@ -1714,7 +1798,7 @@ void EditorNode::_dialog_action(String p_file) {
 			ObjectID current = editor_history.get_current();
 			Object *current_obj = current.is_valid() ? ObjectDB::get_instance(current) : nullptr;
 			ERR_FAIL_COND(!current_obj);
-			current_obj->_change_notify();
+			current_obj->notify_property_list_changed();
 		} break;
 		case SETTINGS_LAYOUT_SAVE: {
 			if (p_file.is_empty()) {
@@ -2176,7 +2260,7 @@ void EditorNode::_run(bool p_current, const String &p_custom) {
 	List<String> breakpoints;
 	editor_data.get_editor_breakpoints(&breakpoints);
 
-	args = ProjectSettings::get_singleton()->get("editor/main_run_args");
+	args = ProjectSettings::get_singleton()->get("editor/run/main_run_args");
 	skip_breakpoints = EditorDebuggerNode::get_singleton()->is_skip_breakpoints();
 
 	EditorDebuggerNode::get_singleton()->start();
@@ -2433,16 +2517,6 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 
 			file_export_lib->popup_file_dialog();
 			file_export_lib->set_title(TTR("Export Tile Set"));
-
-		} break;
-
-		case FILE_IMPORT_SUBSCENE: {
-			if (!editor_data.get_edited_scene_root()) {
-				show_accept(TTR("This operation can't be done without a selected node."), TTR("OK"));
-				break;
-			}
-
-			scene_tree_dock->import_subscene();
 
 		} break;
 
@@ -2715,7 +2789,7 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 		} break;
 
 		case SET_VIDEO_DRIVER_SAVE_AND_RESTART: {
-			ProjectSettings::get_singleton()->set("rendering/quality/driver/driver_name", video_driver_request);
+			ProjectSettings::get_singleton()->set("rendering/driver/driver_name", video_driver_request);
 			ProjectSettings::get_singleton()->save();
 
 			save_all_scenes();
@@ -3326,7 +3400,7 @@ int EditorNode::new_scene() {
 	return idx;
 }
 
-Error EditorNode::load_scene(const String &p_scene, bool p_ignore_broken_deps, bool p_set_inherited, bool p_clear_errors, bool p_force_open_imported) {
+Error EditorNode::load_scene(const String &p_scene, bool p_ignore_broken_deps, bool p_set_inherited, bool p_clear_errors, bool p_force_open_imported, bool p_silent_change_tab) {
 	if (!is_inside_tree()) {
 		defer_load_scene = p_scene;
 		return OK;
@@ -3366,14 +3440,16 @@ Error EditorNode::load_scene(const String &p_scene, bool p_ignore_broken_deps, b
 
 	if (!editor_data.get_edited_scene_root() && editor_data.get_edited_scene_count() == 2) {
 		_remove_edited_scene();
-	} else {
+	} else if (!p_silent_change_tab) {
 		_scene_tab_changed(idx);
+	} else {
+		set_current_scene(idx);
 	}
 
 	dependency_errors.clear();
 
 	Error err;
-	Ref<PackedScene> sdata = ResourceLoader::load(lpath, "", true, &err);
+	Ref<PackedScene> sdata = ResourceLoader::load(lpath, "", ResourceFormatLoader::CACHE_MODE_REPLACE, &err);
 	if (!sdata.is_valid()) {
 		_dialog_display_load_error(lpath, err);
 		opening_prev = false;
@@ -5195,6 +5271,8 @@ void EditorNode::_file_access_close_error_notify(const String &p_str) {
 }
 
 void EditorNode::reload_scene(const String &p_path) {
+	/*
+	 * No longer necesary since scenes now reset and reload their internal resource if needed.
 	//first of all, reload internal textures, materials, meshes, etc. as they might have changed on disk
 
 	List<Ref<Resource>> cached;
@@ -5211,6 +5289,8 @@ void EditorNode::reload_scene(const String &p_path) {
 		to_clear.front()->get()->set_path("");
 		to_clear.pop_front();
 	}
+
+	*/
 
 	int scene_idx = -1;
 	for (int i = 0; i < editor_data.get_edited_scene_count(); i++) {
@@ -5455,6 +5535,7 @@ void EditorNode::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("request_help_search"));
 	ADD_SIGNAL(MethodInfo("script_add_function_request", PropertyInfo(Variant::OBJECT, "obj"), PropertyInfo(Variant::STRING, "function"), PropertyInfo(Variant::PACKED_STRING_ARRAY, "args")));
 	ADD_SIGNAL(MethodInfo("resource_saved", PropertyInfo(Variant::OBJECT, "obj")));
+	ADD_SIGNAL(MethodInfo("project_settings_changed"));
 }
 
 static Node *_resource_get_edited_scene() {
@@ -5474,7 +5555,8 @@ static void _execute_thread(void *p_ud) {
 		eta->exitcode = err;
 	}
 
-	eta->done = true;
+	eta->done.set();
+	;
 }
 
 int EditorNode::execute_and_show_output(const String &p_title, const String &p_path, const List<String> &p_arguments, bool p_close_on_ok, bool p_close_on_errors) {
@@ -5488,13 +5570,12 @@ int EditorNode::execute_and_show_output(const String &p_title, const String &p_p
 	eta.path = p_path;
 	eta.args = p_arguments;
 	eta.exitcode = 255;
-	eta.done = false;
 
 	int prev_len = 0;
 
 	eta.execute_output_thread.start(_execute_thread, &eta);
 
-	while (!eta.done) {
+	while (!eta.done.is_set()) {
 		{
 			MutexLock lock(eta.execute_output_mutex);
 			if (prev_len != eta.output.length()) {
@@ -5520,6 +5601,10 @@ int EditorNode::execute_and_show_output(const String &p_title, const String &p_p
 	execute_output_dialog->get_ok_button()->set_disabled(false);
 
 	return eta.exitcode;
+}
+
+void EditorNode::notify_settings_changed() {
+	settings_changed = true;
 }
 
 EditorNode::EditorNode() {
@@ -5592,6 +5677,10 @@ EditorNode::EditorNode() {
 				if (DisplayServer::get_singleton()->screen_get_dpi(screen) >= 192 && DisplayServer::get_singleton()->screen_get_size(screen).y >= 1400) {
 					// hiDPI display.
 					scale = 2.0;
+				} else if (DisplayServer::get_singleton()->screen_get_size(screen).y >= 1700) {
+					// Likely a hiDPI display, but we aren't certain due to the returned DPI.
+					// Use an intermediate scale to handle this situation.
+					scale = 1.5;
 				} else if (DisplayServer::get_singleton()->screen_get_size(screen).y <= 800) {
 					// Small loDPI display. Use a smaller display scale so that editor elements fit more easily.
 					// Icons won't look great, but this is better than having editor elements overflow from its window.
@@ -5750,7 +5839,7 @@ EditorNode::EditorNode() {
 
 	register_exporters();
 
-	GLOBAL_DEF("editor/main_run_args", "");
+	GLOBAL_DEF("editor/run/main_run_args", "");
 
 	ClassDB::set_class_enabled("RootMotionView", true);
 
@@ -5775,7 +5864,7 @@ EditorNode::EditorNode() {
 	EDITOR_DEF("interface/inspector/horizontal_vector2_editing", false);
 	EDITOR_DEF("interface/inspector/horizontal_vector_types_editing", true);
 	EDITOR_DEF("interface/inspector/open_resources_in_current_inspector", true);
-	EDITOR_DEF("interface/inspector/resources_to_open_in_new_inspector", "StandardMaterial3D,ORMMaterial3D,Script,MeshLibrary,TileSet");
+	EDITOR_DEF("interface/inspector/resources_to_open_in_new_inspector", "Script,MeshLibrary,TileSet");
 	EDITOR_DEF("interface/inspector/default_color_picker_mode", 0);
 	EditorSettings::get_singleton()->add_property_hint(PropertyInfo(Variant::INT, "interface/inspector/default_color_picker_mode", PROPERTY_HINT_ENUM, "RGB,HSV,RAW", PROPERTY_USAGE_DEFAULT));
 	EDITOR_DEF("run/auto_save/save_before_running", true);
@@ -6126,8 +6215,8 @@ EditorNode::EditorNode() {
 	pm_export->connect("id_pressed", callable_mp(this, &EditorNode::_menu_option));
 
 	p->add_separator();
-	p->add_shortcut(ED_SHORTCUT("editor/undo", TTR("Undo"), KEY_MASK_CMD + KEY_Z), EDIT_UNDO, true);
-	p->add_shortcut(ED_SHORTCUT("editor/redo", TTR("Redo"), KEY_MASK_CMD + KEY_MASK_SHIFT + KEY_Z), EDIT_REDO, true);
+	p->add_shortcut(ED_GET_SHORTCUT("ui_undo"), EDIT_UNDO, true);
+	p->add_shortcut(ED_GET_SHORTCUT("ui_redo"), EDIT_REDO, true);
 
 	p->add_separator();
 	p->add_shortcut(ED_SHORTCUT("editor/reload_saved_scene", TTR("Reload Saved Scene")), EDIT_RELOAD_SAVED_SCENE);
@@ -6368,7 +6457,7 @@ EditorNode::EditorNode() {
 #warning needs to be reimplemented
 #endif
 #if 0
-	String video_drivers = ProjectSettings::get_singleton()->get_custom_property_info()["rendering/quality/driver/driver_name"].hint_string;
+	String video_drivers = ProjectSettings::get_singleton()->get_custom_property_info()["rendering/driver/driver_name"].hint_string;
 	String current_video_driver = OS::get_singleton()->get_video_driver_name(OS::get_singleton()->get_current_video_driver());
 	video_driver_current = 0;
 	for (int i = 0; i < video_drivers.get_slice_count(","); i++) {
@@ -6601,6 +6690,30 @@ EditorNode::EditorNode() {
 	//plugin stuff
 
 	add_editor_plugin(memnew(DebuggerEditorPlugin(this, debug_menu)));
+
+	disk_changed = memnew(ConfirmationDialog);
+	{
+		VBoxContainer *vbc = memnew(VBoxContainer);
+		disk_changed->add_child(vbc);
+
+		Label *dl = memnew(Label);
+		dl->set_text(TTR("The following files are newer on disk.\nWhat action should be taken?"));
+		vbc->add_child(dl);
+
+		disk_changed_list = memnew(Tree);
+		vbc->add_child(disk_changed_list);
+		disk_changed_list->set_v_size_flags(Control::SIZE_EXPAND_FILL);
+
+		disk_changed->connect("confirmed", callable_mp(this, &EditorNode::_reload_modified_scenes));
+		disk_changed->connect("confirmed", callable_mp(this, &EditorNode::_reload_project_settings));
+		disk_changed->get_ok_button()->set_text(TTR("Reload"));
+
+		disk_changed->add_button(TTR("Resave"), !DisplayServer::get_singleton()->get_swap_cancel_ok(), "resave");
+		disk_changed->connect("custom_action", callable_mp(this, &EditorNode::_resave_scenes));
+	}
+
+	gui_base->add_child(disk_changed);
+
 	add_editor_plugin(memnew(AnimationPlayerEditorPlugin(this)));
 	add_editor_plugin(memnew(CanvasItemEditorPlugin(this)));
 	add_editor_plugin(memnew(Node3DEditorPlugin(this)));

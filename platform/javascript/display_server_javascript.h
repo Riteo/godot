@@ -57,9 +57,6 @@ private:
 	double last_click_ms = 0;
 	int last_click_button_index = -1;
 
-	int last_width = 0;
-	int last_height = 0;
-
 	bool swap_cancel_ok = false;
 
 	// utilities
@@ -136,6 +133,7 @@ public:
 	Size2i screen_get_size(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;
 	Rect2i screen_get_usable_rect(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;
 	int screen_get_dpi(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;
+	float screen_get_scale(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;
 
 	// windows
 	Vector<DisplayServer::WindowID> get_window_list() const override;

@@ -310,9 +310,8 @@ def configure(env):
 
     if os.system("pkg-config --exists alsa") == 0:  # 0 means found
         print("Enabling ALSA")
+        env["alsa"] = True
         env.Append(CPPDEFINES=["ALSA_ENABLED", "ALSAMIDI_ENABLED"])
-        # Don't parse --cflags, we don't need to add /usr/include/alsa to include path
-        env.ParseConfig("pkg-config alsa --libs")
     else:
         print("ALSA libraries not found, disabling driver")
 
@@ -320,20 +319,20 @@ def configure(env):
         if os.system("pkg-config --exists libpulse") == 0:  # 0 means found
             print("Enabling PulseAudio")
             env.Append(CPPDEFINES=["PULSEAUDIO_ENABLED"])
-            env.ParseConfig("pkg-config --cflags --libs libpulse")
+            env.ParseConfig("pkg-config --cflags libpulse")
         else:
             print("PulseAudio development libraries not found, disabling driver")
 
     if platform.system() == "Linux":
         env.Append(CPPDEFINES=["JOYDEV_ENABLED"])
-
         if env["udev"]:
             if os.system("pkg-config --exists libudev") == 0:  # 0 means found
                 print("Enabling udev support")
                 env.Append(CPPDEFINES=["UDEV_ENABLED"])
-                env.ParseConfig("pkg-config libudev --cflags --libs")
             else:
                 print("libudev development libraries not found, disabling udev support")
+    else:
+        env["udev"] = False  # Linux specific
 
     # Linkflags below this line should typically stay the last ones
     if not env["builtin_zlib"]:

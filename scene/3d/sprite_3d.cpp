@@ -543,8 +543,6 @@ void Sprite3D::set_frame(int p_frame) {
 
 	_queue_update();
 
-	_change_notify("frame");
-	_change_notify("frame_coords");
 	emit_signal(SceneStringNames::get_singleton()->frame_changed);
 }
 
@@ -567,7 +565,7 @@ void Sprite3D::set_vframes(int p_amount) {
 	ERR_FAIL_COND(p_amount < 1);
 	vframes = p_amount;
 	_queue_update();
-	_change_notify();
+	notify_property_list_changed();
 }
 
 int Sprite3D::get_vframes() const {
@@ -578,7 +576,7 @@ void Sprite3D::set_hframes(int p_amount) {
 	ERR_FAIL_COND(p_amount < 1);
 	hframes = p_amount;
 	_queue_update();
-	_change_notify();
+	notify_property_list_changed();
 }
 
 int Sprite3D::get_hframes() const {
@@ -890,12 +888,13 @@ void AnimatedSprite3D::_notification(int p_what) {
 						} else {
 							frame = fc - 1;
 						}
+						emit_signal(SceneStringNames::get_singleton()->animation_finished);
 					} else {
 						frame++;
 					}
 
 					_queue_update();
-					_change_notify("frame");
+					emit_signal(SceneStringNames::get_singleton()->frame_changed);
 				}
 
 				float to_process = MIN(timeout, remaining);
@@ -921,7 +920,7 @@ void AnimatedSprite3D::set_sprite_frames(const Ref<SpriteFrames> &p_frames) {
 		set_frame(frame);
 	}
 
-	_change_notify();
+	notify_property_list_changed();
 	_reset_timeout();
 	_queue_update();
 	update_configuration_warning();
@@ -954,7 +953,7 @@ void AnimatedSprite3D::set_frame(int p_frame) {
 	frame = p_frame;
 	_reset_timeout();
 	_queue_update();
-	_change_notify("frame");
+
 	emit_signal(SceneStringNames::get_singleton()->frame_changed);
 }
 
@@ -990,8 +989,6 @@ Rect2 AnimatedSprite3D::get_item_rect() const {
 
 void AnimatedSprite3D::_res_changed() {
 	set_frame(frame);
-	_change_notify("frame");
-	_change_notify("animation");
 	_queue_update();
 }
 
@@ -1048,7 +1045,7 @@ void AnimatedSprite3D::set_animation(const StringName &p_animation) {
 	animation = p_animation;
 	_reset_timeout();
 	set_frame(0);
-	_change_notify();
+	notify_property_list_changed();
 	_queue_update();
 }
 
@@ -1087,6 +1084,7 @@ void AnimatedSprite3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_frame"), &AnimatedSprite3D::get_frame);
 
 	ADD_SIGNAL(MethodInfo("frame_changed"));
+	ADD_SIGNAL(MethodInfo("animation_finished"));
 
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "frames", PROPERTY_HINT_RESOURCE_TYPE, "SpriteFrames"), "set_sprite_frames", "get_sprite_frames");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "animation"), "set_animation", "get_animation");

@@ -209,7 +209,7 @@ void Camera3D::set_projection(Camera3D::Projection p_mode) {
 	if (p_mode == PROJECTION_PERSPECTIVE || p_mode == PROJECTION_ORTHOGONAL || p_mode == PROJECTION_FRUSTUM) {
 		mode = p_mode;
 		_update_camera_mode();
-		_change_notify();
+		notify_property_list_changed();
 	}
 }
 
@@ -432,7 +432,7 @@ void Camera3D::set_keep_aspect_mode(KeepAspect p_aspect) {
 	keep_aspect = p_aspect;
 	RenderingServer::get_singleton()->camera_set_use_vertical_aspect(camera, p_aspect == KEEP_WIDTH);
 	_update_camera_mode();
-	_change_notify();
+	notify_property_list_changed();
 }
 
 Camera3D::KeepAspect Camera3D::get_keep_aspect_mode() const {
@@ -562,14 +562,12 @@ void Camera3D::set_fov(float p_fov) {
 	ERR_FAIL_COND(p_fov < 1 || p_fov > 179);
 	fov = p_fov;
 	_update_camera_mode();
-	_change_notify("fov");
 }
 
 void Camera3D::set_size(float p_size) {
 	ERR_FAIL_COND(p_size < 0.1 || p_size > 16384);
 	size = p_size;
 	_update_camera_mode();
-	_change_notify("size");
 }
 
 void Camera3D::set_near(float p_near) {
@@ -675,17 +673,17 @@ float ClippedCamera3D::get_margin() const {
 	return margin;
 }
 
-void ClippedCamera3D::set_process_mode(ProcessMode p_mode) {
-	if (process_mode == p_mode) {
+void ClippedCamera3D::set_process_callback(ClipProcessCallback p_mode) {
+	if (process_callback == p_mode) {
 		return;
 	}
-	process_mode = p_mode;
-	set_process_internal(process_mode == CLIP_PROCESS_IDLE);
-	set_physics_process_internal(process_mode == CLIP_PROCESS_PHYSICS);
+	process_callback = p_mode;
+	set_process_internal(process_callback == CLIP_PROCESS_IDLE);
+	set_physics_process_internal(process_callback == CLIP_PROCESS_PHYSICS);
 }
 
-ClippedCamera3D::ProcessMode ClippedCamera3D::get_process_mode() const {
-	return process_mode;
+ClippedCamera3D::ClipProcessCallback ClippedCamera3D::get_process_callback() const {
+	return process_callback;
 }
 
 Transform ClippedCamera3D::get_camera_transform() const {
@@ -830,8 +828,8 @@ void ClippedCamera3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_margin", "margin"), &ClippedCamera3D::set_margin);
 	ClassDB::bind_method(D_METHOD("get_margin"), &ClippedCamera3D::get_margin);
 
-	ClassDB::bind_method(D_METHOD("set_process_mode", "process_mode"), &ClippedCamera3D::set_process_mode);
-	ClassDB::bind_method(D_METHOD("get_process_mode"), &ClippedCamera3D::get_process_mode);
+	ClassDB::bind_method(D_METHOD("set_process_callback", "process_callback"), &ClippedCamera3D::set_process_callback);
+	ClassDB::bind_method(D_METHOD("get_process_callback"), &ClippedCamera3D::get_process_callback);
 
 	ClassDB::bind_method(D_METHOD("set_collision_mask", "mask"), &ClippedCamera3D::set_collision_mask);
 	ClassDB::bind_method(D_METHOD("get_collision_mask"), &ClippedCamera3D::get_collision_mask);
@@ -856,7 +854,7 @@ void ClippedCamera3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("clear_exceptions"), &ClippedCamera3D::clear_exceptions);
 
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "margin", PROPERTY_HINT_RANGE, "0,32,0.01"), "set_margin", "get_margin");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "process_mode", PROPERTY_HINT_ENUM, "Physics,Idle"), "set_process_mode", "get_process_mode");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "process_callback", PROPERTY_HINT_ENUM, "Physics,Idle"), "set_process_callback", "get_process_callback");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "collision_mask", PROPERTY_HINT_LAYERS_3D_PHYSICS), "set_collision_mask", "get_collision_mask");
 
 	ADD_GROUP("Clip To", "clip_to");

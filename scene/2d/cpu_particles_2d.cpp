@@ -60,7 +60,7 @@ void CPUParticles2D::set_amount(int p_amount) {
 	}
 
 	particle_data.resize((8 + 4 + 4) * p_amount);
-	RS::get_singleton()->multimesh_allocate(multimesh, p_amount, RS::MULTIMESH_TRANSFORM_2D, true, true);
+	RS::get_singleton()->multimesh_allocate_data(multimesh, p_amount, RS::MULTIMESH_TRANSFORM_2D, true, true);
 
 	particle_order.resize(p_amount);
 }
@@ -410,7 +410,7 @@ bool CPUParticles2D::get_particle_flag(ParticleFlags p_particle_flag) const {
 void CPUParticles2D::set_emission_shape(EmissionShape p_shape) {
 	ERR_FAIL_INDEX(p_shape, EMISSION_SHAPE_MAX);
 	emission_shape = p_shape;
-	_change_notify();
+	notify_property_list_changed();
 }
 
 void CPUParticles2D::set_emission_sphere_radius(float p_radius) {
@@ -599,7 +599,7 @@ void CPUParticles2D::_particles_process(float p_delta) {
 		cycle++;
 		if (one_shot && cycle > 0) {
 			set_emitting(false);
-			_change_notify();
+			notify_property_list_changed();
 		}
 	}
 

@@ -86,9 +86,9 @@ RES _ResourceLoader::load_threaded_get(const String &p_path) {
 	return res;
 }
 
-RES _ResourceLoader::load(const String &p_path, const String &p_type_hint, bool p_no_cache) {
+RES _ResourceLoader::load(const String &p_path, const String &p_type_hint, CacheMode p_cache_mode) {
 	Error err = OK;
-	RES ret = ResourceLoader::load(p_path, p_type_hint, p_no_cache, &err);
+	RES ret = ResourceLoader::load(p_path, p_type_hint, ResourceFormatLoader::CacheMode(p_cache_mode), &err);
 
 	ERR_FAIL_COND_V_MSG(err != OK, ret, "Error loading resource: '" + p_path + "'.");
 	return ret;
@@ -135,7 +135,7 @@ void _ResourceLoader::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("load_threaded_get_status", "path", "progress"), &_ResourceLoader::load_threaded_get_status, DEFVAL(Array()));
 	ClassDB::bind_method(D_METHOD("load_threaded_get", "path"), &_ResourceLoader::load_threaded_get);
 
-	ClassDB::bind_method(D_METHOD("load", "path", "type_hint", "no_cache"), &_ResourceLoader::load, DEFVAL(""), DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("load", "path", "type_hint", "cache_mode"), &_ResourceLoader::load, DEFVAL(""), DEFVAL(CACHE_MODE_REUSE));
 	ClassDB::bind_method(D_METHOD("get_recognized_extensions_for_type", "type"), &_ResourceLoader::get_recognized_extensions_for_type);
 	ClassDB::bind_method(D_METHOD("set_abort_on_missing_resources", "abort"), &_ResourceLoader::set_abort_on_missing_resources);
 	ClassDB::bind_method(D_METHOD("get_dependencies", "path"), &_ResourceLoader::get_dependencies);
@@ -146,6 +146,10 @@ void _ResourceLoader::_bind_methods() {
 	BIND_ENUM_CONSTANT(THREAD_LOAD_IN_PROGRESS);
 	BIND_ENUM_CONSTANT(THREAD_LOAD_FAILED);
 	BIND_ENUM_CONSTANT(THREAD_LOAD_LOADED);
+
+	BIND_ENUM_CONSTANT(CACHE_MODE_IGNORE);
+	BIND_ENUM_CONSTANT(CACHE_MODE_REUSE);
+	BIND_ENUM_CONSTANT(CACHE_MODE_REPLACE);
 }
 
 ////// _ResourceSaver //////
@@ -515,11 +519,19 @@ double _OS::get_unix_time() const {
 	return OS::get_singleton()->get_unix_time();
 }
 
-void _OS::delay_usec(uint32_t p_usec) const {
+/** This method uses a signed argument for better error reporting as it's used from the scripting API. */
+void _OS::delay_usec(int p_usec) const {
+	ERR_FAIL_COND_MSG(
+			p_usec < 0,
+			vformat("Can't sleep for %d microseconds. The delay provided must be greater than or equal to 0 microseconds.", p_usec));
 	OS::get_singleton()->delay_usec(p_usec);
 }
 
-void _OS::delay_msec(uint32_t p_msec) const {
+/** This method uses a signed argument for better error reporting as it's used from the scripting API. */
+void _OS::delay_msec(int p_msec) const {
+	ERR_FAIL_COND_MSG(
+			p_msec < 0,
+			vformat("Can't sleep for %d milliseconds. The delay provided must be greater than or equal to 0 milliseconds.", p_msec));
 	OS::get_singleton()->delay_usec(int64_t(p_msec) * 1000);
 }
 
@@ -677,22 +689,6 @@ String _OS::get_unique_id() const {
 	return OS::get_singleton()->get_unique_id();
 }
 
-int _OS::get_tablet_driver_count() const {
-	return OS::get_singleton()->get_tablet_driver_count();
-}
-
-String _OS::get_tablet_driver_name(int p_driver) const {
-	return OS::get_singleton()->get_tablet_driver_name(p_driver);
-}
-
-String _OS::get_current_tablet_driver() const {
-	return OS::get_singleton()->get_current_tablet_driver();
-}
-
-void _OS::set_current_tablet_driver(const String &p_driver) {
-	OS::get_singleton()->set_current_tablet_driver(p_driver);
-}
-
 _OS *_OS::singleton = nullptr;
 
 void _OS::_bind_methods() {
@@ -776,19 +772,12 @@ void _OS::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("request_permissions"), &_OS::request_permissions);
 	ClassDB::bind_method(D_METHOD("get_granted_permissions"), &_OS::get_granted_permissions);
 
-	ClassDB::bind_method(D_METHOD("get_tablet_driver_count"), &_OS::get_tablet_driver_count);
-	ClassDB::bind_method(D_METHOD("get_tablet_driver_name", "idx"), &_OS::get_tablet_driver_name);
-	ClassDB::bind_method(D_METHOD("get_current_tablet_driver"), &_OS::get_current_tablet_driver);
-	ClassDB::bind_method(D_METHOD("set_current_tablet_driver", "name"), &_OS::set_current_tablet_driver);
-
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "exit_code"), "set_exit_code", "get_exit_code");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "low_processor_usage_mode"), "set_low_processor_usage_mode", "is_in_low_processor_usage_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "low_processor_usage_mode_sleep_usec"), "set_low_processor_usage_mode_sleep_usec", "get_low_processor_usage_mode_sleep_usec");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "tablet_driver"), "set_current_tablet_driver", "get_current_tablet_driver");
 
 	// Those default values need to be specified for the docs generator,
 	// to avoid using values from the documentation writer's own OS instance.
-	ADD_PROPERTY_DEFAULT("tablet_driver", "");
 	ADD_PROPERTY_DEFAULT("exit_code", 0);
 	ADD_PROPERTY_DEFAULT("low_processor_usage_mode", false);
 	ADD_PROPERTY_DEFAULT("low_processor_usage_mode_sleep_usec", 6900);
@@ -1250,6 +1239,11 @@ Error _File::open(const String &p_path, ModeFlags p_mode_flags) {
 	return err;
 }
 
+void _File::flush() {
+	ERR_FAIL_COND_MSG(!f, "File must be opened before flushing.");
+	f->flush();
+}
+
 void _File::close() {
 	if (f) {
 		memdelete(f);
@@ -1543,6 +1537,7 @@ void _File::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("open_compressed", "path", "mode_flags", "compression_mode"), &_File::open_compressed, DEFVAL(0));
 
 	ClassDB::bind_method(D_METHOD("open", "path", "flags"), &_File::open);
+	ClassDB::bind_method(D_METHOD("flush"), &_File::flush);
 	ClassDB::bind_method(D_METHOD("close"), &_File::close);
 	ClassDB::bind_method(D_METHOD("get_path"), &_File::get_path);
 	ClassDB::bind_method(D_METHOD("get_path_absolute"), &_File::get_path_absolute);
@@ -1980,7 +1975,7 @@ void _Thread::_start_func(void *ud) {
 }
 
 Error _Thread::start(Object *p_instance, const StringName &p_method, const Variant &p_userdata, Priority p_priority) {
-	ERR_FAIL_COND_V_MSG(active, ERR_ALREADY_IN_USE, "Thread already started.");
+	ERR_FAIL_COND_V_MSG(active.is_set(), ERR_ALREADY_IN_USE, "Thread already started.");
 	ERR_FAIL_COND_V(!p_instance, ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(p_method == StringName(), ERR_INVALID_PARAMETER);
 	ERR_FAIL_INDEX_V(p_priority, PRIORITY_MAX, ERR_INVALID_PARAMETER);
@@ -1989,7 +1984,7 @@ Error _Thread::start(Object *p_instance, const StringName &p_method, const Varia
 	target_method = p_method;
 	target_instance = p_instance;
 	userdata = p_userdata;
-	active = true;
+	active.set();
 
 	Ref<_Thread> *ud = memnew(Ref<_Thread>(this));
 
@@ -2005,14 +2000,14 @@ String _Thread::get_id() const {
 }
 
 bool _Thread::is_active() const {
-	return active;
+	return active.is_set();
 }
 
 Variant _Thread::wait_to_finish() {
-	ERR_FAIL_COND_V_MSG(!active, Variant(), "Thread must be active to wait for its completion.");
+	ERR_FAIL_COND_V_MSG(!active.is_set(), Variant(), "Thread must be active to wait for its completion.");
 	thread.wait_to_finish();
 	Variant r = ret;
-	active = false;
+	active.clear();
 	target_method = StringName();
 	target_instance = nullptr;
 	userdata = Variant();

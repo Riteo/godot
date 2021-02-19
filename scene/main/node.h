@@ -46,10 +46,12 @@ class Node : public Object {
 	OBJ_CATEGORY("Nodes");
 
 public:
-	enum PauseMode {
-		PAUSE_MODE_INHERIT,
-		PAUSE_MODE_STOP,
-		PAUSE_MODE_PROCESS
+	enum ProcessMode {
+		PROCESS_MODE_INHERIT, // same as parent node
+		PROCESS_MODE_PAUSABLE, // process only if not paused
+		PROCESS_MODE_WHEN_PAUSED, // process only if paused
+		PROCESS_MODE_ALWAYS, // process always
+		PROCESS_MODE_DISABLED, // never process
 	};
 
 	enum DuplicateFlags {
@@ -80,7 +82,7 @@ private:
 
 	struct NetData {
 		StringName name;
-		MultiplayerAPI::RPCMode mode;
+		MultiplayerAPI::RPCMode mode = MultiplayerAPI::RPCMode::RPC_MODE_DISABLED;
 	};
 
 	struct Data {
@@ -102,6 +104,7 @@ private:
 #ifdef TOOLS_ENABLED
 		NodePath import_path; // Path used when imported, used by scene editors to keep tracking.
 #endif
+		String editor_description;
 
 		Viewport *viewport = nullptr;
 
@@ -109,8 +112,8 @@ private:
 		List<Node *>::Element *OW = nullptr; // Owned element.
 		List<Node *> owned;
 
-		PauseMode pause_mode = PAUSE_MODE_INHERIT;
-		Node *pause_owner = nullptr;
+		ProcessMode process_mode = PROCESS_MODE_INHERIT;
+		Node *process_owner = nullptr;
 
 		int network_master = 1; // Server by default.
 		Vector<NetData> rpc_methods;
@@ -166,7 +169,7 @@ private:
 	void _propagate_after_exit_tree();
 	void _propagate_validate_owner();
 	void _print_stray_nodes();
-	void _propagate_pause_owner(Node *p_owner);
+	void _propagate_process_owner(Node *p_owner, int p_notification);
 	Array _get_node_and_resource(const NodePath &p_path);
 
 	void _duplicate_signals(const Node *p_original, Node *p_copy) const;
@@ -184,6 +187,9 @@ private:
 	friend class SceneTree;
 
 	void _set_tree(SceneTree *p_tree);
+	void _propagate_pause_notification(bool p_enable);
+
+	_FORCE_INLINE_ bool _can_process(bool p_paused) const;
 
 #ifdef TOOLS_ENABLED
 	friend class SceneTreeEditor;
@@ -297,7 +303,7 @@ public:
 
 	struct GroupInfo {
 		StringName name;
-		bool persistent;
+		bool persistent = false;
 	};
 
 	void get_groups(List<GroupInfo> *p_groups) const;
@@ -362,6 +368,9 @@ public:
 	Node *duplicate_and_reown(const Map<Node *, Node *> &p_reown_map) const;
 #ifdef TOOLS_ENABLED
 	Node *duplicate_from_editor(Map<const Node *, Node *> &r_duplimap) const;
+	Node *duplicate_from_editor(Map<const Node *, Node *> &r_duplimap, const Map<RES, RES> &p_resource_remap) const;
+	void remap_node_resources(Node *p_node, const Map<RES, RES> &p_resource_remap) const;
+	void remap_nested_resources(RES p_resource, const Map<RES, RES> &p_resource_remap) const;
 #endif
 
 	// used by editors, to save what has changed only
@@ -378,8 +387,8 @@ public:
 
 	void replace_by(Node *p_node, bool p_keep_data = false);
 
-	void set_pause_mode(PauseMode p_mode);
-	PauseMode get_pause_mode() const;
+	void set_process_mode(ProcessMode p_mode);
+	ProcessMode get_process_mode() const;
 	bool can_process() const;
 	bool can_process_notification(int p_what) const;
 

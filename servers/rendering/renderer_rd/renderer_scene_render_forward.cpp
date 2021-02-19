@@ -3529,7 +3529,7 @@ RendererSceneRenderForward::RendererSceneRenderForward(RendererStorageRD *p_stor
 		actions.render_mode_defines["cull_front"] = "#define DO_SIDE_CHECK\n";
 		actions.render_mode_defines["cull_disabled"] = "#define DO_SIDE_CHECK\n";
 
-		bool force_lambert = GLOBAL_GET("rendering/quality/shading/force_lambert_over_burley");
+		bool force_lambert = GLOBAL_GET("rendering/shading/overrides/force_lambert_over_burley");
 
 		if (!force_lambert) {
 			actions.render_mode_defines["diffuse_burley"] = "#define DIFFUSE_BURLEY\n";
@@ -3541,7 +3541,7 @@ RendererSceneRenderForward::RendererSceneRenderForward(RendererStorageRD *p_stor
 
 		actions.render_mode_defines["sss_mode_skin"] = "#define SSS_MODE_SKIN\n";
 
-		bool force_blinn = GLOBAL_GET("rendering/quality/shading/force_blinn_over_ggx");
+		bool force_blinn = GLOBAL_GET("rendering/shading/overrides/force_blinn_over_ggx");
 
 		if (!force_blinn) {
 			actions.render_mode_defines["specular_schlick_ggx"] = "#define SPECULAR_SCHLICK_GGX\n";
@@ -3574,9 +3574,11 @@ RendererSceneRenderForward::RendererSceneRenderForward(RendererStorageRD *p_stor
 
 	{
 		//default material and shader
-		default_shader = storage->shader_create();
+		default_shader = storage->shader_allocate();
+		storage->shader_initialize(default_shader);
 		storage->shader_set_code(default_shader, "shader_type spatial; void vertex() { ROUGHNESS = 0.8; } void fragment() { ALBEDO=vec3(0.6); ROUGHNESS=0.8; METALLIC=0.2; } \n");
-		default_material = storage->material_create();
+		default_material = storage->material_allocate();
+		storage->material_initialize(default_material);
 		storage->material_set_shader(default_material, default_shader);
 
 		MaterialData *md = (MaterialData *)storage->material_get_data(default_material, RendererStorageRD::SHADER_TYPE_3D);
@@ -3587,14 +3589,18 @@ RendererSceneRenderForward::RendererSceneRenderForward(RendererStorageRD *p_stor
 	}
 
 	{
-		overdraw_material_shader = storage->shader_create();
+		overdraw_material_shader = storage->shader_allocate();
+		storage->shader_initialize(overdraw_material_shader);
 		storage->shader_set_code(overdraw_material_shader, "shader_type spatial;\nrender_mode blend_add,unshaded;\n void fragment() { ALBEDO=vec3(0.4,0.8,0.8); ALPHA=0.2; }");
-		overdraw_material = storage->material_create();
+		overdraw_material = storage->material_allocate();
+		storage->material_initialize(overdraw_material);
 		storage->material_set_shader(overdraw_material, overdraw_material_shader);
 
-		wireframe_material_shader = storage->shader_create();
+		wireframe_material_shader = storage->shader_allocate();
+		storage->shader_initialize(wireframe_material_shader);
 		storage->shader_set_code(wireframe_material_shader, "shader_type spatial;\nrender_mode wireframe,unshaded;\n void fragment() { ALBEDO=vec3(0.0,0.0,0.0); }");
-		wireframe_material = storage->material_create();
+		wireframe_material = storage->material_allocate();
+		storage->material_initialize(wireframe_material);
 		storage->material_set_shader(wireframe_material, wireframe_material_shader);
 	}
 
@@ -3618,7 +3624,7 @@ RendererSceneRenderForward::RendererSceneRenderForward(RendererStorageRD *p_stor
 		shadow_sampler = RD::get_singleton()->sampler_create(sampler);
 	}
 
-	render_list_thread_threshold = GLOBAL_GET("rendering/forward_renderer/threaded_render_minimum_instances");
+	render_list_thread_threshold = GLOBAL_GET("rendering/limits/forward_renderer/threaded_render_minimum_instances");
 }
 
 RendererSceneRenderForward::~RendererSceneRenderForward() {

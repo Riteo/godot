@@ -160,7 +160,7 @@ void SurfaceTool::add_vertex(const Vector3 &p_vertex) {
 			//cap
 			weights.resize(expected_vertices);
 			//renormalize
-			float total = 0;
+			float total = 0.0;
 			for (int i = 0; i < expected_vertices; i++) {
 				total += weights[i].weight;
 			}
@@ -299,6 +299,7 @@ void SurfaceTool::add_triangle_fan(const Vector<Vector3> &p_vertices, const Vect
 
 void SurfaceTool::add_index(int p_index) {
 	ERR_FAIL_COND(!begun);
+	ERR_FAIL_COND(p_index < 0);
 
 	format |= Mesh::ARRAY_FORMAT_INDEX;
 	index_array.push_back(p_index);
@@ -1196,12 +1197,7 @@ void SurfaceTool::_bind_methods() {
 }
 
 SurfaceTool::SurfaceTool() {
-	first = false;
-	begun = false;
 	for (int i = 0; i < RS::ARRAY_CUSTOM_COUNT; i++) {
 		last_custom_format[i] = CUSTOM_MAX;
 	}
-	primitive = Mesh::PRIMITIVE_LINES;
-	skin_weights = SKIN_4_WEIGHTS;
-	format = 0;
 }
