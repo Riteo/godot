@@ -629,9 +629,9 @@ void CanvasItemEditor::_get_canvas_items_at_pos(const Point2 &p_pos, Vector<_Sel
 		Node *node = r_items[i].item;
 
 		// Make sure the selected node is in the current scene, or editable
-		while (node && node != get_tree()->get_edited_scene_root() && node->get_owner() != scene && !scene->is_editable_instance(node->get_owner())) {
-			node = node->get_parent();
-		};
+		if (node && node != get_tree()->get_edited_scene_root()) {
+			node = scene->get_deepest_editable_node(node);
+		}
 
 		CanvasItem *canvas_item = Object::cast_to<CanvasItem>(node);
 		if (!p_allow_locked) {
@@ -762,7 +762,7 @@ void CanvasItemEditor::_find_canvas_items_in_rect(const Rect2 &p_rect, Node *p_n
 	CanvasItem *canvas_item = Object::cast_to<CanvasItem>(p_node);
 	Node *scene = editor->get_edited_scene();
 
-	bool editable = p_node == scene || p_node->get_owner() == scene || scene->is_editable_instance(p_node->get_owner());
+	bool editable = p_node == scene || p_node->get_owner() == scene || p_node == scene->get_deepest_editable_node(p_node);
 	bool lock_children = p_node->has_meta("_edit_group_") && p_node->get_meta("_edit_group_");
 	bool locked = _is_node_locked(p_node);
 
@@ -1019,6 +1019,32 @@ void CanvasItemEditor::_selection_menu_hide() {
 	selection_results.clear();
 	selection_menu->clear();
 	selection_menu->set_size(Vector2(0, 0));
+}
+
+void CanvasItemEditor::_add_node_pressed(int p_result) {
+	if (p_result == AddNodeOption::ADD_NODE) {
+		editor->get_scene_tree_dock()->open_add_child_dialog();
+	} else if (p_result == AddNodeOption::ADD_INSTANCE) {
+		editor->get_scene_tree_dock()->open_instance_child_dialog();
+	}
+}
+
+void CanvasItemEditor::_node_created(Node *p_node) {
+	if (node_create_position == Point2()) {
+		return;
+	}
+
+	CanvasItem *c = Object::cast_to<CanvasItem>(p_node);
+	if (c) {
+		Transform2D xform = c->get_global_transform_with_canvas().affine_inverse() * c->get_transform();
+		c->_edit_set_position(xform.xform(node_create_position));
+	}
+
+	call_deferred("_reset_create_position"); // Defer the call in case more than one node is added.
+}
+
+void CanvasItemEditor::_reset_create_position() {
+	node_create_position = Point2();
 }
 
 bool CanvasItemEditor::_gui_input_rulers_and_guides(const Ref<InputEvent> &p_event) {
@@ -2463,6 +2489,14 @@ bool CanvasItemEditor::_gui_input_select(const Ref<InputEvent> &p_event) {
 			}
 		}
 
+		if (b.is_valid() && b->is_pressed() && b->get_button_index() == BUTTON_RIGHT && b->get_control()) {
+			add_node_menu->set_position(get_global_transform().xform(get_local_mouse_position()));
+			add_node_menu->set_size(Vector2(1, 1));
+			add_node_menu->popup();
+			node_create_position = transform.affine_inverse().xform((get_local_mouse_position()));
+			return true;
+		}
+
 		if (b.is_valid() && b->get_button_index() == BUTTON_LEFT && b->is_pressed() && tool == TOOL_SELECT) {
 			// Single item selection
 			Point2 click = transform.affine_inverse().xform(b->get_position());
@@ -2868,21 +2902,22 @@ void CanvasItemEditor::_draw_guides() {
 
 	// Dragged guide
 	Color text_color = get_theme_color("font_color", "Editor");
-	text_color.a = 0.5;
+	Color outline_color = text_color.inverted();
+	const float outline_size = 2;
 	if (drag_type == DRAG_DOUBLE_GUIDE || drag_type == DRAG_V_GUIDE) {
 		String str = TS->format_number(vformat("%d px", Math::round(xform.affine_inverse().xform(dragged_guide_pos).x)));
-		Ref<Font> font = get_theme_font("font", "Label");
-		int font_size = get_theme_font_size("font_size", "Label");
+		Ref<Font> font = get_theme_font("bold", "EditorFonts");
+		int font_size = get_theme_font_size("bold_size", "EditorFonts");
 		Size2 text_size = font->get_string_size(str, font_size);
-		viewport->draw_string(font, Point2(dragged_guide_pos.x + 10, RULER_WIDTH + text_size.y / 2 + 10), str, HALIGN_LEFT, -1, font_size, text_color);
+		viewport->draw_string(font, Point2(dragged_guide_pos.x + 10, RULER_WIDTH + text_size.y / 2 + 10), str, HALIGN_LEFT, -1, font_size, text_color, outline_size, outline_color);
 		viewport->draw_line(Point2(dragged_guide_pos.x, 0), Point2(dragged_guide_pos.x, viewport->get_size().y), guide_color, Math::round(EDSCALE));
 	}
 	if (drag_type == DRAG_DOUBLE_GUIDE || drag_type == DRAG_H_GUIDE) {
 		String str = TS->format_number(vformat("%d px", Math::round(xform.affine_inverse().xform(dragged_guide_pos).y)));
-		Ref<Font> font = get_theme_font("font", "Label");
-		int font_size = get_theme_font_size("font_size", "Label");
+		Ref<Font> font = get_theme_font("bold", "EditorFonts");
+		int font_size = get_theme_font_size("bold_size", "EditorFonts");
 		Size2 text_size = font->get_string_size(str, font_size);
-		viewport->draw_string(font, Point2(RULER_WIDTH + 10, dragged_guide_pos.y + text_size.y / 2 + 10), str, HALIGN_LEFT, -1, font_size, text_color);
+		viewport->draw_string(font, Point2(RULER_WIDTH + 10, dragged_guide_pos.y + text_size.y / 2 + 10), str, HALIGN_LEFT, -1, font_size, text_color, outline_size, outline_color);
 		viewport->draw_line(Point2(0, dragged_guide_pos.y), Point2(viewport->get_size().x, dragged_guide_pos.y), guide_color, Math::round(EDSCALE));
 	}
 }
@@ -3867,7 +3902,7 @@ bool CanvasItemEditor::_build_bones_list(Node *p_node) {
 
 	CanvasItem *canvas_item = Object::cast_to<CanvasItem>(p_node);
 	Node *scene = editor->get_edited_scene();
-	if (!canvas_item || !canvas_item->is_visible() || (canvas_item != scene && canvas_item->get_owner() != scene && !scene->is_editable_instance(canvas_item->get_owner()))) {
+	if (!canvas_item || !canvas_item->is_visible() || (canvas_item != scene && canvas_item->get_owner() != scene && canvas_item != scene->get_deepest_editable_node(canvas_item))) {
 		return false;
 	}
 
@@ -5363,6 +5398,7 @@ void CanvasItemEditor::_bind_methods() {
 	ClassDB::bind_method("_unhandled_key_input", &CanvasItemEditor::_unhandled_key_input);
 	ClassDB::bind_method("_queue_update_bone_list", &CanvasItemEditor::_update_bone_list);
 	ClassDB::bind_method("_update_bone_list", &CanvasItemEditor::_update_bone_list);
+	ClassDB::bind_method("_reset_create_position", &CanvasItemEditor::_reset_create_position);
 	ClassDB::bind_method(D_METHOD("set_state"), &CanvasItemEditor::set_state);
 	ClassDB::bind_method(D_METHOD("update_viewport"), &CanvasItemEditor::update_viewport);
 
@@ -5683,6 +5719,9 @@ CanvasItemEditor::CanvasItemEditor(EditorNode *p_editor) {
 	editor_selection->add_editor_plugin(this);
 	editor_selection->connect("selection_changed", callable_mp((CanvasItem *)this, &CanvasItem::update));
 	editor_selection->connect("selection_changed", callable_mp(this, &CanvasItemEditor::_selection_changed));
+
+	editor->get_scene_tree_dock()->connect("node_created", callable_mp(this, &CanvasItemEditor::_node_created));
+	editor->get_scene_tree_dock()->connect("add_node_used", callable_mp(this, &CanvasItemEditor::_reset_create_position));
 
 	editor->call_deferred("connect", "play_pressed", Callable(this, "_update_override_camera_button"), make_binds(true));
 	editor->call_deferred("connect", "stop_pressed", Callable(this, "_update_override_camera_button"), make_binds(false));
@@ -6104,6 +6143,12 @@ CanvasItemEditor::CanvasItemEditor(EditorNode *p_editor) {
 	selection_menu->set_min_size(Vector2(100, 0));
 	selection_menu->connect("id_pressed", callable_mp(this, &CanvasItemEditor::_selection_result_pressed));
 	selection_menu->connect("popup_hide", callable_mp(this, &CanvasItemEditor::_selection_menu_hide));
+
+	add_node_menu = memnew(PopupMenu);
+	add_child(add_node_menu);
+	add_node_menu->add_icon_item(editor->get_scene_tree_dock()->get_theme_icon("Add", "EditorIcons"), TTR("Add Node Here"));
+	add_node_menu->add_icon_item(editor->get_scene_tree_dock()->get_theme_icon("Instance", "EditorIcons"), TTR("Instance Scene Here"));
+	add_node_menu->connect("id_pressed", callable_mp(this, &CanvasItemEditor::_add_node_pressed));
 
 	multiply_grid_step_shortcut = ED_SHORTCUT("canvas_item_editor/multiply_grid_step", TTR("Multiply grid step by 2"), KEY_KP_MULTIPLY);
 	divide_grid_step_shortcut = ED_SHORTCUT("canvas_item_editor/divide_grid_step", TTR("Divide grid step by 2"), KEY_KP_DIVIDE);

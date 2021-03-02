@@ -245,7 +245,7 @@ public:
 	void set_auto_accept_quit(bool p_enable);
 	void set_quit_on_go_back(bool p_enable);
 
-	void quit(int p_exit_code = -1);
+	void quit(int p_exit_code = EXIT_SUCCESS);
 
 	_FORCE_INLINE_ float get_physics_process_time() const { return physics_process_time; }
 	_FORCE_INLINE_ float get_process_time() const { return process_time; }
@@ -302,6 +302,7 @@ public:
 	void queue_delete(Object *p_object);
 
 	void get_nodes_in_group(const StringName &p_group, List<Node *> *p_list);
+	Node *get_first_node_in_group(const StringName &p_group);
 	bool has_group(const StringName &p_identifier) const;
 
 	//void change_scene(const String& p_path);

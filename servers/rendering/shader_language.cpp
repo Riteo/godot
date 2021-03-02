@@ -558,13 +558,13 @@ ShaderLanguage::Token ShaderLanguage::_get_token() {
 								return _make_token(TK_ERROR, "Invalid numeric constant");
 							}
 							hexa_found = true;
-						} else if (GETCHAR(i) == 'e') {
-							if (hexa_found || exponent_found || float_suffix_found) {
+						} else if (GETCHAR(i) == 'e' && !hexa_found) {
+							if (exponent_found || float_suffix_found) {
 								return _make_token(TK_ERROR, "Invalid numeric constant");
 							}
 							exponent_found = true;
-						} else if (GETCHAR(i) == 'f') {
-							if (hexa_found || exponent_found) {
+						} else if (GETCHAR(i) == 'f' && !hexa_found) {
+							if (exponent_found) {
 								return _make_token(TK_ERROR, "Invalid numeric constant");
 							}
 							float_suffix_found = true;
@@ -5861,6 +5861,8 @@ Error ShaderLanguage::_parse_block(BlockNode *p_block, const FunctionInfo &p_fun
 				return ERR_BUG;
 			}
 
+			String return_struct_name = String(b->parent_function->return_struct_name);
+
 			ControlFlowNode *flow = alloc_node<ControlFlowNode>();
 			flow->flow_op = FLOW_OP_RETURN;
 
@@ -5869,7 +5871,7 @@ Error ShaderLanguage::_parse_block(BlockNode *p_block, const FunctionInfo &p_fun
 			if (tk.type == TK_SEMICOLON) {
 				//all is good
 				if (b->parent_function->return_type != TYPE_VOID) {
-					_set_error("Expected return with expression of type '" + get_datatype_name(b->parent_function->return_type) + "'");
+					_set_error("Expected return with an expression of type '" + (return_struct_name != "" ? return_struct_name : get_datatype_name(b->parent_function->return_type)) + "'");
 					return ERR_PARSE_ERROR;
 				}
 			} else {
@@ -5879,8 +5881,8 @@ Error ShaderLanguage::_parse_block(BlockNode *p_block, const FunctionInfo &p_fun
 					return ERR_PARSE_ERROR;
 				}
 
-				if (b->parent_function->return_type != expr->get_datatype()) {
-					_set_error("Expected return expression of type '" + get_datatype_name(b->parent_function->return_type) + "'");
+				if (b->parent_function->return_type != expr->get_datatype() || return_struct_name != expr->get_datatype_name()) {
+					_set_error("Expected return with an expression of type '" + (return_struct_name != "" ? return_struct_name : get_datatype_name(b->parent_function->return_type)) + "'");
 					return ERR_PARSE_ERROR;
 				}
 
@@ -5924,15 +5926,15 @@ Error ShaderLanguage::_parse_block(BlockNode *p_block, const FunctionInfo &p_fun
 			pos = _get_tkpos();
 			tk = _get_token();
 			if (tk.type != TK_SEMICOLON) {
-				//all is good
 				_set_error("Expected ';' after discard");
+				return ERR_PARSE_ERROR;
 			}
 
 			p_block->statements.push_back(flow);
 		} else if (tk.type == TK_CF_BREAK) {
 			if (!p_can_break) {
-				//all is good
-				_set_error("Breaking is not allowed here");
+				_set_error("'break' is not allowed outside of a loop or 'switch' statement");
+				return ERR_PARSE_ERROR;
 			}
 
 			ControlFlowNode *flow = alloc_node<ControlFlowNode>();
@@ -5941,8 +5943,8 @@ Error ShaderLanguage::_parse_block(BlockNode *p_block, const FunctionInfo &p_fun
 			pos = _get_tkpos();
 			tk = _get_token();
 			if (tk.type != TK_SEMICOLON) {
-				//all is good
 				_set_error("Expected ';' after break");
+				return ERR_PARSE_ERROR;
 			}
 
 			p_block->statements.push_back(flow);
@@ -5957,8 +5959,8 @@ Error ShaderLanguage::_parse_block(BlockNode *p_block, const FunctionInfo &p_fun
 
 		} else if (tk.type == TK_CF_CONTINUE) {
 			if (!p_can_continue) {
-				//all is good
-				_set_error("Continuing is not allowed here");
+				_set_error("'continue' is not allowed outside of a loop");
+				return ERR_PARSE_ERROR;
 			}
 
 			ControlFlowNode *flow = alloc_node<ControlFlowNode>();
@@ -5969,6 +5971,7 @@ Error ShaderLanguage::_parse_block(BlockNode *p_block, const FunctionInfo &p_fun
 			if (tk.type != TK_SEMICOLON) {
 				//all is good
 				_set_error("Expected ';' after continue");
+				return ERR_PARSE_ERROR;
 			}
 
 			p_block->statements.push_back(flow);
@@ -6133,6 +6136,10 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 				tk = _get_token();
 				if (tk.type == TK_IDENTIFIER) {
 					st.name = tk.text;
+					if (shader->structs.has(st.name)) {
+						_set_error("Redefinition of '" + String(st.name) + "'");
+						return ERR_PARSE_ERROR;
+					}
 					tk = _get_token();
 					if (tk.type != TK_CURLY_BRACKET_OPEN) {
 						_set_error("Expected '{'");

@@ -52,6 +52,7 @@ void ProjectSettingsEditor::popup_project_settings() {
 	localization_editor->update_translations();
 	autoload_settings->update_autoload();
 	plugin_settings->update_plugins();
+	import_defaults_editor->clear();
 }
 
 void ProjectSettingsEditor::queue_save() {
@@ -257,6 +258,7 @@ void ProjectSettingsEditor::_add_feature_overrides() {
 }
 
 void ProjectSettingsEditor::_editor_restart() {
+	ProjectSettings::get_singleton()->save();
 	EditorNode::get_singleton()->save_all_scenes();
 	EditorNode::get_singleton()->restart_editor();
 }
@@ -648,7 +650,7 @@ ProjectSettingsEditor::ProjectSettingsEditor(EditorData *p_data) {
 	action_map->connect("action_removed", callable_mp(this, &ProjectSettingsEditor::_action_removed));
 	action_map->connect("action_renamed", callable_mp(this, &ProjectSettingsEditor::_action_renamed));
 	action_map->connect("action_reordered", callable_mp(this, &ProjectSettingsEditor::_action_reordered));
-	action_map->set_toggle_editable_label(TTR("Show built-in Actions"));
+	action_map->set_toggle_editable_label(TTR("Show Built-in Actions"));
 	action_map->set_show_uneditable(false);
 	tab_container->add_child(action_map);
 
@@ -692,4 +694,9 @@ ProjectSettingsEditor::ProjectSettingsEditor(EditorData *p_data) {
 	}
 
 	inspector->set_restrict_to_basic_settings(!use_advanced);
+
+	import_defaults_editor = memnew(ImportDefaultsEditor);
+	import_defaults_editor->set_name(TTR("Import Defaults"));
+	tab_container->add_child(import_defaults_editor);
+	import_defaults_editor->connect("project_settings_changed", callable_mp(this, &ProjectSettingsEditor::queue_save));
 }

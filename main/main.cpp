@@ -395,6 +395,8 @@ Error Main::test_setup() {
 	GLOBAL_DEF("debug/settings/crash_handler/message",
 			String("Please include this when reporting the bug on https://github.com/godotengine/godot/issues"));
 
+	translation_server = memnew(TranslationServer);
+
 	// From `Main::setup2()`.
 	preregister_module_types();
 	preregister_server_types();
@@ -402,6 +404,16 @@ Error Main::test_setup() {
 	register_core_singletons();
 
 	register_server_types();
+
+	translation_server->setup(); //register translations, load them, etc.
+	if (locale != "") {
+		translation_server->set_locale(locale);
+	}
+	translation_server->load_translations();
+	ResourceLoader::load_translation_remaps(); //load remaps for resources
+
+	ResourceLoader::load_path_remaps();
+
 	register_scene_types();
 
 #ifdef TOOLS_ENABLED
@@ -441,6 +453,9 @@ void Main::test_cleanup() {
 
 	OS::get_singleton()->finalize();
 
+	if (translation_server) {
+		memdelete(translation_server);
+	}
 	if (globals) {
 		memdelete(globals);
 	}
@@ -523,8 +538,8 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 	// Only flush stdout in debug builds by default, as spamming `print()` will
 	// decrease performance if this is enabled.
-	GLOBAL_DEF("application/run/flush_stdout_on_print", false);
-	GLOBAL_DEF("application/run/flush_stdout_on_print.debug", true);
+	GLOBAL_DEF_RST("application/run/flush_stdout_on_print", false);
+	GLOBAL_DEF_RST("application/run/flush_stdout_on_print.debug", true);
 
 	GLOBAL_DEF("debug/settings/crash_handler/message",
 			String("Please include this when reporting the bug on https://github.com/godotengine/godot/issues"));
@@ -1158,6 +1173,8 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	if (quiet_stdout) {
 		_print_line_enabled = false;
 	}
+
+	Logger::set_flush_stdout_on_print(ProjectSettings::get_singleton()->get("application/run/flush_stdout_on_print"));
 
 	OS::get_singleton()->set_cmdline(execpath, main_args);
 
@@ -1977,7 +1994,7 @@ bool Main::start() {
 
 		if (check_only) {
 			if (!script_res->is_valid()) {
-				OS::get_singleton()->set_exit_code(1);
+				OS::get_singleton()->set_exit_code(EXIT_FAILURE);
 			}
 			return false;
 		}
@@ -2561,8 +2578,10 @@ void Main::force_redraw() {
  * so that the engine closes cleanly without leaking memory or crashing.
  * The order matters as some of those steps are linked with each other.
  */
-void Main::cleanup() {
-	ERR_FAIL_COND(!_start_success);
+void Main::cleanup(bool p_force) {
+	if (!p_force) {
+		ERR_FAIL_COND(!_start_success);
+	}
 
 	EngineDebugger::deinitialize();
 

@@ -39,6 +39,7 @@
 #include "core/os/file_access.h"
 #include "core/os/os.h"
 #include "core/string/ucaps.h"
+#include "main/main.h"
 
 #include "../glue/cs_glue_version.gen.h"
 #include "../godotsharp_defs.h"
@@ -783,6 +784,72 @@ void BindingsGenerator::_generate_method_icalls(const TypeInterface &p_itype) {
 	}
 }
 
+void BindingsGenerator::_generate_array_extensions(StringBuilder &p_output) {
+	p_output.append("using System;\n\n");
+	p_output.append("namespace " BINDINGS_NAMESPACE "\n" OPEN_BLOCK);
+	// The class where we put the extensions doesn't matter, so just use "GD".
+	p_output.append(INDENT1 "public static partial class " BINDINGS_GLOBAL_SCOPE_CLASS "\n" INDENT1 "{");
+
+#define ARRAY_IS_EMPTY(m_type)                                                                          \
+	p_output.append("\n" INDENT2 "/// <summary>\n");                                                    \
+	p_output.append(INDENT2 "/// Returns true if this " #m_type " array is empty or doesn't exist.\n"); \
+	p_output.append(INDENT2 "/// </summary>\n");                                                        \
+	p_output.append(INDENT2 "/// <param name=\"instance\">The " #m_type " array check.</param>\n");     \
+	p_output.append(INDENT2 "/// <returns>Whether or not the array is empty.</returns>\n");             \
+	p_output.append(INDENT2 "public static bool IsEmpty(this " #m_type "[] instance)\n");               \
+	p_output.append(INDENT2 OPEN_BLOCK);                                                                \
+	p_output.append(INDENT3 "return instance == null || instance.Length == 0;\n");                      \
+	p_output.append(INDENT2 CLOSE_BLOCK);
+
+#define ARRAY_JOIN(m_type)                                                                                          \
+	p_output.append("\n" INDENT2 "/// <summary>\n");                                                                \
+	p_output.append(INDENT2 "/// Converts this " #m_type " array to a string delimited by the given string.\n");    \
+	p_output.append(INDENT2 "/// </summary>\n");                                                                    \
+	p_output.append(INDENT2 "/// <param name=\"instance\">The " #m_type " array to convert.</param>\n");            \
+	p_output.append(INDENT2 "/// <param name=\"delimiter\">The delimiter to use between items.</param>\n");         \
+	p_output.append(INDENT2 "/// <returns>A single string with all items.</returns>\n");                            \
+	p_output.append(INDENT2 "public static string Join(this " #m_type "[] instance, string delimiter = \", \")\n"); \
+	p_output.append(INDENT2 OPEN_BLOCK);                                                                            \
+	p_output.append(INDENT3 "return String.Join(delimiter, instance);\n");                                          \
+	p_output.append(INDENT2 CLOSE_BLOCK);
+
+#define ARRAY_STRINGIFY(m_type)                                                                          \
+	p_output.append("\n" INDENT2 "/// <summary>\n");                                                     \
+	p_output.append(INDENT2 "/// Converts this " #m_type " array to a string with brackets.\n");         \
+	p_output.append(INDENT2 "/// </summary>\n");                                                         \
+	p_output.append(INDENT2 "/// <param name=\"instance\">The " #m_type " array to convert.</param>\n"); \
+	p_output.append(INDENT2 "/// <returns>A single string with all items.</returns>\n");                 \
+	p_output.append(INDENT2 "public static string Stringify(this " #m_type "[] instance)\n");            \
+	p_output.append(INDENT2 OPEN_BLOCK);                                                                 \
+	p_output.append(INDENT3 "return \"[\" + instance.Join() + \"]\";\n");                                \
+	p_output.append(INDENT2 CLOSE_BLOCK);
+
+#define ARRAY_ALL(m_type)  \
+	ARRAY_IS_EMPTY(m_type) \
+	ARRAY_JOIN(m_type)     \
+	ARRAY_STRINGIFY(m_type)
+
+	ARRAY_ALL(byte);
+	ARRAY_ALL(int);
+	ARRAY_ALL(long);
+	ARRAY_ALL(float);
+	ARRAY_ALL(double);
+	ARRAY_ALL(string);
+	ARRAY_ALL(Color);
+	ARRAY_ALL(Vector2);
+	ARRAY_ALL(Vector2i);
+	ARRAY_ALL(Vector3);
+	ARRAY_ALL(Vector3i);
+
+#undef ARRAY_ALL
+#undef ARRAY_IS_EMPTY
+#undef ARRAY_JOIN
+#undef ARRAY_STRINGIFY
+
+	p_output.append(INDENT1 CLOSE_BLOCK); // End of GD class.
+	p_output.append(CLOSE_BLOCK); // End of namespace.
+}
+
 void BindingsGenerator::_generate_global_constants(StringBuilder &p_output) {
 	// Constants (in partial GD class)
 
@@ -919,6 +986,19 @@ Error BindingsGenerator::generate_cs_core_project(const String &p_proj_dir) {
 		_generate_global_constants(constants_source);
 		String output_file = path::join(base_gen_dir, BINDINGS_GLOBAL_SCOPE_CLASS "_constants.cs");
 		Error save_err = _save_file(output_file, constants_source);
+		if (save_err != OK) {
+			return save_err;
+		}
+
+		compile_items.push_back(output_file);
+	}
+
+	// Generate source file for array extensions
+	{
+		StringBuilder extensions_source;
+		_generate_array_extensions(extensions_source);
+		String output_file = path::join(base_gen_dir, BINDINGS_GLOBAL_SCOPE_CLASS "_extensions.cs");
+		Error save_err = _save_file(output_file, extensions_source);
 		if (save_err != OK) {
 			return save_err;
 		}
@@ -2956,9 +3036,9 @@ bool BindingsGenerator::_arg_default_value_from_variant(const Variant &p_val, Ar
 			}
 			break;
 		case Variant::FLOAT:
-#ifndef REAL_T_IS_DOUBLE
-			r_iarg.default_argument += "f";
-#endif
+			if (r_iarg.type.cname == name_cache.type_float) {
+				r_iarg.default_argument += "f";
+			}
 			break;
 		case Variant::STRING:
 		case Variant::STRING_NAME:
@@ -2971,23 +3051,32 @@ bool BindingsGenerator::_arg_default_value_from_variant(const Variant &p_val, Ar
 				r_iarg.default_argument = "\"" + r_iarg.default_argument + "\"";
 			}
 			break;
-		case Variant::TRANSFORM:
-			if (p_val.operator Transform() == Transform()) {
-				r_iarg.default_argument.clear();
-			}
-			r_iarg.default_argument = "new %s(" + r_iarg.default_argument + ")";
+		case Variant::PLANE: {
+			Plane plane = p_val.operator Plane();
+			r_iarg.default_argument = "new Plane(new Vector3(" + plane.normal.operator String() + "), " + rtos(plane.d) + ")";
 			r_iarg.def_param_mode = ArgumentInterface::NULLABLE_VAL;
-			break;
-		case Variant::PLANE:
-		case Variant::AABB:
+		} break;
+		case Variant::AABB: {
+			AABB aabb = p_val.operator ::AABB();
+			r_iarg.default_argument = "new AABB(new Vector3(" + aabb.position.operator String() + "), new Vector3(" + aabb.position.operator String() + "))";
+			r_iarg.def_param_mode = ArgumentInterface::NULLABLE_VAL;
+		} break;
+		case Variant::RECT2: {
+			Rect2 rect = p_val.operator Rect2();
+			r_iarg.default_argument = "new Rect2(new Vector2(" + rect.position.operator String() + "), new Vector2(" + rect.position.operator String() + "))";
+			r_iarg.def_param_mode = ArgumentInterface::NULLABLE_VAL;
+		} break;
+		case Variant::RECT2I: {
+			Rect2i rect = p_val.operator Rect2i();
+			r_iarg.default_argument = "new Rect2i(new Vector2i(" + rect.position.operator String() + "), new Vector2i(" + rect.position.operator String() + "))";
+			r_iarg.def_param_mode = ArgumentInterface::NULLABLE_VAL;
+		} break;
 		case Variant::COLOR:
-			r_iarg.default_argument = "new Color(1, 1, 1, 1)";
+			r_iarg.default_argument = "new %s(" + r_iarg.default_argument + ")";
 			r_iarg.def_param_mode = ArgumentInterface::NULLABLE_VAL;
 			break;
 		case Variant::VECTOR2:
 		case Variant::VECTOR2I:
-		case Variant::RECT2:
-		case Variant::RECT2I:
 		case Variant::VECTOR3:
 		case Variant::VECTOR3I:
 			r_iarg.default_argument = "new %s" + r_iarg.default_argument;
@@ -3025,12 +3114,43 @@ bool BindingsGenerator::_arg_default_value_from_variant(const Variant &p_val, Ar
 			r_iarg.default_argument = "new %s {}";
 			r_iarg.def_param_mode = ArgumentInterface::NULLABLE_REF;
 			break;
-		case Variant::TRANSFORM2D:
-		case Variant::BASIS:
-		case Variant::QUAT:
-			r_iarg.default_argument = Variant::get_type_name(p_val.get_type()) + ".Identity";
+		case Variant::TRANSFORM2D: {
+			Transform2D transform = p_val.operator Transform2D();
+			if (transform == Transform2D()) {
+				r_iarg.default_argument = "Transform2D.Identity";
+			} else {
+				r_iarg.default_argument = "new Transform2D(new Vector2" + transform.elements[0].operator String() + ", new Vector2" + transform.elements[1].operator String() + ", new Vector2" + transform.elements[2].operator String() + ")";
+			}
 			r_iarg.def_param_mode = ArgumentInterface::NULLABLE_VAL;
-			break;
+		} break;
+		case Variant::TRANSFORM: {
+			Transform transform = p_val.operator Transform();
+			if (transform == Transform()) {
+				r_iarg.default_argument = "Transform.Identity";
+			} else {
+				Basis basis = transform.basis;
+				r_iarg.default_argument = "new Transform(new Vector3" + basis.get_column(0).operator String() + ", new Vector3" + basis.get_column(1).operator String() + ", new Vector3" + basis.get_column(2).operator String() + ", new Vector3" + transform.origin.operator String() + ")";
+			}
+			r_iarg.def_param_mode = ArgumentInterface::NULLABLE_VAL;
+		} break;
+		case Variant::BASIS: {
+			Basis basis = p_val.operator Basis();
+			if (basis == Basis()) {
+				r_iarg.default_argument = "Basis.Identity";
+			} else {
+				r_iarg.default_argument = "new Basis(new Vector3" + basis.get_column(0).operator String() + ", new Vector3" + basis.get_column(1).operator String() + ", new Vector3" + basis.get_column(2).operator String() + ")";
+			}
+			r_iarg.def_param_mode = ArgumentInterface::NULLABLE_VAL;
+		} break;
+		case Variant::QUAT: {
+			Quat quat = p_val.operator Quat();
+			if (quat == Quat()) {
+				r_iarg.default_argument = "Quat.Identity";
+			} else {
+				r_iarg.default_argument = "new Quat" + quat.operator String();
+			}
+			r_iarg.def_param_mode = ArgumentInterface::NULLABLE_VAL;
+		} break;
 		case Variant::CALLABLE:
 		case Variant::SIGNAL:
 			CRASH_NOW_MSG("Parameter of type '" + String(r_iarg.type.cname) + "' cannot have a default value.");
@@ -3570,6 +3690,7 @@ void BindingsGenerator::handle_cmdline_args(const List<String> &p_cmdline_args) 
 
 		if (!bindings_generator.initialized) {
 			ERR_PRINT("Failed to initialize the bindings generator");
+			Main::cleanup(true);
 			::exit(0);
 		}
 
@@ -3596,6 +3717,7 @@ void BindingsGenerator::handle_cmdline_args(const List<String> &p_cmdline_args) 
 		}
 
 		// Exit once done
+		Main::cleanup(true);
 		::exit(0);
 	}
 }

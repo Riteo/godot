@@ -100,6 +100,7 @@ class SceneTreeDock : public VBoxContainer {
 	Vector<ObjectID> subresources;
 
 	bool restore_script_editor_on_drag;
+	bool reset_create_dialog = false;
 
 	int current_option;
 	CreateDialog *create_dialog;
@@ -203,8 +204,10 @@ class SceneTreeDock : public VBoxContainer {
 	void _import_subscene();
 
 	void _new_scene_from(String p_file);
+	void _set_node_owner_recursive(Node *p_node, Node *p_owner);
 
 	bool _validate_no_foreign();
+	bool _validate_no_instance();
 	void _selection_changed();
 	void _update_script_button();
 
@@ -271,6 +274,9 @@ public:
 
 	void attach_script_to_selected(bool p_extend);
 	void open_script_dialog(Node *p_for_node, bool p_extend);
+
+	void open_add_child_dialog();
+	void open_instance_child_dialog();
 
 	ScriptCreateDialog *get_script_create_dialog() { return script_create_dialog; }
 

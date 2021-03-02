@@ -36,6 +36,7 @@
 #include "editor/editor_data.h"
 #include "editor/editor_plugin_settings.h"
 #include "editor/editor_sectioned_inspector.h"
+#include "editor/import_defaults_editor.h"
 #include "editor/localization_editor.h"
 #include "editor/shader_globals_editor.h"
 #include "editor_autoload_settings.h"
@@ -75,6 +76,7 @@ class ProjectSettingsEditor : public AcceptDialog {
 	PanelContainer *restart_container;
 	Button *restart_close_button;
 
+	ImportDefaultsEditor *import_defaults_editor;
 	EditorData *data;
 	UndoRedo *undo_redo;
 

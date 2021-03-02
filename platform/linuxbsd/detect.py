@@ -393,3 +393,9 @@ def configure(env):
         # That doesn't make any sense but it's likely a Ubuntu bug?
         if is64 or env["bits"] == "64":
             env.Append(LINKFLAGS=["-static-libgcc", "-static-libstdc++"])
+        if env["use_llvm"]:
+            env["LINKCOM"] = env["LINKCOM"] + " -l:libatomic.a"
+
+    else:
+        if env["use_llvm"]:
+            env.Append(LIBS=["atomic"])
