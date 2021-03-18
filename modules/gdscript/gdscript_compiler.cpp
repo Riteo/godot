@@ -1176,7 +1176,7 @@ GDScriptCodeGenerator::Address GDScriptCompiler::_parse_match_pattern(CodeGen &c
 			codegen.generator->write_and_left_operand(result_addr);
 
 			// Check value equality.
-			codegen.generator->write_binary_operator(result_addr, Variant::OP_EQUAL, p_value_addr, expr_addr);
+			codegen.generator->write_binary_operator(equality_test_addr, Variant::OP_EQUAL, p_value_addr, expr_addr);
 			codegen.generator->write_and_right_operand(equality_test_addr);
 
 			// AND both type and value equality.
@@ -1511,17 +1511,17 @@ Error GDScriptCompiler::_parse_block(CodeGen &codegen, const GDScriptParser::Sui
 				codegen.start_block();
 
 				// Evaluate the match expression.
-				GDScriptCodeGenerator::Address value_local = codegen.add_local("@match_value", _gdtype_from_datatype(match->test->get_datatype()));
-				GDScriptCodeGenerator::Address value = _parse_expression(codegen, error, match->test);
+				GDScriptCodeGenerator::Address value = codegen.add_local("@match_value", _gdtype_from_datatype(match->test->get_datatype()));
+				GDScriptCodeGenerator::Address value_expr = _parse_expression(codegen, error, match->test);
 				if (error) {
 					return error;
 				}
 
 				// Assign to local.
 				// TODO: This can be improved by passing the target to parse_expression().
-				gen->write_assign(value_local, value);
+				gen->write_assign(value, value_expr);
 
-				if (value.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
+				if (value_expr.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
 					codegen.generator->pop_temporary();
 				}
 
@@ -2419,7 +2419,7 @@ Error GDScriptCompiler::_parse_class_blocks(GDScript *p_script, const GDScriptPa
 					p_script->initializer->call(instance, nullptr, 0, ce);
 
 					if (ce.error != Callable::CallError::CALL_OK) {
-						//well, tough luck, not goinna do anything here
+						//well, tough luck, not gonna do anything here
 					}
 				}
 #endif

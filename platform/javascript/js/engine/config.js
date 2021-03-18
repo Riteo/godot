@@ -91,15 +91,33 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		 */
 		args: [],
 		/**
+		 * When enabled, this will turn on experimental virtual keyboard support on mobile.
+		 *
+		 * @memberof EngineConfig
+		 * @type {boolean}
+		 * @default
+		 */
+		experimentalVK: false,
+		/**
 		 * @ignore
 		 * @type {Array.<string>}
 		 */
 		persistentPaths: ['/userfs'],
 		/**
 		 * @ignore
+		 * @type {boolean}
+		 */
+		persistentDrops: false,
+		/**
+		 * @ignore
 		 * @type {Array.<string>}
 		 */
 		gdnativeLibs: [],
+		/**
+		 * @ignore
+		 * @type {Array.<string>}
+		 */
+		fileSizes: [],
 		/**
 		 * A callback function for handling Godot's ``OS.execute`` calls.
 		 *
@@ -218,7 +236,10 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		this.locale = parse('locale', this.locale);
 		this.canvasResizePolicy = parse('canvasResizePolicy', this.canvasResizePolicy);
 		this.persistentPaths = parse('persistentPaths', this.persistentPaths);
+		this.persistentDrops = parse('persistentDrops', this.persistentDrops);
+		this.experimentalVK = parse('experimentalVK', this.experimentalVK);
 		this.gdnativeLibs = parse('gdnativeLibs', this.gdnativeLibs);
+		this.fileSizes = parse('fileSizes', this.fileSizes);
 		this.args = parse('args', this.args);
 		this.onExecute = parse('onExecute', this.onExecute);
 		this.onExit = parse('onExit', this.onExit);
@@ -227,10 +248,10 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 	/**
 	 * @ignore
 	 * @param {string} loadPath
-	 * @param {Promise} loadPromise
+	 * @param {Response} response
 	 */
-	Config.prototype.getModuleConfig = function (loadPath, loadPromise) {
-		let loader = loadPromise;
+	Config.prototype.getModuleConfig = function (loadPath, response) {
+		let r = response;
 		return {
 			'print': this.onPrint,
 			'printErr': this.onPrintError,
@@ -238,12 +259,17 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 			'noExitRuntime': true,
 			'dynamicLibraries': [`${loadPath}.side.wasm`],
 			'instantiateWasm': function (imports, onSuccess) {
-				loader.then(function (xhr) {
-					WebAssembly.instantiate(xhr.response, imports).then(function (result) {
-						onSuccess(result['instance'], result['module']);
+				function done(result) {
+					onSuccess(result['instance'], result['module']);
+				}
+				if (typeof (WebAssembly.instantiateStreaming) !== 'undefined') {
+					WebAssembly.instantiateStreaming(Promise.resolve(r), imports).then(done);
+				} else {
+					r.arrayBuffer().then(function (buffer) {
+						WebAssembly.instantiate(buffer, imports).then(done);
 					});
-				});
-				loader = null;
+				}
+				r = null;
 				return {};
 			},
 			'locateFile': function (path) {
@@ -296,6 +322,8 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 			'canvas': this.canvas,
 			'canvasResizePolicy': this.canvasResizePolicy,
 			'locale': locale,
+			'persistentDrops': this.persistentDrops,
+			'virtualKeyboard': this.experimentalVK,
 			'onExecute': this.onExecute,
 			'onExit': function (p_code) {
 				cleanup(); // We always need to call the cleanup callback to free memory.

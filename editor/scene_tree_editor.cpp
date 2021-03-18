@@ -626,7 +626,7 @@ void SceneTreeEditor::_selected_changed() {
 }
 
 void SceneTreeEditor::_deselect_items() {
-	// Clear currently elected items in scene tree dock.
+	// Clear currently selected items in scene tree dock.
 	if (editor_selection) {
 		editor_selection->clear();
 		emit_signal("node_changed");
@@ -776,9 +776,11 @@ void SceneTreeEditor::_renamed() {
 		return;
 	}
 
-	String new_name = which->get_text(0);
-	if (!Node::_validate_node_name(new_name)) {
-		error->set_text(TTR("Invalid node name, the following characters are not allowed:") + "\n" + Node::invalid_character);
+	String raw_new_name = which->get_text(0);
+	String new_name = raw_new_name.validate_node_name();
+
+	if (new_name != raw_new_name) {
+		error->set_text(TTR("Invalid node name, the following characters are not allowed:") + "\n" + String::invalid_node_name_characters);
 		error->popup_centered();
 
 		if (new_name.is_empty()) {
@@ -1170,6 +1172,7 @@ SceneTreeEditor::SceneTreeEditor(bool p_label, bool p_can_rename, bool p_can_ope
 	tree->set_anchor(SIDE_BOTTOM, ANCHOR_END);
 	tree->set_begin(Point2(0, p_label ? 18 : 0));
 	tree->set_end(Point2(0, 0));
+	tree->set_allow_reselect(true);
 	tree->add_theme_constant_override("button_margin", 0);
 
 	add_child(tree);

@@ -233,7 +233,7 @@ public:
 	FUNC2(shader_set_code, RID, const String &)
 	FUNC1RC(String, shader_get_code, RID)
 
-	FUNC2C(shader_get_param_list, RID, List<PropertyInfo> *)
+	FUNC2SC(shader_get_param_list, RID, List<PropertyInfo> *)
 
 	FUNC3(shader_set_default_texture_param, RID, const StringName &, RID)
 	FUNC2RC(RID, shader_get_default_texture_param, RID, const StringName &)
@@ -901,7 +901,7 @@ public:
 
 	/* STATUS INFORMATION */
 
-	virtual int get_render_info(RenderInfo p_info) override;
+	virtual uint64_t get_render_info(RenderInfo p_info) override;
 	virtual String get_video_adapter_name() const override;
 	virtual String get_video_adapter_vendor() const override;
 

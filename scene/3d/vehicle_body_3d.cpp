@@ -407,7 +407,7 @@ real_t VehicleBody3D::_ray_cast(int p_idx, PhysicsDirectBodyState3D *s) {
 
 	PhysicsDirectSpaceState3D *ss = s->get_space_state();
 
-	bool col = ss->intersect_ray(source, target, rr, exclude);
+	bool col = ss->intersect_ray(source, target, rr, exclude, get_collision_mask());
 
 	wheel.m_raycastInfo.m_groundObject = nullptr;
 
@@ -563,7 +563,7 @@ void VehicleBody3D::_resolve_single_bilateral(PhysicsDirectBodyState3D *s, const
 			b2invmass);
 
 	// FIXME: rel_vel assignment here is overwritten by the following assignment.
-	// What seems to be intended in the next next assignment is: rel_vel = normal.dot(rel_vel);
+	// What seems to be intended in the next assignment is: rel_vel = normal.dot(rel_vel);
 	// Investigate why.
 	real_t rel_vel = jac.getRelativeVelocity(
 			s->get_linear_velocity(),

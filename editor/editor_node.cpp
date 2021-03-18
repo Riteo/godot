@@ -1089,13 +1089,23 @@ void EditorNode::save_resource_as(const Ref<Resource> &p_resource, const String 
 	file->clear_filters();
 
 	List<String> preferred;
-	for (int i = 0; i < extensions.size(); i++) {
-		if (p_resource->is_class("Script") && (extensions[i] == "tres" || extensions[i] == "res" || extensions[i] == "xml")) {
+	for (List<String>::Element *E = extensions.front(); E; E = E->next()) {
+		if (p_resource->is_class("Script") && (E->get() == "tres" || E->get() == "res")) {
 			//this serves no purpose and confused people
 			continue;
 		}
-		file->add_filter("*." + extensions[i] + " ; " + extensions[i].to_upper());
-		preferred.push_back(extensions[i]);
+		file->add_filter("*." + E->get() + " ; " + E->get().to_upper());
+		preferred.push_back(E->get());
+	}
+	// Lowest priority extension
+	List<String>::Element *res_element = preferred.find("res");
+	if (res_element) {
+		preferred.move_to_back(res_element);
+	}
+	// Highest priority extension
+	List<String>::Element *tres_element = preferred.find("tres");
+	if (tres_element) {
+		preferred.move_to_front(tres_element);
 	}
 
 	if (p_at_path != String()) {
@@ -2387,11 +2397,14 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 				_scene_tab_changed(tab_closing);
 
 				if (unsaved_cache || p_option == FILE_CLOSE_ALL_AND_QUIT || p_option == FILE_CLOSE_ALL_AND_RUN_PROJECT_MANAGER) {
-					String scene_filename = editor_data.get_edited_scene_root(tab_closing)->get_filename();
-					save_confirmation->get_ok_button()->set_text(TTR("Save & Close"));
-					save_confirmation->set_text(vformat(TTR("Save changes to '%s' before closing?"), scene_filename != "" ? scene_filename : "unsaved scene"));
-					save_confirmation->popup_centered();
-					break;
+					Node *scene_root = editor_data.get_edited_scene_root(tab_closing);
+					if (scene_root) {
+						String scene_filename = scene_root->get_filename();
+						save_confirmation->get_ok_button()->set_text(TTR("Save & Close"));
+						save_confirmation->set_text(vformat(TTR("Save changes to '%s' before closing?"), scene_filename != "" ? scene_filename : "unsaved scene"));
+						save_confirmation->popup_centered();
+						break;
+					}
 				}
 			} else if (p_option == FILE_CLOSE) {
 				tab_closing = editor_data.get_edited_scene();

@@ -31,7 +31,6 @@
 #include "renderer_scene_gi_rd.h"
 
 #include "core/config/project_settings.h"
-#include "renderer_compositor_rd.h"
 #include "servers/rendering/renderer_rd/renderer_scene_render_rd.h"
 #include "servers/rendering/rendering_server_default.h"
 
@@ -216,7 +215,7 @@ void RendererSceneGIRD::SDFGI::create(RendererSceneEnvironmentRD *p_env, const V
 
 		cascade.solid_cell_buffer = RD::get_singleton()->storage_buffer_create(sizeof(SDFGI::Cascade::SolidCell) * solid_cell_count);
 		cascade.solid_cell_dispatch_buffer = RD::get_singleton()->storage_buffer_create(sizeof(uint32_t) * 4, Vector<uint8_t>(), RD::STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT);
-		cascade.lights_buffer = RD::get_singleton()->storage_buffer_create(sizeof(SDGIShader::Light) * MAX(SDFGI::MAX_STATIC_LIGHTS, SDFGI::MAX_DYNAMIC_LIGHTS));
+		cascade.lights_buffer = RD::get_singleton()->storage_buffer_create(sizeof(SDFGIShader::Light) * MAX(SDFGI::MAX_STATIC_LIGHTS, SDFGI::MAX_DYNAMIC_LIGHTS));
 		{
 			Vector<RD::Uniform> uniforms;
 			{
@@ -293,7 +292,7 @@ void RendererSceneGIRD::SDFGI::create(RendererSceneEnvironmentRD *p_env, const V
 				uniforms.push_back(u);
 			}
 
-			cascade.sdf_store_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDGIShader::PRE_PROCESS_STORE), 0);
+			cascade.sdf_store_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDFGIShader::PRE_PROCESS_STORE), 0);
 		}
 
 		{
@@ -341,7 +340,7 @@ void RendererSceneGIRD::SDFGI::create(RendererSceneEnvironmentRD *p_env, const V
 				uniforms.push_back(u);
 			}
 
-			cascade.scroll_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDGIShader::PRE_PROCESS_SCROLL), 0);
+			cascade.scroll_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDFGIShader::PRE_PROCESS_SCROLL), 0);
 		}
 		{
 			Vector<RD::Uniform> uniforms;
@@ -362,7 +361,7 @@ void RendererSceneGIRD::SDFGI::create(RendererSceneEnvironmentRD *p_env, const V
 				uniforms.push_back(u);
 			}
 
-			cascade.scroll_occlusion_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDGIShader::PRE_PROCESS_SCROLL_OCCLUSION), 0);
+			cascade.scroll_occlusion_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDFGIShader::PRE_PROCESS_SCROLL_OCCLUSION), 0);
 		}
 	}
 
@@ -476,7 +475,7 @@ void RendererSceneGIRD::SDFGI::create(RendererSceneEnvironmentRD *p_env, const V
 			uniforms.push_back(u);
 		}
 
-		sdf_initialize_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDGIShader::PRE_PROCESS_JUMP_FLOOD_INITIALIZE), 0);
+		sdf_initialize_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDFGIShader::PRE_PROCESS_JUMP_FLOOD_INITIALIZE), 0);
 	}
 
 	{
@@ -496,7 +495,7 @@ void RendererSceneGIRD::SDFGI::create(RendererSceneEnvironmentRD *p_env, const V
 			uniforms.push_back(u);
 		}
 
-		sdf_initialize_half_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDGIShader::PRE_PROCESS_JUMP_FLOOD_INITIALIZE_HALF), 0);
+		sdf_initialize_half_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDFGIShader::PRE_PROCESS_JUMP_FLOOD_INITIALIZE_HALF), 0);
 	}
 
 	//jump flood uniform set
@@ -517,9 +516,9 @@ void RendererSceneGIRD::SDFGI::create(RendererSceneEnvironmentRD *p_env, const V
 			uniforms.push_back(u);
 		}
 
-		jump_flood_uniform_set[0] = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDGIShader::PRE_PROCESS_JUMP_FLOOD), 0);
+		jump_flood_uniform_set[0] = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDFGIShader::PRE_PROCESS_JUMP_FLOOD), 0);
 		SWAP(uniforms.write[0].ids.write[0], uniforms.write[1].ids.write[0]);
-		jump_flood_uniform_set[1] = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDGIShader::PRE_PROCESS_JUMP_FLOOD), 0);
+		jump_flood_uniform_set[1] = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDFGIShader::PRE_PROCESS_JUMP_FLOOD), 0);
 	}
 	//jump flood half uniform set
 	{
@@ -539,9 +538,9 @@ void RendererSceneGIRD::SDFGI::create(RendererSceneEnvironmentRD *p_env, const V
 			uniforms.push_back(u);
 		}
 
-		jump_flood_half_uniform_set[0] = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDGIShader::PRE_PROCESS_JUMP_FLOOD), 0);
+		jump_flood_half_uniform_set[0] = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDFGIShader::PRE_PROCESS_JUMP_FLOOD), 0);
 		SWAP(uniforms.write[0].ids.write[0], uniforms.write[1].ids.write[0]);
-		jump_flood_half_uniform_set[1] = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDGIShader::PRE_PROCESS_JUMP_FLOOD), 0);
+		jump_flood_half_uniform_set[1] = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDFGIShader::PRE_PROCESS_JUMP_FLOOD), 0);
 	}
 
 	//upscale half size sdf
@@ -570,7 +569,7 @@ void RendererSceneGIRD::SDFGI::create(RendererSceneEnvironmentRD *p_env, const V
 		}
 
 		upscale_jfa_uniform_set_index = (passes & 1) ? 0 : 1;
-		sdf_upscale_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDGIShader::PRE_PROCESS_JUMP_FLOOD_UPSCALE), 0);
+		sdf_upscale_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDFGIShader::PRE_PROCESS_JUMP_FLOOD_UPSCALE), 0);
 	}
 
 	//occlusion uniform set
@@ -600,7 +599,7 @@ void RendererSceneGIRD::SDFGI::create(RendererSceneEnvironmentRD *p_env, const V
 			uniforms.push_back(u);
 		}
 
-		occlusion_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDGIShader::PRE_PROCESS_OCCLUSION), 0);
+		occlusion_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.preprocess.version_get_shader(gi->sdfgi_shader.preprocess_shader, SDFGIShader::PRE_PROCESS_OCCLUSION), 0);
 	}
 
 	for (uint32_t i = 0; i < cascades.size(); i++) {
@@ -845,9 +844,9 @@ void RendererSceneGIRD::SDFGI::update_light() {
 	/* Update dynamic light */
 
 	RD::ComputeListID compute_list = RD::get_singleton()->compute_list_begin();
-	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.direct_light_pipeline[SDGIShader::DIRECT_LIGHT_MODE_DYNAMIC]);
+	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.direct_light_pipeline[SDFGIShader::DIRECT_LIGHT_MODE_DYNAMIC]);
 
-	SDGIShader::DirectLightPushConstant push_constant;
+	SDFGIShader::DirectLightPushConstant push_constant;
 
 	push_constant.grid_size[0] = cascade_size;
 	push_constant.grid_size[1] = cascade_size;
@@ -879,7 +878,7 @@ void RendererSceneGIRD::SDFGI::update_light() {
 		cascades[i].all_dynamic_lights_dirty = false;
 
 		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, cascade.sdf_direct_light_uniform_set, 0);
-		RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::DirectLightPushConstant));
+		RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::DirectLightPushConstant));
 		RD::get_singleton()->compute_list_dispatch_indirect(compute_list, cascade.solid_cell_dispatch_buffer, 0);
 	}
 	RD::get_singleton()->compute_list_end(RD::BARRIER_MASK_COMPUTE);
@@ -889,7 +888,7 @@ void RendererSceneGIRD::SDFGI::update_light() {
 void RendererSceneGIRD::SDFGI::update_probes(RendererSceneEnvironmentRD *p_env, RendererSceneSkyRD::Sky *p_sky) {
 	RD::get_singleton()->draw_command_begin_label("SDFGI Update Probes");
 
-	SDGIShader::IntegratePushConstant push_constant;
+	SDFGIShader::IntegratePushConstant push_constant;
 	push_constant.grid_size[1] = cascade_size;
 	push_constant.grid_size[2] = cascade_size;
 	push_constant.grid_size[0] = cascade_size;
@@ -905,20 +904,20 @@ void RendererSceneGIRD::SDFGI::update_probes(RendererSceneEnvironmentRD *p_env, 
 	push_constant.store_ambient_texture = p_env->volumetric_fog_enabled;
 
 	RID sky_uniform_set = gi->sdfgi_shader.integrate_default_sky_uniform_set;
-	push_constant.sky_mode = SDGIShader::IntegratePushConstant::SKY_MODE_DISABLED;
+	push_constant.sky_mode = SDFGIShader::IntegratePushConstant::SKY_MODE_DISABLED;
 	push_constant.y_mult = y_mult;
 
 	if (reads_sky && p_env) {
 		push_constant.sky_energy = p_env->bg_energy;
 
 		if (p_env->background == RS::ENV_BG_CLEAR_COLOR) {
-			push_constant.sky_mode = SDGIShader::IntegratePushConstant::SKY_MODE_COLOR;
+			push_constant.sky_mode = SDFGIShader::IntegratePushConstant::SKY_MODE_COLOR;
 			Color c = storage->get_default_clear_color().to_linear();
 			push_constant.sky_color[0] = c.r;
 			push_constant.sky_color[1] = c.g;
 			push_constant.sky_color[2] = c.b;
 		} else if (p_env->background == RS::ENV_BG_COLOR) {
-			push_constant.sky_mode = SDGIShader::IntegratePushConstant::SKY_MODE_COLOR;
+			push_constant.sky_mode = SDFGIShader::IntegratePushConstant::SKY_MODE_COLOR;
 			Color c = p_env->bg_color;
 			push_constant.sky_color[0] = c.r;
 			push_constant.sky_color[1] = c.g;
@@ -948,7 +947,7 @@ void RendererSceneGIRD::SDFGI::update_probes(RendererSceneEnvironmentRD *p_env, 
 					integrate_sky_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.integrate.version_get_shader(gi->sdfgi_shader.integrate_shader, 0), 1);
 				}
 				sky_uniform_set = integrate_sky_uniform_set;
-				push_constant.sky_mode = SDGIShader::IntegratePushConstant::SKY_MODE_SKY;
+				push_constant.sky_mode = SDFGIShader::IntegratePushConstant::SKY_MODE_SKY;
 			}
 		}
 	}
@@ -956,7 +955,7 @@ void RendererSceneGIRD::SDFGI::update_probes(RendererSceneEnvironmentRD *p_env, 
 	render_pass++;
 
 	RD::ComputeListID compute_list = RD::get_singleton()->compute_list_begin(true);
-	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.integrate_pipeline[SDGIShader::INTEGRATE_MODE_PROCESS]);
+	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.integrate_pipeline[SDFGIShader::INTEGRATE_MODE_PROCESS]);
 
 	int32_t probe_divisor = cascade_size / SDFGI::PROBE_DIVISOR;
 	for (uint32_t i = 0; i < cascades.size(); i++) {
@@ -968,7 +967,7 @@ void RendererSceneGIRD::SDFGI::update_probes(RendererSceneEnvironmentRD *p_env, 
 		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, cascades[i].integrate_uniform_set, 0);
 		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, sky_uniform_set, 1);
 
-		RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::IntegratePushConstant));
+		RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::IntegratePushConstant));
 		RD::get_singleton()->compute_list_dispatch_threads(compute_list, probe_axis_count * probe_axis_count, probe_axis_count, 1);
 	}
 
@@ -982,7 +981,7 @@ void RendererSceneGIRD::SDFGI::store_probes() {
 	RD::get_singleton()->barrier(RD::BARRIER_MASK_COMPUTE, RD::BARRIER_MASK_COMPUTE);
 	RD::get_singleton()->draw_command_begin_label("SDFGI Store Probes");
 
-	SDGIShader::IntegratePushConstant push_constant;
+	SDFGIShader::IntegratePushConstant push_constant;
 	push_constant.grid_size[1] = cascade_size;
 	push_constant.grid_size[2] = cascade_size;
 	push_constant.grid_size[0] = cascade_size;
@@ -1004,7 +1003,7 @@ void RendererSceneGIRD::SDFGI::store_probes() {
 	RENDER_TIMESTAMP("Average Probes");
 
 	RD::ComputeListID compute_list = RD::get_singleton()->compute_list_begin();
-	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.integrate_pipeline[SDGIShader::INTEGRATE_MODE_STORE]);
+	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.integrate_pipeline[SDFGIShader::INTEGRATE_MODE_STORE]);
 
 	//convert to octahedral to store
 	push_constant.image_size[0] *= SDFGI::LIGHTPROBE_OCT_SIZE;
@@ -1014,7 +1013,7 @@ void RendererSceneGIRD::SDFGI::store_probes() {
 		push_constant.cascade = i;
 		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, cascades[i].integrate_uniform_set, 0);
 		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, gi->sdfgi_shader.integrate_default_sky_uniform_set, 1);
-		RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::IntegratePushConstant));
+		RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::IntegratePushConstant));
 		RD::get_singleton()->compute_list_dispatch_threads(compute_list, probe_axis_count * probe_axis_count * SDFGI::LIGHTPROBE_OCT_SIZE, probe_axis_count * SDFGI::LIGHTPROBE_OCT_SIZE, 1);
 	}
 
@@ -1101,8 +1100,6 @@ void RendererSceneGIRD::SDFGI::update_cascades() {
 }
 
 void RendererSceneGIRD::SDFGI::debug_draw(const CameraMatrix &p_projection, const Transform &p_transform, int p_width, int p_height, RID p_render_target, RID p_texture) {
-	// !BAS! Need to find a nicer way then adding width/height/renderbuffer/texture as parameters
-
 	if (!debug_uniform_set.is_valid() || !RD::get_singleton()->uniform_set_is_valid(debug_uniform_set)) {
 		Vector<RD::Uniform> uniforms;
 		{
@@ -1199,7 +1196,7 @@ void RendererSceneGIRD::SDFGI::debug_draw(const CameraMatrix &p_projection, cons
 	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.debug_pipeline);
 	RD::get_singleton()->compute_list_bind_uniform_set(compute_list, debug_uniform_set, 0);
 
-	SDGIShader::DebugPushConstant push_constant;
+	SDFGIShader::DebugPushConstant push_constant;
 	push_constant.grid_size[0] = cascade_size;
 	push_constant.grid_size[1] = cascade_size;
 	push_constant.grid_size[2] = cascade_size;
@@ -1232,7 +1229,7 @@ void RendererSceneGIRD::SDFGI::debug_draw(const CameraMatrix &p_projection, cons
 	push_constant.cam_transform[14] = p_transform.origin.z;
 	push_constant.cam_transform[15] = 1;
 
-	RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::DebugPushConstant));
+	RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::DebugPushConstant));
 
 	RD::get_singleton()->compute_list_dispatch_threads(compute_list, p_width, p_height, 1);
 	RD::get_singleton()->compute_list_end();
@@ -1242,7 +1239,7 @@ void RendererSceneGIRD::SDFGI::debug_draw(const CameraMatrix &p_projection, cons
 }
 
 void RendererSceneGIRD::SDFGI::debug_probes(RD::DrawListID p_draw_list, RID p_framebuffer, const CameraMatrix &p_camera_with_transform) {
-	SDGIShader::DebugProbesPushConstant push_constant;
+	SDFGIShader::DebugProbesPushConstant push_constant;
 
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
@@ -1302,9 +1299,9 @@ void RendererSceneGIRD::SDFGI::debug_probes(RD::DrawListID p_draw_list, RID p_fr
 		debug_probes_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.debug_probes.version_get_shader(gi->sdfgi_shader.debug_probes_shader, 0), 0);
 	}
 
-	RD::get_singleton()->draw_list_bind_render_pipeline(p_draw_list, gi->sdfgi_shader.debug_probes_pipeline[SDGIShader::PROBE_DEBUG_PROBES].get_render_pipeline(RD::INVALID_FORMAT_ID, RD::get_singleton()->framebuffer_get_format(p_framebuffer)));
+	RD::get_singleton()->draw_list_bind_render_pipeline(p_draw_list, gi->sdfgi_shader.debug_probes_pipeline[SDFGIShader::PROBE_DEBUG_PROBES].get_render_pipeline(RD::INVALID_FORMAT_ID, RD::get_singleton()->framebuffer_get_format(p_framebuffer)));
 	RD::get_singleton()->draw_list_bind_uniform_set(p_draw_list, debug_probes_uniform_set, 0);
-	RD::get_singleton()->draw_list_set_push_constant(p_draw_list, &push_constant, sizeof(SDGIShader::DebugProbesPushConstant));
+	RD::get_singleton()->draw_list_set_push_constant(p_draw_list, &push_constant, sizeof(SDFGIShader::DebugProbesPushConstant));
 	RD::get_singleton()->draw_list_draw(p_draw_list, false, total_probes, total_points);
 
 	if (gi->sdfgi_debug_probe_dir != Vector3()) {
@@ -1363,9 +1360,9 @@ void RendererSceneGIRD::SDFGI::debug_probes(RD::DrawListID p_draw_list, RID p_fr
 
 		uint32_t cell_count = probe_cells * 2 * probe_cells * 2 * probe_cells * 2;
 
-		RD::get_singleton()->draw_list_bind_render_pipeline(p_draw_list, gi->sdfgi_shader.debug_probes_pipeline[SDGIShader::PROBE_DEBUG_VISIBILITY].get_render_pipeline(RD::INVALID_FORMAT_ID, RD::get_singleton()->framebuffer_get_format(p_framebuffer)));
+		RD::get_singleton()->draw_list_bind_render_pipeline(p_draw_list, gi->sdfgi_shader.debug_probes_pipeline[SDFGIShader::PROBE_DEBUG_VISIBILITY].get_render_pipeline(RD::INVALID_FORMAT_ID, RD::get_singleton()->framebuffer_get_format(p_framebuffer)));
 		RD::get_singleton()->draw_list_bind_uniform_set(p_draw_list, debug_probes_uniform_set, 0);
-		RD::get_singleton()->draw_list_set_push_constant(p_draw_list, &push_constant, sizeof(SDGIShader::DebugProbesPushConstant));
+		RD::get_singleton()->draw_list_set_push_constant(p_draw_list, &push_constant, sizeof(SDFGIShader::DebugProbesPushConstant));
 		RD::get_singleton()->draw_list_draw(p_draw_list, false, cell_count, total_points);
 	}
 }
@@ -1446,7 +1443,7 @@ void RendererSceneGIRD::SDFGI::pre_process_gi(const Transform &p_transform, Rend
 	for (uint32_t i = 0; i < cascades.size(); i++) {
 		SDFGI::Cascade &cascade = cascades[i];
 
-		SDGIShader::Light lights[SDFGI::MAX_DYNAMIC_LIGHTS];
+		SDFGIShader::Light lights[SDFGI::MAX_DYNAMIC_LIGHTS];
 		uint32_t idx = 0;
 		for (uint32_t j = 0; j < (uint32_t)p_scene_render->render_state.sdfgi_update_data->directional_lights->size(); j++) {
 			if (idx == SDFGI::MAX_DYNAMIC_LIGHTS) {
@@ -1528,7 +1525,7 @@ void RendererSceneGIRD::SDFGI::pre_process_gi(const Transform &p_transform, Rend
 		}
 
 		if (idx > 0) {
-			RD::get_singleton()->buffer_update(cascade.lights_buffer, 0, idx * sizeof(SDGIShader::Light), lights, RD::BARRIER_MASK_COMPUTE);
+			RD::get_singleton()->buffer_update(cascade.lights_buffer, 0, idx * sizeof(SDFGIShader::Light), lights, RD::BARRIER_MASK_COMPUTE);
 		}
 
 		cascade_dynamic_light_count[i] = idx;
@@ -1566,8 +1563,8 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 		//done rendering! must update SDF
 		//clear dispatch indirect data
 
-		SDGIShader::PreprocessPushConstant push_constant;
-		zeromem(&push_constant, sizeof(SDGIShader::PreprocessPushConstant));
+		SDFGIShader::PreprocessPushConstant push_constant;
+		zeromem(&push_constant, sizeof(SDFGIShader::PreprocessPushConstant));
 
 		RENDER_TIMESTAMP("Scroll SDF");
 
@@ -1594,14 +1591,14 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 			RD::ComputeListID compute_list = RD::get_singleton()->compute_list_begin();
 
 			//must pre scroll existing data because not all is dirty
-			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDGIShader::PRE_PROCESS_SCROLL]);
+			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDFGIShader::PRE_PROCESS_SCROLL]);
 			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, cascades[cascade].scroll_uniform_set, 0);
 
-			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::PreprocessPushConstant));
+			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::PreprocessPushConstant));
 			RD::get_singleton()->compute_list_dispatch_indirect(compute_list, cascades[cascade].solid_cell_dispatch_buffer, 0);
 			// no barrier do all together
 
-			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDGIShader::PRE_PROCESS_SCROLL_OCCLUSION]);
+			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDFGIShader::PRE_PROCESS_SCROLL_OCCLUSION]);
 			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, cascades[cascade].scroll_occlusion_uniform_set, 0);
 
 			Vector3i dirty = cascades[cascade].dirty_regions;
@@ -1610,7 +1607,7 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 			groups.y = cascade_size - ABS(dirty.y);
 			groups.z = cascade_size - ABS(dirty.z);
 
-			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::PreprocessPushConstant));
+			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::PreprocessPushConstant));
 			RD::get_singleton()->compute_list_dispatch_threads(compute_list, groups.x, groups.y, groups.z);
 
 			//no barrier, continue together
@@ -1618,7 +1615,7 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 			{
 				//scroll probes and their history also
 
-				SDGIShader::IntegratePushConstant ipush_constant;
+				SDFGIShader::IntegratePushConstant ipush_constant;
 				ipush_constant.grid_size[1] = cascade_size;
 				ipush_constant.grid_size[2] = cascade_size;
 				ipush_constant.grid_size[0] = cascade_size;
@@ -1649,18 +1646,18 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 				ipush_constant.scroll[1] = dirty.y / probe_divisor;
 				ipush_constant.scroll[2] = dirty.z / probe_divisor;
 
-				RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.integrate_pipeline[SDGIShader::INTEGRATE_MODE_SCROLL]);
+				RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.integrate_pipeline[SDFGIShader::INTEGRATE_MODE_SCROLL]);
 				RD::get_singleton()->compute_list_bind_uniform_set(compute_list, cascades[cascade].integrate_uniform_set, 0);
 				RD::get_singleton()->compute_list_bind_uniform_set(compute_list, gi->sdfgi_shader.integrate_default_sky_uniform_set, 1);
-				RD::get_singleton()->compute_list_set_push_constant(compute_list, &ipush_constant, sizeof(SDGIShader::IntegratePushConstant));
+				RD::get_singleton()->compute_list_set_push_constant(compute_list, &ipush_constant, sizeof(SDFGIShader::IntegratePushConstant));
 				RD::get_singleton()->compute_list_dispatch_threads(compute_list, probe_axis_count * probe_axis_count, probe_axis_count, 1);
 
 				RD::get_singleton()->compute_list_add_barrier(compute_list);
 
-				RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.integrate_pipeline[SDGIShader::INTEGRATE_MODE_SCROLL_STORE]);
+				RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.integrate_pipeline[SDFGIShader::INTEGRATE_MODE_SCROLL_STORE]);
 				RD::get_singleton()->compute_list_bind_uniform_set(compute_list, cascades[cascade].integrate_uniform_set, 0);
 				RD::get_singleton()->compute_list_bind_uniform_set(compute_list, gi->sdfgi_shader.integrate_default_sky_uniform_set, 1);
-				RD::get_singleton()->compute_list_set_push_constant(compute_list, &ipush_constant, sizeof(SDGIShader::IntegratePushConstant));
+				RD::get_singleton()->compute_list_set_push_constant(compute_list, &ipush_constant, sizeof(SDFGIShader::IntegratePushConstant));
 				RD::get_singleton()->compute_list_dispatch_threads(compute_list, probe_axis_count * probe_axis_count, probe_axis_count, 1);
 
 				RD::get_singleton()->compute_list_add_barrier(compute_list);
@@ -1668,7 +1665,7 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 				if (bounce_feedback > 0.0) {
 					//multibounce requires this to be stored so direct light can read from it
 
-					RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.integrate_pipeline[SDGIShader::INTEGRATE_MODE_STORE]);
+					RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.integrate_pipeline[SDFGIShader::INTEGRATE_MODE_STORE]);
 
 					//convert to octahedral to store
 					ipush_constant.image_size[0] *= SDFGI::LIGHTPROBE_OCT_SIZE;
@@ -1676,7 +1673,7 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 
 					RD::get_singleton()->compute_list_bind_uniform_set(compute_list, cascades[cascade].integrate_uniform_set, 0);
 					RD::get_singleton()->compute_list_bind_uniform_set(compute_list, gi->sdfgi_shader.integrate_default_sky_uniform_set, 1);
-					RD::get_singleton()->compute_list_set_push_constant(compute_list, &ipush_constant, sizeof(SDGIShader::IntegratePushConstant));
+					RD::get_singleton()->compute_list_set_push_constant(compute_list, &ipush_constant, sizeof(SDFGIShader::IntegratePushConstant));
 					RD::get_singleton()->compute_list_dispatch_threads(compute_list, probe_axis_count * probe_axis_count * SDFGI::LIGHTPROBE_OCT_SIZE, probe_axis_count * SDFGI::LIGHTPROBE_OCT_SIZE, 1);
 				}
 			}
@@ -1698,9 +1695,9 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 			push_constant.grid_size >>= 1;
 
 			uint32_t cascade_half_size = cascade_size >> 1;
-			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDGIShader::PRE_PROCESS_JUMP_FLOOD_INITIALIZE_HALF]);
+			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDFGIShader::PRE_PROCESS_JUMP_FLOOD_INITIALIZE_HALF]);
 			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, sdf_initialize_half_uniform_set, 0);
-			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::PreprocessPushConstant));
+			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::PreprocessPushConstant));
 			RD::get_singleton()->compute_list_dispatch_threads(compute_list, cascade_half_size, cascade_half_size, cascade_half_size);
 			RD::get_singleton()->compute_list_add_barrier(compute_list);
 
@@ -1712,7 +1709,7 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 
 				uint32_t s = cascade_half_size;
 
-				RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDGIShader::PRE_PROCESS_JUMP_FLOOD]);
+				RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDFGIShader::PRE_PROCESS_JUMP_FLOOD]);
 
 				int jf_us = 0;
 				//start with regular jump flood for very coarse reads, as this is impossible to optimize
@@ -1720,7 +1717,7 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 					s /= 2;
 					push_constant.step_size = s;
 					RD::get_singleton()->compute_list_bind_uniform_set(compute_list, jump_flood_half_uniform_set[jf_us], 0);
-					RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::PreprocessPushConstant));
+					RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::PreprocessPushConstant));
 					RD::get_singleton()->compute_list_dispatch_threads(compute_list, cascade_half_size, cascade_half_size, cascade_half_size);
 					RD::get_singleton()->compute_list_add_barrier(compute_list);
 					jf_us = jf_us == 0 ? 1 : 0;
@@ -1733,12 +1730,12 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 				RENDER_TIMESTAMP("SDFGI Jump Flood Optimized (Half Size)");
 
 				//continue with optimized jump flood for smaller reads
-				RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDGIShader::PRE_PROCESS_JUMP_FLOOD_OPTIMIZED]);
+				RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDFGIShader::PRE_PROCESS_JUMP_FLOOD_OPTIMIZED]);
 				while (s > 1) {
 					s /= 2;
 					push_constant.step_size = s;
 					RD::get_singleton()->compute_list_bind_uniform_set(compute_list, jump_flood_half_uniform_set[jf_us], 0);
-					RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::PreprocessPushConstant));
+					RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::PreprocessPushConstant));
 					RD::get_singleton()->compute_list_dispatch_threads(compute_list, cascade_half_size, cascade_half_size, cascade_half_size);
 					RD::get_singleton()->compute_list_add_barrier(compute_list);
 					jf_us = jf_us == 0 ? 1 : 0;
@@ -1748,9 +1745,9 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 			// restore grid size for last passes
 			push_constant.grid_size = cascade_size;
 
-			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDGIShader::PRE_PROCESS_JUMP_FLOOD_UPSCALE]);
+			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDFGIShader::PRE_PROCESS_JUMP_FLOOD_UPSCALE]);
 			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, sdf_upscale_uniform_set, 0);
-			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::PreprocessPushConstant));
+			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::PreprocessPushConstant));
 			RD::get_singleton()->compute_list_dispatch_threads(compute_list, cascade_size, cascade_size, cascade_size);
 			RD::get_singleton()->compute_list_add_barrier(compute_list);
 
@@ -1758,9 +1755,9 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 
 			push_constant.half_size = false;
 			push_constant.step_size = 1;
-			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDGIShader::PRE_PROCESS_JUMP_FLOOD_OPTIMIZED]);
+			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDFGIShader::PRE_PROCESS_JUMP_FLOOD_OPTIMIZED]);
 			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, jump_flood_uniform_set[upscale_jfa_uniform_set_index], 0);
-			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::PreprocessPushConstant));
+			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::PreprocessPushConstant));
 			RD::get_singleton()->compute_list_dispatch_threads(compute_list, cascade_size, cascade_size, cascade_size);
 			RD::get_singleton()->compute_list_add_barrier(compute_list);
 
@@ -1768,9 +1765,9 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 			//full size jumpflood
 			RENDER_TIMESTAMP("SDFGI Jump Flood");
 
-			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDGIShader::PRE_PROCESS_JUMP_FLOOD_INITIALIZE]);
+			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDFGIShader::PRE_PROCESS_JUMP_FLOOD_INITIALIZE]);
 			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, sdf_initialize_uniform_set, 0);
-			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::PreprocessPushConstant));
+			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::PreprocessPushConstant));
 			RD::get_singleton()->compute_list_dispatch_threads(compute_list, cascade_size, cascade_size, cascade_size);
 
 			RD::get_singleton()->compute_list_add_barrier(compute_list);
@@ -1779,7 +1776,7 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 			{
 				uint32_t s = cascade_size;
 
-				RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDGIShader::PRE_PROCESS_JUMP_FLOOD]);
+				RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDFGIShader::PRE_PROCESS_JUMP_FLOOD]);
 
 				int jf_us = 0;
 				//start with regular jump flood for very coarse reads, as this is impossible to optimize
@@ -1787,7 +1784,7 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 					s /= 2;
 					push_constant.step_size = s;
 					RD::get_singleton()->compute_list_bind_uniform_set(compute_list, jump_flood_uniform_set[jf_us], 0);
-					RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::PreprocessPushConstant));
+					RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::PreprocessPushConstant));
 					RD::get_singleton()->compute_list_dispatch_threads(compute_list, cascade_size, cascade_size, cascade_size);
 					RD::get_singleton()->compute_list_add_barrier(compute_list);
 					jf_us = jf_us == 0 ? 1 : 0;
@@ -1800,12 +1797,12 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 				RENDER_TIMESTAMP("SDFGI Jump Flood Optimized");
 
 				//continue with optimized jump flood for smaller reads
-				RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDGIShader::PRE_PROCESS_JUMP_FLOOD_OPTIMIZED]);
+				RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDFGIShader::PRE_PROCESS_JUMP_FLOOD_OPTIMIZED]);
 				while (s > 1) {
 					s /= 2;
 					push_constant.step_size = s;
 					RD::get_singleton()->compute_list_bind_uniform_set(compute_list, jump_flood_uniform_set[jf_us], 0);
-					RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::PreprocessPushConstant));
+					RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::PreprocessPushConstant));
 					RD::get_singleton()->compute_list_dispatch_threads(compute_list, cascade_size, cascade_size, cascade_size);
 					RD::get_singleton()->compute_list_add_barrier(compute_list);
 					jf_us = jf_us == 0 ? 1 : 0;
@@ -1820,7 +1817,7 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 			uint32_t probe_size = cascade_size / SDFGI::PROBE_DIVISOR;
 			Vector3i probe_global_pos = cascades[cascade].position / probe_size;
 
-			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDGIShader::PRE_PROCESS_OCCLUSION]);
+			RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDFGIShader::PRE_PROCESS_OCCLUSION]);
 			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, occlusion_uniform_set, 0);
 			for (int i = 0; i < 8; i++) {
 				//dispatch all at once for performance
@@ -1839,7 +1836,7 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 				push_constant.probe_offset[1] = offset.y;
 				push_constant.probe_offset[2] = offset.z;
 				push_constant.occlusion_index = i;
-				RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::PreprocessPushConstant));
+				RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::PreprocessPushConstant));
 
 				Vector3i groups = Vector3i(probe_size + 1, probe_size + 1, probe_size + 1) - offset; //if offset, it's one less probe per axis to compute
 				RD::get_singleton()->compute_list_dispatch(compute_list, groups.x, groups.y, groups.z);
@@ -1850,9 +1847,9 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 		RENDER_TIMESTAMP("SDFGI Store");
 
 		// store
-		RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDGIShader::PRE_PROCESS_STORE]);
+		RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.preprocess_pipeline[SDFGIShader::PRE_PROCESS_STORE]);
 		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, cascades[cascade].sdf_store_uniform_set, 0);
-		RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDGIShader::PreprocessPushConstant));
+		RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::PreprocessPushConstant));
 		RD::get_singleton()->compute_list_dispatch_threads(compute_list, cascade_size, cascade_size, cascade_size);
 
 		RD::get_singleton()->compute_list_end();
@@ -1903,7 +1900,7 @@ void RendererSceneGIRD::SDFGI::render_static_lights(RID p_render_buffers, uint32
 	update_cascades();
 	; //need cascades updated for this
 
-	SDGIShader::Light lights[SDFGI::MAX_STATIC_LIGHTS];
+	SDFGIShader::Light lights[SDFGI::MAX_STATIC_LIGHTS];
 	uint32_t light_count[SDFGI::MAX_STATIC_LIGHTS];
 
 	for (uint32_t i = 0; i < p_cascade_count; i++) {
@@ -1967,7 +1964,7 @@ void RendererSceneGIRD::SDFGI::render_static_lights(RID p_render_buffers, uint32
 			}
 
 			if (idx > 0) {
-				RD::get_singleton()->buffer_update(cc.lights_buffer, 0, idx * sizeof(SDGIShader::Light), lights);
+				RD::get_singleton()->buffer_update(cc.lights_buffer, 0, idx * sizeof(SDFGIShader::Light), lights);
 			}
 
 			light_count[i] = idx;
@@ -1977,9 +1974,9 @@ void RendererSceneGIRD::SDFGI::render_static_lights(RID p_render_buffers, uint32
 	/* Static Lights */
 	RD::ComputeListID compute_list = RD::get_singleton()->compute_list_begin();
 
-	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.direct_light_pipeline[SDGIShader::DIRECT_LIGHT_MODE_STATIC]);
+	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, gi->sdfgi_shader.direct_light_pipeline[SDFGIShader::DIRECT_LIGHT_MODE_STATIC]);
 
-	SDGIShader::DirectLightPushConstant dl_push_constant;
+	SDFGIShader::DirectLightPushConstant dl_push_constant;
 
 	dl_push_constant.grid_size[0] = cascade_size;
 	dl_push_constant.grid_size[1] = cascade_size;
@@ -2004,7 +2001,7 @@ void RendererSceneGIRD::SDFGI::render_static_lights(RID p_render_buffers, uint32
 
 		if (dl_push_constant.light_count > 0) {
 			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, cc.sdf_direct_light_uniform_set, 0);
-			RD::get_singleton()->compute_list_set_push_constant(compute_list, &dl_push_constant, sizeof(SDGIShader::DirectLightPushConstant));
+			RD::get_singleton()->compute_list_set_push_constant(compute_list, &dl_push_constant, sizeof(SDFGIShader::DirectLightPushConstant));
 			RD::get_singleton()->compute_list_dispatch_indirect(compute_list, cc.solid_cell_dispatch_buffer, 0);
 		}
 	}
@@ -2807,8 +2804,10 @@ RendererSceneGIRD::RendererSceneGIRD() {
 RendererSceneGIRD::~RendererSceneGIRD() {
 }
 
-void RendererSceneGIRD::init_gi(RendererStorageRD *p_storage) {
+void RendererSceneGIRD::init(RendererStorageRD *p_storage, RendererSceneSkyRD *p_sky) {
 	storage = p_storage;
+
+	/* GI */
 
 	{
 		//kinda complicated to compute the amount of slots, we try to use as many as we can
@@ -2862,9 +2861,9 @@ void RendererSceneGIRD::init_gi(RendererStorageRD *p_storage) {
 			giprobe_debug_shader_version_pipelines[i].setup(giprobe_debug_shader_version_shaders[i], RD::RENDER_PRIMITIVE_TRIANGLES, rs, RD::PipelineMultisampleState(), ds, RD::PipelineColorBlendState::create_disabled(), 0);
 		}
 	}
-}
 
-void RendererSceneGIRD::init_sdfgi(RendererSceneSkyRD *p_sky) {
+	/* SDGFI */
+
 	{
 		Vector<String> preprocess_modes;
 		preprocess_modes.push_back("\n#define MODE_SCROLL\n");
@@ -2879,7 +2878,7 @@ void RendererSceneGIRD::init_sdfgi(RendererSceneSkyRD *p_sky) {
 		String defines = "\n#define OCCLUSION_SIZE " + itos(SDFGI::CASCADE_SIZE / SDFGI::PROBE_DIVISOR) + "\n";
 		sdfgi_shader.preprocess.initialize(preprocess_modes, defines);
 		sdfgi_shader.preprocess_shader = sdfgi_shader.preprocess.version_create();
-		for (int i = 0; i < SDGIShader::PRE_PROCESS_MAX; i++) {
+		for (int i = 0; i < SDFGIShader::PRE_PROCESS_MAX; i++) {
 			sdfgi_shader.preprocess_pipeline[i] = RD::get_singleton()->compute_pipeline_create(sdfgi_shader.preprocess.version_get_shader(sdfgi_shader.preprocess_shader, i));
 		}
 	}
@@ -2893,7 +2892,7 @@ void RendererSceneGIRD::init_sdfgi(RendererSceneSkyRD *p_sky) {
 		direct_light_modes.push_back("\n#define MODE_PROCESS_DYNAMIC\n");
 		sdfgi_shader.direct_light.initialize(direct_light_modes, defines);
 		sdfgi_shader.direct_light_shader = sdfgi_shader.direct_light.version_create();
-		for (int i = 0; i < SDGIShader::DIRECT_LIGHT_MODE_MAX; i++) {
+		for (int i = 0; i < SDFGIShader::DIRECT_LIGHT_MODE_MAX; i++) {
 			sdfgi_shader.direct_light_pipeline[i] = RD::get_singleton()->compute_pipeline_create(sdfgi_shader.direct_light.version_get_shader(sdfgi_shader.direct_light_shader, i));
 		}
 	}
@@ -2914,7 +2913,7 @@ void RendererSceneGIRD::init_sdfgi(RendererSceneSkyRD *p_sky) {
 		sdfgi_shader.integrate.initialize(integrate_modes, defines);
 		sdfgi_shader.integrate_shader = sdfgi_shader.integrate.version_create();
 
-		for (int i = 0; i < SDGIShader::INTEGRATE_MODE_MAX; i++) {
+		for (int i = 0; i < SDFGIShader::INTEGRATE_MODE_MAX; i++) {
 			sdfgi_shader.integrate_pipeline[i] = RD::get_singleton()->compute_pipeline_create(sdfgi_shader.integrate.version_get_shader(sdfgi_shader.integrate_shader, i));
 		}
 
@@ -2986,7 +2985,7 @@ void RendererSceneGIRD::init_sdfgi(RendererSceneSkyRD *p_sky) {
 			ds.enable_depth_test = true;
 			ds.enable_depth_write = true;
 			ds.depth_compare_operator = RD::COMPARE_OP_LESS_OR_EQUAL;
-			for (int i = 0; i < SDGIShader::PROBE_DEBUG_MAX; i++) {
+			for (int i = 0; i < SDFGIShader::PROBE_DEBUG_MAX; i++) {
 				RID debug_probes_shader_version = sdfgi_shader.debug_probes.version_get_shader(sdfgi_shader.debug_probes_shader, i);
 				sdfgi_shader.debug_probes_pipeline[i].setup(debug_probes_shader_version, RD::RENDER_PRIMITIVE_TRIANGLE_STRIPS, rs, RD::PipelineMultisampleState(), ds, RD::PipelineColorBlendState::create_disabled(), 0);
 			}
@@ -3041,7 +3040,7 @@ void RendererSceneGIRD::setup_giprobes(RID p_render_buffers, const Transform &p_
 	for (int i = 0; i < MAX_GIPROBES; i++) {
 		RID texture;
 		if (i < (int)p_gi_probes.size()) {
-			GIProbeInstance *gipi = gi_probe_instance_owner.getornull(p_gi_probes[i]);
+			GIProbeInstance *gipi = get_probe_instance(p_gi_probes[i]);
 
 			if (gipi) {
 				texture = gipi->texture;
@@ -3373,6 +3372,27 @@ RID RendererSceneGIRD::gi_probe_instance_create(RID p_base) {
 	gi_probe.probe = p_base;
 	RID rid = gi_probe_instance_owner.make_rid(gi_probe);
 	return rid;
+}
+
+void RendererSceneGIRD::gi_probe_instance_set_transform_to_data(RID p_probe, const Transform &p_xform) {
+	GIProbeInstance *gi_probe = get_probe_instance(p_probe);
+	ERR_FAIL_COND(!gi_probe);
+
+	gi_probe->transform = p_xform;
+}
+
+bool RendererSceneGIRD::gi_probe_needs_update(RID p_probe) const {
+	GIProbeInstance *gi_probe = get_probe_instance(p_probe);
+	ERR_FAIL_COND_V(!gi_probe, false);
+
+	return gi_probe->last_probe_version != storage->gi_probe_get_version(gi_probe->probe);
+}
+
+void RendererSceneGIRD::gi_probe_update(RID p_probe, bool p_update_light_instances, const Vector<RID> &p_light_instances, const PagedArray<RendererSceneRender::GeometryInstance *> &p_dynamic_objects, RendererSceneRenderRD *p_scene_render) {
+	GIProbeInstance *gi_probe = get_probe_instance(p_probe);
+	ERR_FAIL_COND(!gi_probe);
+
+	gi_probe->update(p_update_light_instances, p_light_instances, p_dynamic_objects, p_scene_render);
 }
 
 void RendererSceneGIRD::debug_giprobe(RID p_gi_probe, RD::DrawListID p_draw_list, RID p_framebuffer, const CameraMatrix &p_camera_with_transform, bool p_lighting, bool p_emission, float p_alpha) {

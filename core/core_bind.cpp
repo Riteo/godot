@@ -373,6 +373,9 @@ Dictionary _OS::get_time(bool utc) const {
  * @return epoch calculated
  */
 int64_t _OS::get_unix_time_from_datetime(Dictionary datetime) const {
+	// if datetime is an empty Dictionary throws an error
+	ERR_FAIL_COND_V_MSG(datetime.is_empty(), 0, "Invalid datetime Dictionary: Dictionary is empty");
+
 	// Bunch of conversion constants
 	static const unsigned int SECONDS_PER_MINUTE = 60;
 	static const unsigned int MINUTES_PER_HOUR = 60;
@@ -566,7 +569,7 @@ struct _OSCoreBindImg {
 
 void _OS::print_all_textures_by_size() {
 	List<_OSCoreBindImg> imgs;
-	int total = 0;
+	uint64_t total = 0;
 	{
 		List<Ref<Resource>> rsrc;
 		ResourceCache::get_cached_resources(&rsrc);
@@ -1374,9 +1377,9 @@ Vector<String> _File::get_csv_line(const String &p_delim) const {
 	return f->get_csv_line(p_delim);
 }
 
-/**< use this for files WRITTEN in _big_ endian machines (ie, amiga/mac)
+/**< use this for files WRITTEN in _big_ endian machines (i.e. amiga/mac)
  * It's not about the current CPU type but file formats.
- * this flags get reset to false (little endian) on each open
+ * These flags get reset to false (little endian) on each open
  */
 
 void _File::set_endian_swap(bool p_swap) {

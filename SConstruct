@@ -61,11 +61,15 @@ elif platform_arg == "javascript":
     # Use generic POSIX build toolchain for Emscripten.
     custom_tools = ["cc", "c++", "ar", "link", "textfile", "zip"]
 
+# We let SCons build its default ENV as it includes OS-specific things which we don't
+# want to have to pull in manually.
+# Then we prepend PATH to make it take precedence, while preserving SCons' own entries.
 env_base = Environment(tools=custom_tools)
-if "TERM" in os.environ:
+env_base.PrependENVPath("PATH", os.getenv("PATH"))
+env_base.PrependENVPath("PKG_CONFIG_PATH", os.getenv("PKG_CONFIG_PATH"))
+if "TERM" in os.environ:  # Used for colored output.
     env_base["ENV"]["TERM"] = os.environ["TERM"]
-env_base.AppendENVPath("PATH", os.getenv("PATH"))
-env_base.AppendENVPath("PKG_CONFIG_PATH", os.getenv("PKG_CONFIG_PATH"))
+
 env_base.disabled_modules = []
 env_base.module_version_string = ""
 env_base.msvc = False
@@ -242,13 +246,16 @@ for path in module_search_paths:
         # Built-in modules don't have nested modules,
         # so save the time it takes to parse directories.
         modules = methods.detect_modules(path, recursive=False)
-    else:  # External.
+    else:  # Custom.
         modules = methods.detect_modules(path, env_base["custom_modules_recursive"])
+        # Provide default include path for both the custom module search `path`
+        # and the base directory containing custom modules, as it may be different
+        # from the built-in "modules" name (e.g. "custom_modules/summator/summator.h"),
+        # so it can be referenced simply as `#include "summator/summator.h"`
+        # independently of where a module is located on user's filesystem.
+        env_base.Prepend(CPPPATH=[path, os.path.dirname(path)])
     # Note: custom modules can override built-in ones.
     modules_detected.update(modules)
-    include_path = os.path.dirname(path)
-    if include_path:
-        env_base.Prepend(CPPPATH=[include_path])
 
 # Add module options.
 for name, path in modules_detected.items():
@@ -381,7 +388,7 @@ if selected_platform in platform_list:
         if not (f[0] in ARGUMENTS):  # allow command line to override platform flags
             env[f[0]] = f[1]
 
-    # Must happen after the flags definition, so that they can be used by platform detect
+    # Must happen after the flags' definition, so that they can be used by platform detect
     detect.configure(env)
 
     # Set our C and C++ standard requirements.

@@ -716,11 +716,17 @@ void EditorPropertyLayers::setup(LayerType p_layer_type) {
 		case LAYER_PHYSICS_2D:
 			basename = "layer_names/2d_physics";
 			break;
+		case LAYER_NAVIGATION_2D:
+			basename = "layer_names/2d_navigation";
+			break;
 		case LAYER_RENDER_3D:
 			basename = "layer_names/3d_render";
 			break;
 		case LAYER_PHYSICS_3D:
 			basename = "layer_names/3d_physics";
+			break;
+		case LAYER_NAVIGATION_3D:
+			basename = "layer_names/3d_navigation";
 			break;
 	}
 
@@ -2909,7 +2915,7 @@ void EditorPropertyResource::update_property() {
 				sub_inspector->set_use_doc_hints(true);
 
 				sub_inspector->set_sub_inspector(true);
-				sub_inspector->set_enable_capitalize_paths(true);
+				sub_inspector->set_enable_capitalize_paths(bool(EDITOR_GET("interface/inspector/capitalize_properties")));
 
 				sub_inspector->connect("property_keyed", callable_mp(this, &EditorPropertyResource::_sub_inspector_property_keyed));
 				sub_inspector->connect("resource_selected", callable_mp(this, &EditorPropertyResource::_sub_inspector_resource_selected));
@@ -3300,7 +3306,12 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 				editor->setup(options);
 				add_property_editor(p_path, editor);
 
-			} else if (p_hint == PROPERTY_HINT_LAYERS_2D_PHYSICS || p_hint == PROPERTY_HINT_LAYERS_2D_RENDER || p_hint == PROPERTY_HINT_LAYERS_3D_PHYSICS || p_hint == PROPERTY_HINT_LAYERS_3D_RENDER) {
+			} else if (p_hint == PROPERTY_HINT_LAYERS_2D_PHYSICS ||
+					   p_hint == PROPERTY_HINT_LAYERS_2D_RENDER ||
+					   p_hint == PROPERTY_HINT_LAYERS_2D_NAVIGATION ||
+					   p_hint == PROPERTY_HINT_LAYERS_3D_PHYSICS ||
+					   p_hint == PROPERTY_HINT_LAYERS_3D_RENDER ||
+					   p_hint == PROPERTY_HINT_LAYERS_3D_NAVIGATION) {
 				EditorPropertyLayers::LayerType lt = EditorPropertyLayers::LAYER_RENDER_2D;
 				switch (p_hint) {
 					case PROPERTY_HINT_LAYERS_2D_RENDER:
@@ -3309,11 +3320,17 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 					case PROPERTY_HINT_LAYERS_2D_PHYSICS:
 						lt = EditorPropertyLayers::LAYER_PHYSICS_2D;
 						break;
+					case PROPERTY_HINT_LAYERS_2D_NAVIGATION:
+						lt = EditorPropertyLayers::LAYER_NAVIGATION_2D;
+						break;
 					case PROPERTY_HINT_LAYERS_3D_RENDER:
 						lt = EditorPropertyLayers::LAYER_RENDER_3D;
 						break;
 					case PROPERTY_HINT_LAYERS_3D_PHYSICS:
 						lt = EditorPropertyLayers::LAYER_PHYSICS_3D;
+						break;
+					case PROPERTY_HINT_LAYERS_3D_NAVIGATION:
+						lt = EditorPropertyLayers::LAYER_NAVIGATION_3D;
 						break;
 					default: {
 					} //compiler could be smarter here and realize this can't happen

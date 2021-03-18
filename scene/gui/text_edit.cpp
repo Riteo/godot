@@ -412,25 +412,16 @@ void TextEdit::_update_selection_mode_word() {
 	_get_mouse_pos(Point2i(mp.x, mp.y), row, col);
 
 	String line = text[row];
-	int beg = CLAMP(col, 0, line.length());
-	// If its the first selection and on whitespace make sure we grab the word instead.
-	if (!selection.active) {
-		while (beg > 0 && line[beg] <= 32) {
-			beg--;
-		}
-	}
+	int cursor_pos = CLAMP(col, 0, line.length());
+	int beg = cursor_pos;
 	int end = beg;
-	bool symbol = beg < line.length() && _is_symbol(line[beg]);
-
-	// Get the word end and begin points.
-	while (beg > 0 && line[beg - 1] > 32 && (symbol == _is_symbol(line[beg - 1]))) {
-		beg--;
-	}
-	while (end < line.length() && line[end + 1] > 32 && (symbol == _is_symbol(line[end + 1]))) {
-		end++;
-	}
-	if (end < line.length()) {
-		end += 1;
+	Vector<Vector2i> words = TS->shaped_text_get_word_breaks(text.get_line_data(row)->get_rid());
+	for (int i = 0; i < words.size(); i++) {
+		if (words[i].x < cursor_pos && words[i].y > cursor_pos) {
+			beg = words[i].x;
+			end = words[i].y;
+			break;
+		}
 	}
 
 	// Initial selection.
@@ -817,7 +808,7 @@ void TextEdit::_notification(int p_what) {
 			// Get the highlighted words.
 			String highlighted_text = get_selection_text();
 
-			// Check if highlighted words contains only whitespaces (tabs or spaces).
+			// Check if highlighted words contain only whitespaces (tabs or spaces).
 			bool only_whitespaces_highlighted = highlighted_text.strip_edges() == String();
 
 			int cursor_wrap_index = get_cursor_wrap_index();
@@ -1066,7 +1057,7 @@ void TextEdit::_notification(int p_what) {
 					}
 
 					if (str.length() == 0) {
-						// Draw line background if empty as we won't loop at at all.
+						// Draw line background if empty as we won't loop at all.
 						if (line == cursor.line && cursor_wrap_index == line_wrap_index && highlight_current_line) {
 							if (rtl) {
 								RenderingServer::get_singleton()->canvas_item_add_rect(ci, Rect2(size.width - ofs_x - xmargin_end, ofs_y, xmargin_end, row_height), cache.current_line_color);
@@ -1451,7 +1442,7 @@ void TextEdit::_notification(int p_what) {
 							}
 						} else {
 							{
-								// IME intermidiet text range.
+								// IME Intermediate text range.
 								Vector<Vector2> sel = TS->shaped_text_get_selection(rid, cursor.column, cursor.column + ime_text.length());
 								for (int j = 0; j < sel.size(); j++) {
 									Rect2 rect = Rect2(sel[j].x + char_margin + ofs_x, ofs_y, sel[j].y - sel[j].x, text_height);
@@ -1711,7 +1702,7 @@ void TextEdit::_notification(int p_what) {
 			}
 
 			if (has_focus()) {
-				if (get_viewport()->get_window_id() != DisplayServer::INVALID_WINDOW_ID) {
+				if (get_viewport()->get_window_id() != DisplayServer::INVALID_WINDOW_ID && DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_IME)) {
 					DisplayServer::get_singleton()->window_set_ime_active(true, get_viewport()->get_window_id());
 					DisplayServer::get_singleton()->window_set_ime_position(get_global_position() + cursor_pos, get_viewport()->get_window_id());
 				}
@@ -1724,7 +1715,7 @@ void TextEdit::_notification(int p_what) {
 				draw_caret = true;
 			}
 
-			if (get_viewport()->get_window_id() != DisplayServer::INVALID_WINDOW_ID) {
+			if (get_viewport()->get_window_id() != DisplayServer::INVALID_WINDOW_ID && DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_IME)) {
 				DisplayServer::get_singleton()->window_set_ime_active(true, get_viewport()->get_window_id());
 				DisplayServer::get_singleton()->window_set_ime_position(get_global_position() + _get_cursor_pixel_pos(false), get_viewport()->get_window_id());
 			}
@@ -1753,7 +1744,7 @@ void TextEdit::_notification(int p_what) {
 				caret_blink_timer->stop();
 			}
 
-			if (get_viewport()->get_window_id() != DisplayServer::INVALID_WINDOW_ID) {
+			if (get_viewport()->get_window_id() != DisplayServer::INVALID_WINDOW_ID && DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_IME)) {
 				DisplayServer::get_singleton()->window_set_ime_position(Point2(), get_viewport()->get_window_id());
 				DisplayServer::get_singleton()->window_set_ime_active(false, get_viewport()->get_window_id());
 			}
@@ -2018,7 +2009,7 @@ void TextEdit::indent_selected_lines_right() {
 			// We don't really care where selection is - we just need to know indentation level at the beginning of the line.
 			int left = _find_first_non_whitespace_column_of_line(line_text);
 			int spaces_to_add = _calculate_spaces_till_next_right_indent(left);
-			// Since we will add this much spaces we want move whole selection and cursor by this much.
+			// Since we will add these many spaces, we want to move the whole selection and cursor by this much.
 			selection_offset = spaces_to_add;
 			for (int j = 0; j < spaces_to_add; j++) {
 				line_text = ' ' + line_text;
@@ -2043,7 +2034,7 @@ void TextEdit::indent_selected_lines_left() {
 	int end_line;
 
 	// Moving cursor and selection after unindenting can get tricky because
-	// changing content of line can move cursor and selection on it's own (if new line ends before previous position of either),
+	// changing content of line can move cursor and selection on its own (if new line ends before previous position of either),
 	// therefore we just remember initial values and at the end of the operation offset them by number of removed characters.
 	int removed_characters = 0;
 	int initial_selection_end_column = selection.to_column;
@@ -2199,9 +2190,14 @@ void TextEdit::_new_line(bool p_split_current_line, bool p_above) {
 
 				// No need to move the brace below if we are not taking the text with us.
 				char32_t closing_char = _get_right_pair_symbol(indent_char);
-				if ((closing_char != 0) && (closing_char == text[cursor.line][cursor.column]) && !p_split_current_line) {
-					brace_indent = true;
-					ins += "\n" + ins.substr(1, ins.length() - 2);
+				if ((closing_char != 0) && (closing_char == text[cursor.line][cursor.column])) {
+					if (p_split_current_line) {
+						brace_indent = true;
+						ins += "\n" + ins.substr(1, ins.length() - 2);
+					} else {
+						brace_indent = false;
+						ins = "\n" + ins.substr(1, ins.length() - 2);
+					}
 				}
 			}
 		}
@@ -2458,7 +2454,7 @@ void TextEdit::_move_cursor_to_line_start(bool p_select) {
 		row_start_col += rows[i].length();
 	}
 	if (cursor.column == row_start_col || wi == 0) {
-		// Compute whitespace symbols seq length.
+		// Compute whitespace symbols sequence length.
 		int current_line_whitespace_len = 0;
 		while (current_line_whitespace_len < text[cursor.line].length()) {
 			char32_t c = text[cursor.line][current_line_whitespace_len];
@@ -2993,8 +2989,6 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 					} else {
 						if (cursor.line < selection.selecting_line || (cursor.line == selection.selecting_line && cursor.column < selection.selecting_column)) {
 							if (selection.shiftclick_left) {
-								SWAP(selection.from_column, selection.to_column);
-								SWAP(selection.from_line, selection.to_line);
 								selection.shiftclick_left = !selection.shiftclick_left;
 							}
 							selection.from_column = cursor.column;

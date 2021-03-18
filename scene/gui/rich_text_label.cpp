@@ -147,7 +147,7 @@ RichTextLabel::Item *RichTextLabel::_get_item_at_pos(RichTextLabel::Item *p_item
 			case ITEM_TEXT: {
 				ItemText *t = (ItemText *)it;
 				offset += t->text.length();
-				if (offset >= p_position) {
+				if (offset > p_position) {
 					return it;
 				}
 			} break;
@@ -588,7 +588,8 @@ void RichTextLabel::_shape_line(ItemFrame *p_frame, int p_line, const Ref<Font> 
 					offset.x += table->columns[column].width + hseparation + frame->padding.size.x;
 
 					row_height = MAX(yofs, row_height);
-					if (column == col_count - 1) {
+					// Add row height after last column of the row or last cell of the table.
+					if (column == col_count - 1 || E->next() == nullptr) {
 						offset.x = 0;
 						row_height += vseparation;
 						table->total_height += row_height;
@@ -1117,7 +1118,8 @@ void RichTextLabel::_find_click(ItemFrame *p_frame, const Point2i &p_click, Item
 
 	Point2 ofs = text_rect.get_position() + Vector2(0, main->lines[from_line].offset.y - vofs);
 	while (ofs.y < size.height && from_line < main->lines.size()) {
-		ofs.y += _find_click_in_line(p_frame, from_line, ofs, text_rect.size.x, p_click, r_click_frame, r_click_line, r_click_item, r_click_char);
+		_find_click_in_line(p_frame, from_line, ofs, text_rect.size.x, p_click, r_click_frame, r_click_line, r_click_item, r_click_char);
+		ofs.y += main->lines[from_line].text_buf->get_size().y;
 		if (((r_click_item != nullptr) && ((*r_click_item) != nullptr)) || ((r_click_frame != nullptr) && ((*r_click_frame) != nullptr))) {
 			if (r_outside != nullptr) {
 				*r_outside = false;
@@ -1244,8 +1246,19 @@ float RichTextLabel::_find_click_in_line(ItemFrame *p_frame, int p_line, const V
 		if (r_click_item != nullptr) {
 			Item *it = p_frame->lines[p_line].from;
 			Item *it_to = (p_line + 1 < p_frame->lines.size()) ? p_frame->lines[p_line + 1].from : nullptr;
-			it = _get_item_at_pos(it, it_to, char_pos);
-			*r_click_item = it;
+			if (char_pos == p_frame->lines[p_line].char_count) {
+				// Selection after the end of line, select last item.
+				if (it_to != nullptr) {
+					*r_click_item = _get_prev_item(it_to);
+				} else {
+					for (Item *i = it; i && i != it_to; i = _get_next_item(i)) {
+						*r_click_item = i;
+					}
+				}
+			} else {
+				// Selection in the line.
+				*r_click_item = _get_item_at_pos(it, it_to, char_pos);
+			}
 		}
 
 		if (r_click_frame != nullptr) {
@@ -3634,6 +3647,7 @@ void RichTextLabel::set_use_bbcode(bool p_enable) {
 	}
 	use_bbcode = p_enable;
 	set_bbcode(bbcode);
+	notify_property_list_changed();
 }
 
 bool RichTextLabel::is_using_bbcode() const {
@@ -3769,6 +3783,12 @@ int RichTextLabel::get_content_height() const {
 		total_height = main->lines[main->lines.size() - 1].offset.y + main->lines[main->lines.size() - 1].text_buf->get_size().y;
 	}
 	return total_height;
+}
+
+void RichTextLabel::_validate_property(PropertyInfo &property) const {
+	if (!use_bbcode && property.name == "bbcode_text") {
+		property.usage = PROPERTY_USAGE_NOEDITOR;
+	}
 }
 
 void RichTextLabel::_bind_methods() {

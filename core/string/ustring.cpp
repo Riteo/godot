@@ -1764,7 +1764,7 @@ bool String::parse_utf8(const char *p_utf8, int p_len) {
 
 		if (skip) {
 			_UNICERROR("no space left");
-			return true; //not enough spac
+			return true; //not enough space
 		}
 	}
 
@@ -4394,6 +4394,18 @@ String String::property_name_encode() const {
 	return *this;
 }
 
+// Changes made to the set of invalid characters must also be reflected in the String documentation.
+const String String::invalid_node_name_characters = ". : @ / \"";
+
+String String::validate_node_name() const {
+	Vector<String> chars = String::invalid_node_name_characters.split(" ");
+	String name = this->replace(chars[0], "");
+	for (int i = 1; i < chars.size(); i++) {
+		name = name.replace(chars[i], "");
+	}
+	return name;
+}
+
 String String::get_basename() const {
 	int pos = rfind(".");
 	if (pos < 0 || pos < MAX(rfind("/"), rfind("\\"))) {
@@ -4468,7 +4480,7 @@ String String::sprintf(const Array &values, bool *error) const {
 	for (; *self; self++) {
 		const char32_t c = *self;
 
-		if (in_format) { // We have % - lets see what else we get.
+		if (in_format) { // We have % - let's see what else we get.
 			switch (c) {
 				case '%': { // Replace %% with %
 					formatted += chr(c);

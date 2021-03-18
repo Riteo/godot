@@ -884,6 +884,7 @@ void fill_default_theme(Ref<Theme> &theme, const Ref<Font> &default_font, const 
 	theme->set_icon("color_sample", "ColorPicker", make_icon(color_picker_sample_png));
 	theme->set_icon("preset_bg", "ColorPicker", make_icon(mini_checkerboard_png));
 	theme->set_icon("overbright_indicator", "ColorPicker", make_icon(overbright_indicator_png));
+	theme->set_icon("bar_arrow", "ColorPicker", make_icon(bar_arrow_png));
 
 	theme->set_icon("bg", "ColorPickerButton", make_icon(mini_checkerboard_png));
 
@@ -1017,7 +1018,7 @@ void make_default_theme(bool p_hidpi, Ref<Font> p_font) {
 	Ref<StyleBox> default_style;
 	Ref<Texture2D> default_icon;
 	Ref<Font> default_font;
-	int default_font_size = 16;
+	int default_font_size = 14;
 	if (p_font.is_valid()) {
 		default_font = p_font;
 	} else if (p_hidpi) {
