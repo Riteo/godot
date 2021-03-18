@@ -14,7 +14,7 @@ stuff yet, but I'll slowly add whatever I'll find useful.
 Other branches are usually PRs.
 
 ## Obtaining the engine
-For now, you can only compile it from source.
+As now you can only compile it from source.
 For instructions on how to build it, check out the
 [official documentation](https://docs.godotengine.org/en/latest/development/compiling/).
 
