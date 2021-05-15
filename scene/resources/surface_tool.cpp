@@ -663,6 +663,8 @@ void SurfaceTool::deindex() {
 }
 
 void SurfaceTool::_create_list(const Ref<Mesh> &p_existing, int p_surface, LocalVector<Vertex> *r_vertex, LocalVector<int> *r_index, uint32_t &lformat) {
+	ERR_FAIL_NULL_MSG(p_existing, "First argument in SurfaceTool::_create_list() must be a valid object of type Mesh");
+
 	Array arr = p_existing->surface_get_arrays(p_surface);
 	ERR_FAIL_COND(arr.size() != RS::ARRAY_MAX);
 	_create_list_from_arrays(arr, r_vertex, r_index, lformat);
@@ -824,6 +826,8 @@ void SurfaceTool::create_from_triangle_arrays(const Array &p_arrays) {
 }
 
 void SurfaceTool::create_from(const Ref<Mesh> &p_existing, int p_surface) {
+	ERR_FAIL_NULL_MSG(p_existing, "First argument in SurfaceTool::create_from() must be a valid object of type Mesh");
+
 	clear();
 	primitive = p_existing->surface_get_primitive_type(p_surface);
 	_create_list(p_existing, p_surface, &vertex_array, &index_array, format);
@@ -831,6 +835,8 @@ void SurfaceTool::create_from(const Ref<Mesh> &p_existing, int p_surface) {
 }
 
 void SurfaceTool::create_from_blend_shape(const Ref<Mesh> &p_existing, int p_surface, const String &p_blend_shape_name) {
+	ERR_FAIL_NULL_MSG(p_existing, "First argument in SurfaceTool::create_from_blend_shape() must be a valid object of type Mesh");
+
 	clear();
 	primitive = p_existing->surface_get_primitive_type(p_surface);
 	Array arr = p_existing->surface_get_blend_shape_arrays(p_surface);
@@ -851,6 +857,8 @@ void SurfaceTool::create_from_blend_shape(const Ref<Mesh> &p_existing, int p_sur
 }
 
 void SurfaceTool::append_from(const Ref<Mesh> &p_existing, int p_surface, const Transform &p_xform) {
+	ERR_FAIL_NULL_MSG(p_existing, "First argument in SurfaceTool::append_from() must be a valid object of type Mesh");
+
 	if (vertex_array.size() == 0) {
 		primitive = p_existing->surface_get_primitive_type(p_surface);
 		format = 0;
@@ -1059,6 +1067,10 @@ void SurfaceTool::set_material(const Ref<Material> &p_material) {
 	material = p_material;
 }
 
+Ref<Material> SurfaceTool::get_material() const {
+	return material;
+}
+
 void SurfaceTool::clear() {
 	begun = false;
 	primitive = Mesh::PRIMITIVE_LINES;
@@ -1088,6 +1100,10 @@ void SurfaceTool::set_custom_format(int p_index, CustomFormat p_format) {
 	ERR_FAIL_COND(begun);
 	last_custom_format[p_index] = p_format;
 }
+
+Mesh::PrimitiveType SurfaceTool::get_primitive() const {
+	return primitive;
+}
 SurfaceTool::CustomFormat SurfaceTool::get_custom_format(int p_index) const {
 	ERR_FAIL_INDEX_V(p_index, RS::ARRAY_CUSTOM_COUNT, CUSTOM_MAX);
 	return last_custom_format[p_index];
@@ -1097,7 +1113,7 @@ void SurfaceTool::optimize_indices_for_cache() {
 	ERR_FAIL_COND(index_array.size() == 0);
 
 	LocalVector old_index_array = index_array;
-	zeromem(index_array.ptr(), index_array.size() * sizeof(int));
+	memset(index_array.ptr(), 0, index_array.size() * sizeof(int));
 	optimize_vertex_cache_func((unsigned int *)index_array.ptr(), (unsigned int *)old_index_array.ptr(), old_index_array.size(), vertex_array.size());
 }
 
@@ -1174,6 +1190,7 @@ void SurfaceTool::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("generate_lod", "nd_threshold", "target_index_count"), &SurfaceTool::generate_lod, DEFVAL(3));
 
 	ClassDB::bind_method(D_METHOD("set_material", "material"), &SurfaceTool::set_material);
+	ClassDB::bind_method(D_METHOD("get_primitive"), &SurfaceTool::get_primitive);
 
 	ClassDB::bind_method(D_METHOD("clear"), &SurfaceTool::clear);
 

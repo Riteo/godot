@@ -53,6 +53,8 @@ void BaseButton::_unpress_group() {
 }
 
 void BaseButton::_gui_input(Ref<InputEvent> p_event) {
+	ERR_FAIL_COND(p_event.is_null());
+
 	if (status.disabled) { // no interaction with disabled button
 		return;
 	}
@@ -153,6 +155,9 @@ void BaseButton::on_action_event(Ref<InputEvent> p_event) {
 				}
 				status.pressed = !status.pressed;
 				_unpress_group();
+				if (button_group.is_valid()) {
+					button_group->emit_signal("pressed", this);
+				}
 				_toggled(status.pressed);
 				_pressed();
 			}
@@ -216,6 +221,9 @@ void BaseButton::set_pressed(bool p_pressed) {
 
 	if (p_pressed) {
 		_unpress_group();
+		if (button_group.is_valid()) {
+			button_group->emit_signal("pressed", this);
+		}
 	}
 	_toggled(status.pressed);
 
@@ -323,6 +331,8 @@ Ref<Shortcut> BaseButton::get_shortcut() const {
 }
 
 void BaseButton::_unhandled_key_input(Ref<InputEvent> p_event) {
+	ERR_FAIL_COND(p_event.is_null());
+
 	if (!_is_focus_owner_in_shorcut_context()) {
 		return;
 	}
@@ -483,6 +493,7 @@ BaseButton *ButtonGroup::get_pressed_button() {
 void ButtonGroup::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_pressed_button"), &ButtonGroup::get_pressed_button);
 	ClassDB::bind_method(D_METHOD("get_buttons"), &ButtonGroup::_get_buttons);
+	ADD_SIGNAL(MethodInfo("pressed", PropertyInfo(Variant::OBJECT, "button")));
 }
 
 ButtonGroup::ButtonGroup() {

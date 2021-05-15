@@ -10,7 +10,7 @@
 		Resources are created using the [code]*_create[/code] functions.
 		All objects are drawn to a viewport. You can use the [Viewport] attached to the [SceneTree] or you can create one yourself with [method viewport_create]. When using a custom scenario or canvas, the scenario or canvas needs to be attached to the viewport using [method viewport_set_scenario] or [method viewport_attach_canvas].
 		In 3D, all visual objects must be associated with a scenario. The scenario is a visual representation of the world. If accessing the rendering server from a running game, the scenario can be accessed from the scene tree from any [Node3D] node with [method Node3D.get_world_3d]. Otherwise, a scenario can be created with [method scenario_create].
-		Similarly in 2D, a canvas is needed to draw all canvas items.
+		Similarly, in 2D, a canvas is needed to draw all canvas items.
 		In 3D, all visible objects are comprised of a resource and an instance. A resource can be a mesh, a particle system, a light, or any other 3D object. In order to be visible resources must be attached to an instance using [method instance_set_base]. The instance must also be attached to the scenario using [method instance_set_scenario] in order to be visible.
 		In 2D, all visible objects are some form of canvas item. In order to be visible, a canvas item needs to be the child of a canvas attached to a viewport, or it needs to be the child of another canvas item that is eventually attached to the canvas.
 	</description>
@@ -1292,7 +1292,7 @@
 			<argument index="1" name="margin" type="float">
 			</argument>
 			<description>
-				Sets a margin to increase the size of the AABB when culling objects from the view frustum. This allows you avoid culling objects that fall outside the view frustum. Equivalent to [member GeometryInstance3D.extra_cull_margin].
+				Sets a margin to increase the size of the AABB when culling objects from the view frustum. This allows you to avoid culling objects that fall outside the view frustum. Equivalent to [member GeometryInstance3D.extra_cull_margin].
 			</description>
 		</method>
 		<method name="instance_set_layer_mask">
@@ -1317,7 +1317,7 @@
 				Sets the scenario that the instance is in. The scenario is the 3D world that the objects will be displayed in.
 			</description>
 		</method>
-		<method name="instance_set_surface_material">
+		<method name="instance_set_surface_override_material">
 			<return type="void">
 			</return>
 			<argument index="0" name="instance" type="RID">
@@ -1327,7 +1327,7 @@
 			<argument index="2" name="material" type="RID">
 			</argument>
 			<description>
-				Sets the material of a specific surface. Equivalent to [method MeshInstance3D.set_surface_material].
+				Sets the override material of a specific surface. Equivalent to [method MeshInstance3D.set_surface_override_material].
 			</description>
 		</method>
 		<method name="instance_set_transform">
@@ -1520,7 +1520,7 @@
 			<argument index="1" name="enabled" type="bool">
 			</argument>
 			<description>
-				If [code]true[/code], reverses the backface culling of the mesh. This can be useful when you have a flat mesh that has a light behind it. If you need to cast a shadow on both sides of the mesh, set the mesh to use double sided shadows with [method instance_geometry_set_cast_shadows_setting]. Equivalent to [member Light3D.shadow_reverse_cull_face].
+				If [code]true[/code], reverses the backface culling of the mesh. This can be useful when you have a flat mesh that has a light behind it. If you need to cast a shadow on both sides of the mesh, set the mesh to use double-sided shadows with [method instance_geometry_set_cast_shadows_setting]. Equivalent to [member Light3D.shadow_reverse_cull_face].
 			</description>
 		</method>
 		<method name="light_set_shadow">
@@ -1999,6 +1999,24 @@
 				Sets the number of instances visible at a given time. If -1, all instances that have been allocated are drawn. Equivalent to [member MultiMesh.visible_instance_count].
 			</description>
 		</method>
+		<method name="occluder_create">
+			<return type="RID">
+			</return>
+			<description>
+			</description>
+		</method>
+		<method name="occluder_set_mesh">
+			<return type="void">
+			</return>
+			<argument index="0" name="arg0" type="RID">
+			</argument>
+			<argument index="1" name="arg1" type="PackedVector3Array">
+			</argument>
+			<argument index="2" name="arg2" type="PackedInt32Array">
+			</argument>
+			<description>
+			</description>
+		</method>
 		<method name="omni_light_create">
 			<return type="RID">
 			</return>
@@ -2204,7 +2222,7 @@
 			<argument index="1" name="time" type="float">
 			</argument>
 			<description>
-				Sets the preprocess time for the particles animation. This lets you delay starting an animation until after the particles have begun emitting. Equivalent to [member GPUParticles3D.preprocess].
+				Sets the preprocess time for the particles' animation. This lets you delay starting an animation until after the particles have begun emitting. Equivalent to [member GPUParticles3D.preprocess].
 			</description>
 		</method>
 		<method name="particles_set_process_material">
@@ -2410,6 +2428,16 @@
 				Creates a scenario and adds it to the RenderingServer. It can be accessed with the RID that is returned. This RID will be used in all [code]scenario_*[/code] RenderingServer functions.
 				Once finished with your RID, you will want to free the RID using the RenderingServer's [method free_rid] static method.
 				The scenario is the 3D world that all the visual instances exist in.
+			</description>
+		</method>
+		<method name="scenario_set_camera_effects">
+			<return type="void">
+			</return>
+			<argument index="0" name="scenario" type="RID">
+			</argument>
+			<argument index="1" name="effects" type="RID">
+			</argument>
+			<description>
 			</description>
 		</method>
 		<method name="scenario_set_debug">
@@ -2897,6 +2925,22 @@
 				Sets the anti-aliasing mode. See [enum ViewportMSAA] for options.
 			</description>
 		</method>
+		<method name="viewport_set_occlusion_culling_build_quality">
+			<return type="void">
+			</return>
+			<argument index="0" name="quality" type="int" enum="RenderingServer.ViewportOcclusionCullingBuildQuality">
+			</argument>
+			<description>
+			</description>
+		</method>
+		<method name="viewport_set_occlusion_rays_per_thread">
+			<return type="void">
+			</return>
+			<argument index="0" name="rays_per_thread" type="int">
+			</argument>
+			<description>
+			</description>
+		</method>
 		<method name="viewport_set_parent_viewport">
 			<return type="void">
 			</return>
@@ -2993,6 +3037,16 @@
 			</description>
 		</method>
 		<method name="viewport_set_use_debanding">
+			<return type="void">
+			</return>
+			<argument index="0" name="viewport" type="RID">
+			</argument>
+			<argument index="1" name="enable" type="bool">
+			</argument>
+			<description>
+			</description>
+		</method>
+		<method name="viewport_set_use_occlusion_culling">
 			<return type="void">
 			</return>
 			<argument index="0" name="viewport" type="RID">
@@ -3454,6 +3508,8 @@
 		</constant>
 		<constant name="VIEWPORT_DEBUG_DRAW_GI_BUFFER" value="17" enum="ViewportDebugDraw">
 		</constant>
+		<constant name="VIEWPORT_DEBUG_DRAW_OCCLUDERS" value="23" enum="ViewportDebugDraw">
+		</constant>
 		<constant name="SKY_MODE_QUALITY" value="1" enum="SkyMode">
 			Uses high quality importance sampling to process the radiance map. In general, this results in much higher quality than [constant Sky.PROCESS_MODE_REALTIME] but takes much longer to generate. This should not be used if you plan on changing the sky at runtime. If you are finding that the reflection is not blurry enough and is showing sparkles or fireflies, try increasing [member ProjectSettings.rendering/reflections/sky_reflections/ggx_samples].
 		</constant>
@@ -3606,6 +3662,12 @@
 		<constant name="SCENARIO_DEBUG_SHADELESS" value="3" enum="ScenarioDebugMode">
 			Draw all objects without shading. Equivalent to setting all objects shaders to [code]unshaded[/code].
 		</constant>
+		<constant name="VIEWPORT_OCCLUSION_BUILD_QUALITY_LOW" value="0" enum="ViewportOcclusionCullingBuildQuality">
+		</constant>
+		<constant name="VIEWPORT_OCCLUSION_BUILD_QUALITY_MEDIUM" value="1" enum="ViewportOcclusionCullingBuildQuality">
+		</constant>
+		<constant name="VIEWPORT_OCCLUSION_BUILD_QUALITY_HIGH" value="2" enum="ViewportOcclusionCullingBuildQuality">
+		</constant>
 		<constant name="INSTANCE_NONE" value="0" enum="InstanceType">
 			The instance does not have a type.
 		</constant>
@@ -3638,7 +3700,9 @@
 		<constant name="INSTANCE_LIGHTMAP" value="10" enum="InstanceType">
 			The instance is a lightmap.
 		</constant>
-		<constant name="INSTANCE_MAX" value="11" enum="InstanceType">
+		<constant name="INSTANCE_OCCLUDER" value="11" enum="InstanceType">
+		</constant>
+		<constant name="INSTANCE_MAX" value="12" enum="InstanceType">
 			Represents the size of the [enum InstanceType] enum.
 		</constant>
 		<constant name="INSTANCE_GEOMETRY_MASK" value="30" enum="InstanceType">
@@ -3653,7 +3717,9 @@
 		<constant name="INSTANCE_FLAG_DRAW_NEXT_FRAME_IF_VISIBLE" value="2" enum="InstanceFlags">
 			When set, manually requests to draw geometry on next frame.
 		</constant>
-		<constant name="INSTANCE_FLAG_MAX" value="3" enum="InstanceFlags">
+		<constant name="INSTANCE_FLAG_IGNORE_OCCLUSION_CULLING" value="3" enum="InstanceFlags">
+		</constant>
+		<constant name="INSTANCE_FLAG_MAX" value="4" enum="InstanceFlags">
 			Represents the size of the [enum InstanceFlags] enum.
 		</constant>
 		<constant name="SHADOW_CASTING_SETTING_OFF" value="0" enum="ShadowCastingSetting">

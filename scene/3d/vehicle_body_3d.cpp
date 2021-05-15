@@ -102,17 +102,14 @@ void VehicleWheel3D::_notification(int p_what) {
 	}
 }
 
-String VehicleWheel3D::get_configuration_warning() const {
-	String warning = Node3D::get_configuration_warning();
+TypedArray<String> VehicleWheel3D::get_configuration_warnings() const {
+	TypedArray<String> warnings = Node::get_configuration_warnings();
 
 	if (!Object::cast_to<VehicleBody3D>(get_parent())) {
-		if (!warning.is_empty()) {
-			warning += "\n\n";
-		}
-		warning += TTR("VehicleWheel3D serves to provide a wheel system to a VehicleBody3D. Please use it as a child of a VehicleBody3D.");
+		warnings.push_back(TTR("VehicleWheel3D serves to provide a wheel system to a VehicleBody3D. Please use it as a child of a VehicleBody3D."));
 	}
 
-	return warning;
+	return warnings;
 }
 
 void VehicleWheel3D::_update(PhysicsDirectBodyState3D *s) {
@@ -806,6 +803,7 @@ void VehicleBody3D::_direct_state_changed(Object *p_state) {
 	RigidBody3D::_direct_state_changed(p_state);
 
 	state = Object::cast_to<PhysicsDirectBodyState3D>(p_state);
+	ERR_FAIL_NULL_MSG(state, "Method '_direct_state_changed' must receive a valid PhysicsDirectBodyState3D object as argument");
 
 	real_t step = state->get_step();
 
@@ -925,7 +923,7 @@ void VehicleBody3D::_bind_methods() {
 
 VehicleBody3D::VehicleBody3D() {
 	exclude.insert(get_rid());
-	//PhysicsServer3D::get_singleton()->body_set_force_integration_callback(get_rid(), this, "_direct_state_changed");
+	//PhysicsServer3D::get_singleton()->body_set_force_integration_callback(get_rid(), callable_mp(this, &VehicleBody3D::_direct_state_changed));
 
 	set_mass(40);
 }

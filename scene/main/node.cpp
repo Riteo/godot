@@ -591,7 +591,7 @@ Variant Node::_rpc_bind(const Variant **p_args, int p_argcount, Callable::CallEr
 	if (p_args[0]->get_type() != Variant::STRING_NAME) {
 		r_error.error = Callable::CallError::CALL_ERROR_INVALID_ARGUMENT;
 		r_error.argument = 0;
-		r_error.expected = Variant::STRING;
+		r_error.expected = Variant::STRING_NAME;
 		return Variant();
 	}
 
@@ -620,7 +620,7 @@ Variant Node::_rpc_id_bind(const Variant **p_args, int p_argcount, Callable::Cal
 	if (p_args[1]->get_type() != Variant::STRING_NAME) {
 		r_error.error = Callable::CallError::CALL_ERROR_INVALID_ARGUMENT;
 		r_error.argument = 1;
-		r_error.expected = Variant::STRING;
+		r_error.expected = Variant::STRING_NAME;
 		return Variant();
 	}
 
@@ -643,7 +643,7 @@ Variant Node::_rpc_unreliable_bind(const Variant **p_args, int p_argcount, Calla
 	if (p_args[0]->get_type() != Variant::STRING_NAME) {
 		r_error.error = Callable::CallError::CALL_ERROR_INVALID_ARGUMENT;
 		r_error.argument = 0;
-		r_error.expected = Variant::STRING;
+		r_error.expected = Variant::STRING_NAME;
 		return Variant();
 	}
 
@@ -672,7 +672,7 @@ Variant Node::_rpc_unreliable_id_bind(const Variant **p_args, int p_argcount, Ca
 	if (p_args[1]->get_type() != Variant::STRING_NAME) {
 		r_error.error = Callable::CallError::CALL_ERROR_INVALID_ARGUMENT;
 		r_error.argument = 1;
-		r_error.expected = Variant::STRING;
+		r_error.expected = Variant::STRING_NAME;
 		return Variant();
 	}
 
@@ -1690,7 +1690,7 @@ NodePath Node::get_path_to(const Node *p_node) const {
 		n = n->data.parent;
 	}
 
-	path.invert();
+	path.reverse();
 
 	return NodePath(path, false);
 }
@@ -1711,7 +1711,7 @@ NodePath Node::get_path() const {
 		n = n->data.parent;
 	}
 
-	path.invert();
+	path.reverse();
 
 	data.path_cache = memnew(NodePath(path, true));
 
@@ -1968,8 +1968,9 @@ Node *Node::get_deepest_editable_node(Node *p_start_node) const {
 	Node *node = p_start_node;
 
 	while (iterated_item->get_owner() && iterated_item->get_owner() != this) {
-		if (!is_editable_instance(iterated_item->get_owner()))
+		if (!is_editable_instance(iterated_item->get_owner())) {
 			node = iterated_item->get_owner();
+		}
 
 		iterated_item = iterated_item->get_owner();
 	}
@@ -2633,15 +2634,27 @@ void Node::clear_internal_tree_resource_paths() {
 	}
 }
 
-String Node::get_configuration_warning() const {
+TypedArray<String> Node::get_configuration_warnings() const {
 	if (get_script_instance() && get_script_instance()->get_script().is_valid() &&
-			get_script_instance()->get_script()->is_tool() && get_script_instance()->has_method("_get_configuration_warning")) {
-		return get_script_instance()->call("_get_configuration_warning");
+			get_script_instance()->get_script()->is_tool() && get_script_instance()->has_method("_get_configuration_warnings")) {
+		return get_script_instance()->call("_get_configuration_warnings");
 	}
-	return String();
+	return Array();
 }
 
-void Node::update_configuration_warning() {
+String Node::get_configuration_warnings_as_string() const {
+	TypedArray<String> warnings = get_configuration_warnings();
+	String all_warnings = String();
+	for (int i = 0; i < warnings.size(); i++) {
+		if (i > 0) {
+			all_warnings += "\n\n";
+		}
+		all_warnings += String(warnings[i]);
+	}
+	return all_warnings;
+}
+
+void Node::update_configuration_warnings() {
 #ifdef TOOLS_ENABLED
 	if (!is_inside_tree()) {
 		return;
@@ -2797,7 +2810,7 @@ void Node::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("rset_unreliable", "property", "value"), &Node::rset_unreliable);
 	ClassDB::bind_method(D_METHOD("rset_unreliable_id", "peer_id", "property", "value"), &Node::rset_unreliable_id);
 
-	ClassDB::bind_method(D_METHOD("update_configuration_warning"), &Node::update_configuration_warning);
+	ClassDB::bind_method(D_METHOD("update_configuration_warnings"), &Node::update_configuration_warnings);
 
 	BIND_CONSTANT(NOTIFICATION_ENTER_TREE);
 	BIND_CONSTANT(NOTIFICATION_EXIT_TREE);
@@ -2873,7 +2886,7 @@ void Node::_bind_methods() {
 	BIND_VMETHOD(MethodInfo("_input", PropertyInfo(Variant::OBJECT, "event", PROPERTY_HINT_RESOURCE_TYPE, "InputEvent")));
 	BIND_VMETHOD(MethodInfo("_unhandled_input", PropertyInfo(Variant::OBJECT, "event", PROPERTY_HINT_RESOURCE_TYPE, "InputEvent")));
 	BIND_VMETHOD(MethodInfo("_unhandled_key_input", PropertyInfo(Variant::OBJECT, "event", PROPERTY_HINT_RESOURCE_TYPE, "InputEventKey")));
-	BIND_VMETHOD(MethodInfo(Variant::STRING, "_get_configuration_warning"));
+	BIND_VMETHOD(MethodInfo(PropertyInfo(Variant::ARRAY, "", PROPERTY_HINT_ARRAY_TYPE, "String"), "_get_configuration_warnings"));
 }
 
 String Node::_get_name_num_separator() {

@@ -143,7 +143,7 @@
 				Returns the command-line arguments passed to the engine.
 				Command-line arguments can be written in any form, including both [code]--key value[/code] and [code]--key=value[/code] forms so they can be properly parsed, as long as custom command-line arguments do not conflict with engine arguments.
 				You can also incorporate environment variables using the [method get_environment] method.
-				You can set [code]editor/main_run_args[/code] in the Project Settings to define command-line arguments to be passed by the editor when running the project.
+				You can set [member ProjectSettings.editor/run/main_run_args] to define command-line arguments to be passed by the editor when running the project.
 				Here's a minimal example on how to parse command-line arguments into a dictionary using the [code]--key=value[/code] form for arguments:
 				[codeblocks]
 				[gdscript]
@@ -244,9 +244,9 @@
 			</return>
 			<description>
 				Returns the host OS locale as a string of the form [code]language_Script_COUNTRY_VARIANT@extra[/code].
-				[code]language[/code] - 2 or 3 letter [url=https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes]language code[/url], in lower case.
-				[code]Script[/code] - optional, 4 letter [url=https://en.wikipedia.org/wiki/ISO_15924]script code[/url], in title case.
-				[code]COUNTRY[/code] - optional, 2 or 3 letter [url=https://en.wikipedia.org/wiki/ISO_3166-1]country code[/url], in upper case.
+				[code]language[/code] - 2 or 3-letter [url=https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes]language code[/url], in lower case.
+				[code]Script[/code] - optional, 4-letter [url=https://en.wikipedia.org/wiki/ISO_15924]script code[/url], in title case.
+				[code]COUNTRY[/code] - optional, 2 or 3-letter [url=https://en.wikipedia.org/wiki/ISO_3166-1]country code[/url], in upper case.
 				[code]VARIANT[/code] - optional, language variant, region and sort order. Variant can have any number of underscored key words.
 				[code]extra[/code] - optional, semicolon separated list of additional key words. Currency, calendar, sort order and numbering system information.
 			</description>
@@ -348,6 +348,7 @@
 			</return>
 			<description>
 				Returns a string that is unique to the device.
+				[b]Note:[/b] This string may change without notice if the user reinstalls/upgrades their operating system or changes their hardware. This means it should generally not be used to encrypt persistent data as the data saved prior to an unexpected ID change would become inaccessible. The returned string may also be falsified using external programs, so do not rely on the string returned by [method get_unique_id] for security purposes.
 				[b]Note:[/b] Returns an empty string on HTML5 and UWP, as this method isn't implemented on those platforms yet.
 			</description>
 		</method>
@@ -355,7 +356,7 @@
 			<return type="float">
 			</return>
 			<description>
-				Returns the current UNIX epoch timestamp.
+				Returns the current UNIX epoch timestamp in seconds.
 				[b]Important:[/b] This is the system clock that the user can manully set. [b]Never use[/b] this method for precise time calculation since its results are also subject to automatic adjustments by the operating system. [b]Always use[/b] [method get_ticks_usec] or [method get_ticks_msec] for precise time calculation instead, since they are guaranteed to be monotonic (i.e. never decrease).
 			</description>
 		</method>

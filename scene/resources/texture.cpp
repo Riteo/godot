@@ -71,7 +71,7 @@ void Texture2D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("draw", "canvas_item", "position", "modulate", "transpose"), &Texture2D::draw, DEFVAL(Color(1, 1, 1)), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("draw_rect", "canvas_item", "rect", "tile", "modulate", "transpose"), &Texture2D::draw_rect, DEFVAL(Color(1, 1, 1)), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("draw_rect_region", "canvas_item", "rect", "src_rect", "modulate", "transpose", "clip_uv"), &Texture2D::draw_rect_region, DEFVAL(Color(1, 1, 1)), DEFVAL(false), DEFVAL(true));
-	ClassDB::bind_method(D_METHOD("get_data"), &Texture2D::get_data);
+	ClassDB::bind_method(D_METHOD("get_image"), &Texture2D::get_image);
 
 	ADD_GROUP("", "");
 }
@@ -116,7 +116,7 @@ bool ImageTexture::_set(const StringName &p_name, const Variant &p_value) {
 
 bool ImageTexture::_get(const StringName &p_name, Variant &r_ret) const {
 	if (p_name == "image") {
-		r_ret = get_data();
+		r_ret = get_image();
 	} else if (p_name == "size") {
 		r_ret = Size2(w, h);
 	} else {
@@ -200,7 +200,7 @@ void ImageTexture::_resource_path_changed() {
 	String path = get_path();
 }
 
-Ref<Image> ImageTexture::get_data() const {
+Ref<Image> ImageTexture::get_image() const {
 	if (image_stored) {
 		return RenderingServer::get_singleton()->texture_2d_get(texture);
 	} else {
@@ -251,7 +251,7 @@ void ImageTexture::draw_rect_region(RID p_canvas_item, const Rect2 &p_rect, cons
 
 bool ImageTexture::is_pixel_opaque(int p_x, int p_y) const {
 	if (!alpha_cache.is_valid()) {
-		Ref<Image> img = get_data();
+		Ref<Image> img = get_image();
 		if (img.is_valid()) {
 			if (img->is_compressed()) { //must decompress, if compressed
 				Ref<Image> decom = img->duplicate();
@@ -410,7 +410,7 @@ Ref<Image> StreamTexture2D::load_image_from_file(FileAccess *f, int p_size_limit
 					Vector<uint8_t> id = mipmap_images[i]->get_data();
 					int len = id.size();
 					const uint8_t *r = id.ptr();
-					copymem(&wr[ofs], r, len);
+					memcpy(&wr[ofs], r, len);
 					ofs += len;
 				}
 			}
@@ -661,7 +661,7 @@ bool StreamTexture2D::has_alpha() const {
 	return false;
 }
 
-Ref<Image> StreamTexture2D::get_data() const {
+Ref<Image> StreamTexture2D::get_image() const {
 	if (texture.is_valid()) {
 		return RS::get_singleton()->texture_2d_get(texture);
 	} else {
@@ -671,7 +671,7 @@ Ref<Image> StreamTexture2D::get_data() const {
 
 bool StreamTexture2D::is_pixel_opaque(int p_x, int p_y) const {
 	if (!alpha_cache.is_valid()) {
-		Ref<Image> img = get_data();
+		Ref<Image> img = get_image();
 		if (img.is_valid()) {
 			if (img->is_compressed()) { //must decompress, if compressed
 				Ref<Image> decom = img->duplicate();
@@ -1405,185 +1405,6 @@ MeshTexture::MeshTexture() {
 
 //////////////////////////////////////////
 
-int LargeTexture::get_width() const {
-	return size.width;
-}
-
-int LargeTexture::get_height() const {
-	return size.height;
-}
-
-RID LargeTexture::get_rid() const {
-	return RID();
-}
-
-bool LargeTexture::has_alpha() const {
-	for (int i = 0; i < pieces.size(); i++) {
-		if (pieces[i].texture->has_alpha()) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
-int LargeTexture::add_piece(const Point2 &p_offset, const Ref<Texture2D> &p_texture) {
-	ERR_FAIL_COND_V(p_texture.is_null(), -1);
-	Piece p;
-	p.offset = p_offset;
-	p.texture = p_texture;
-	pieces.push_back(p);
-
-	return pieces.size() - 1;
-}
-
-void LargeTexture::set_piece_offset(int p_idx, const Point2 &p_offset) {
-	ERR_FAIL_INDEX(p_idx, pieces.size());
-	pieces.write[p_idx].offset = p_offset;
-};
-
-void LargeTexture::set_piece_texture(int p_idx, const Ref<Texture2D> &p_texture) {
-	ERR_FAIL_COND(p_texture == this);
-	ERR_FAIL_COND(p_texture.is_null());
-	ERR_FAIL_INDEX(p_idx, pieces.size());
-	pieces.write[p_idx].texture = p_texture;
-};
-
-void LargeTexture::set_size(const Size2 &p_size) {
-	size = p_size;
-}
-
-void LargeTexture::clear() {
-	pieces.clear();
-	size = Size2i();
-}
-
-Array LargeTexture::_get_data() const {
-	Array arr;
-	for (int i = 0; i < pieces.size(); i++) {
-		arr.push_back(pieces[i].offset);
-		arr.push_back(pieces[i].texture);
-	}
-	arr.push_back(Size2(size));
-	return arr;
-}
-
-void LargeTexture::_set_data(const Array &p_array) {
-	ERR_FAIL_COND(p_array.size() < 1);
-	ERR_FAIL_COND(!(p_array.size() & 1));
-	clear();
-	for (int i = 0; i < p_array.size() - 1; i += 2) {
-		add_piece(p_array[i], p_array[i + 1]);
-	}
-	size = Size2(p_array[p_array.size() - 1]);
-}
-
-int LargeTexture::get_piece_count() const {
-	return pieces.size();
-}
-
-Vector2 LargeTexture::get_piece_offset(int p_idx) const {
-	ERR_FAIL_INDEX_V(p_idx, pieces.size(), Vector2());
-	return pieces[p_idx].offset;
-}
-
-Ref<Texture2D> LargeTexture::get_piece_texture(int p_idx) const {
-	ERR_FAIL_INDEX_V(p_idx, pieces.size(), Ref<Texture2D>());
-	return pieces[p_idx].texture;
-}
-
-Ref<Image> LargeTexture::to_image() const {
-	Ref<Image> img = memnew(Image(this->get_width(), this->get_height(), false, Image::FORMAT_RGBA8));
-	for (int i = 0; i < pieces.size(); i++) {
-		Ref<Image> src_img = pieces[i].texture->get_data();
-		img->blit_rect(src_img, Rect2(0, 0, src_img->get_width(), src_img->get_height()), pieces[i].offset);
-	}
-
-	return img;
-}
-
-void LargeTexture::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("add_piece", "ofs", "texture"), &LargeTexture::add_piece);
-	ClassDB::bind_method(D_METHOD("set_piece_offset", "idx", "ofs"), &LargeTexture::set_piece_offset);
-	ClassDB::bind_method(D_METHOD("set_piece_texture", "idx", "texture"), &LargeTexture::set_piece_texture);
-	ClassDB::bind_method(D_METHOD("set_size", "size"), &LargeTexture::set_size);
-	ClassDB::bind_method(D_METHOD("clear"), &LargeTexture::clear);
-
-	ClassDB::bind_method(D_METHOD("get_piece_count"), &LargeTexture::get_piece_count);
-	ClassDB::bind_method(D_METHOD("get_piece_offset", "idx"), &LargeTexture::get_piece_offset);
-	ClassDB::bind_method(D_METHOD("get_piece_texture", "idx"), &LargeTexture::get_piece_texture);
-
-	ClassDB::bind_method(D_METHOD("_set_data", "data"), &LargeTexture::_set_data);
-	ClassDB::bind_method(D_METHOD("_get_data"), &LargeTexture::_get_data);
-
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "_data", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL), "_set_data", "_get_data");
-}
-
-void LargeTexture::draw(RID p_canvas_item, const Point2 &p_pos, const Color &p_modulate, bool p_transpose) const {
-	for (int i = 0; i < pieces.size(); i++) {
-		// TODO
-		pieces[i].texture->draw(p_canvas_item, pieces[i].offset + p_pos, p_modulate, p_transpose);
-	}
-}
-
-void LargeTexture::draw_rect(RID p_canvas_item, const Rect2 &p_rect, bool p_tile, const Color &p_modulate, bool p_transpose) const {
-	//tiling not supported for this
-	if (size.x == 0 || size.y == 0) {
-		return;
-	}
-
-	Size2 scale = p_rect.size / size;
-
-	for (int i = 0; i < pieces.size(); i++) {
-		// TODO
-		pieces[i].texture->draw_rect(p_canvas_item, Rect2(pieces[i].offset * scale + p_rect.position, pieces[i].texture->get_size() * scale), false, p_modulate, p_transpose);
-	}
-}
-
-void LargeTexture::draw_rect_region(RID p_canvas_item, const Rect2 &p_rect, const Rect2 &p_src_rect, const Color &p_modulate, bool p_transpose, bool p_clip_uv) const {
-	//tiling not supported for this
-	if (p_src_rect.size.x == 0 || p_src_rect.size.y == 0) {
-		return;
-	}
-
-	Size2 scale = p_rect.size / p_src_rect.size;
-
-	for (int i = 0; i < pieces.size(); i++) {
-		// TODO
-		Rect2 rect(pieces[i].offset, pieces[i].texture->get_size());
-		if (!p_src_rect.intersects(rect)) {
-			continue;
-		}
-		Rect2 local = p_src_rect.intersection(rect);
-		Rect2 target = local;
-		target.size *= scale;
-		target.position = p_rect.position + (p_src_rect.position + rect.position) * scale;
-		local.position -= rect.position;
-		pieces[i].texture->draw_rect_region(p_canvas_item, target, local, p_modulate, p_transpose, false);
-	}
-}
-
-bool LargeTexture::is_pixel_opaque(int p_x, int p_y) const {
-	for (int i = 0; i < pieces.size(); i++) {
-		// TODO
-		if (!pieces[i].texture.is_valid()) {
-			continue;
-		}
-
-		Rect2 rect(pieces[i].offset, pieces[i].texture->get_size());
-		if (rect.has_point(Point2(p_x, p_y))) {
-			return pieces[i].texture->is_pixel_opaque(p_x - rect.position.x, p_y - rect.position.y);
-		}
-	}
-
-	return true;
-}
-
-LargeTexture::LargeTexture() {
-}
-
-///////////////////
-
 void CurveTexture::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_width", "width"), &CurveTexture::set_width);
 
@@ -1782,7 +1603,7 @@ int GradientTexture::get_width() const {
 	return width;
 }
 
-Ref<Image> GradientTexture::get_data() const {
+Ref<Image> GradientTexture::get_image() const {
 	if (!texture.is_valid()) {
 		return Ref<Image>();
 	}
@@ -2031,14 +1852,14 @@ bool AnimatedTexture::has_alpha() const {
 	return frames[current_frame].texture->has_alpha();
 }
 
-Ref<Image> AnimatedTexture::get_data() const {
+Ref<Image> AnimatedTexture::get_image() const {
 	RWLockRead r(rw_lock);
 
 	if (!frames[current_frame].texture.is_valid()) {
 		return Ref<Image>();
 	}
 
-	return frames[current_frame].texture->get_data();
+	return frames[current_frame].texture->get_image();
 }
 
 bool AnimatedTexture::is_pixel_opaque(int p_x, int p_y) const {
@@ -2543,7 +2364,7 @@ uint32_t CameraTexture::get_flags() const {
 	return 0;
 }
 
-Ref<Image> CameraTexture::get_data() const {
+Ref<Image> CameraTexture::get_image() const {
 	// not (yet) supported
 	return Ref<Image>();
 }

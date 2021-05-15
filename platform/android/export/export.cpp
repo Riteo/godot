@@ -201,8 +201,10 @@ static const char *android_perms[] = {
 	nullptr
 };
 
-static const char *SPLASH_IMAGE_EXPORT_PATH = "res/drawable/splash.png";
-static const char *SPLASH_BG_COLOR_PATH = "res/drawable/splash_bg_color.png";
+static const char *SPLASH_IMAGE_EXPORT_PATH = "res/drawable-nodpi/splash.png";
+static const char *LEGACY_BUILD_SPLASH_IMAGE_EXPORT_PATH = "res/drawable-nodpi-v4/splash.png";
+static const char *SPLASH_BG_COLOR_PATH = "res/drawable-nodpi/splash_bg_color.png";
+static const char *LEGACY_BUILD_SPLASH_BG_COLOR_PATH = "res/drawable-nodpi-v4/splash_bg_color.png";
 static const char *SPLASH_CONFIG_PATH = "res://android/build/res/drawable/splash_drawable.xml";
 
 const String SPLASH_CONFIG_XML_CONTENT = R"SPLASH(<?xml version="1.0" encoding="utf-8"?>
@@ -210,7 +212,7 @@ const String SPLASH_CONFIG_XML_CONTENT = R"SPLASH(<?xml version="1.0" encoding="
 	<item android:drawable="@drawable/splash_bg_color" />
 	<item>
 		<bitmap
-				android:gravity="%s"
+				android:gravity="center"
 				android:filter="%s"
 				android:src="@drawable/splash" />
 	</item>
@@ -853,7 +855,6 @@ class EditorExportPlatformAndroid : public EditorExportPlatform {
 		bool screen_support_xlarge = p_preset->get("screen/support_xlarge");
 
 		int xr_mode_index = p_preset->get("xr_features/xr_mode");
-		bool focus_awareness = p_preset->get("xr_features/focus_awareness");
 
 		Vector<String> perms;
 		// Write permissions into the perms variable.
@@ -919,7 +920,6 @@ class EditorExportPlatformAndroid : public EditorExportPlatform {
 					String tname = string_table[name];
 					uint32_t attrcount = decode_uint32(&p_manifest[iofs + 20]);
 					iofs += 28;
-					bool is_focus_aware_metadata = false;
 
 					for (uint32_t i = 0; i < attrcount; i++) {
 						uint32_t attr_nspace = decode_uint32(&p_manifest[iofs]);
@@ -971,28 +971,6 @@ class EditorExportPlatformAndroid : public EditorExportPlatform {
 							}
 						}
 
-						// FIXME: `attr_value != 0xFFFFFFFF` below added as a stopgap measure for GH-32553,
-						// but the issue should be debugged further and properly addressed.
-						if (tname == "meta-data" && attrname == "name" && value == "xr_mode_metadata_name") {
-							// Update the meta-data 'android:name' attribute based on the selected XR mode.
-							if (xr_mode_index == 1 /* XRMode.OVR */) {
-								string_table.write[attr_value] = "com.samsung.android.vr.application.mode";
-							}
-						}
-
-						if (tname == "meta-data" && attrname == "value" && value == "xr_mode_metadata_value") {
-							// Update the meta-data 'android:value' attribute based on the selected XR mode.
-							if (xr_mode_index == 1 /* XRMode.OVR */) {
-								string_table.write[attr_value] = "vr_only";
-							}
-						}
-
-						if (tname == "meta-data" && attrname == "value" && is_focus_aware_metadata) {
-							// Update the focus awareness meta-data value
-							encode_uint32(xr_mode_index == /* XRMode.OVR */ 1 && focus_awareness ? 0xFFFFFFFF : 0, &p_manifest.write[iofs + 16]);
-						}
-
-						is_focus_aware_metadata = tname == "meta-data" && attrname == "name" && value == "com.oculus.vr.focusaware";
 						iofs += 20;
 					}
 
@@ -1008,15 +986,6 @@ class EditorExportPlatformAndroid : public EditorExportPlatform {
 						Vector<int> feature_versions;
 
 						if (xr_mode_index == 1 /* XRMode.OVR */) {
-							// Check for degrees of freedom
-							int dof_index = p_preset->get("xr_features/degrees_of_freedom"); // 0: none, 1: 3dof and 6dof, 2: 6dof
-
-							if (dof_index > 0) {
-								feature_names.push_back("android.hardware.vr.headtracking");
-								feature_required_list.push_back(dof_index == 2);
-								feature_versions.push_back(1);
-							}
-
 							// Check for hand tracking
 							int hand_tracking_index = p_preset->get("xr_features/hand_tracking"); // 0: none, 1: optional, 2: required
 							if (hand_tracking_index > 0) {
@@ -1502,6 +1471,21 @@ class EditorExportPlatformAndroid : public EditorExportPlatform {
 			splash_image = Ref<Image>(memnew(Image(boot_splash_png)));
 		}
 
+		if (scale_splash) {
+			Size2 screen_size = Size2(ProjectSettings::get_singleton()->get("display/window/size/width"), ProjectSettings::get_singleton()->get("display/window/size/height"));
+			int width, height;
+			if (screen_size.width > screen_size.height) {
+				// scale horizontally
+				height = screen_size.height;
+				width = splash_image->get_width() * screen_size.height / splash_image->get_height();
+			} else {
+				// scale vertically
+				width = screen_size.width;
+				height = splash_image->get_height() * screen_size.width / splash_image->get_width();
+			}
+			splash_image->resize(width, height);
+		}
+
 		// Setup the splash bg color
 		bool bg_color_valid;
 		Color bg_color = ProjectSettings::get_singleton()->get("application/boot_splash/bg_color", &bg_color_valid);
@@ -1514,8 +1498,7 @@ class EditorExportPlatformAndroid : public EditorExportPlatform {
 		splash_bg_color_image->create(splash_image->get_width(), splash_image->get_height(), false, splash_image->get_format());
 		splash_bg_color_image->fill(bg_color);
 
-		String gravity = scale_splash ? "fill" : "center";
-		String processed_splash_config_xml = vformat(SPLASH_CONFIG_XML_CONTENT, gravity, bool_to_string(apply_filter));
+		String processed_splash_config_xml = vformat(SPLASH_CONFIG_XML_CONTENT, bool_to_string(apply_filter));
 		return processed_splash_config_xml;
 	}
 
@@ -1692,9 +1675,7 @@ public:
 		r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "graphics/opengl_debug"), false));
 
 		r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "xr_features/xr_mode", PROPERTY_HINT_ENUM, "Regular,Oculus Mobile VR"), 0));
-		r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "xr_features/degrees_of_freedom", PROPERTY_HINT_ENUM, "None,3DOF and 6DOF,6DOF"), 0));
 		r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "xr_features/hand_tracking", PROPERTY_HINT_ENUM, "None,Optional,Required"), 0));
-		r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "xr_features/focus_awareness"), false));
 
 		r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "screen/immersive_mode"), true));
 		r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "screen/support_small"), true));
@@ -1803,7 +1784,7 @@ public:
 			p_debug_flags |= DEBUG_FLAG_REMOTE_DEBUG_LOCALHOST;
 		}
 
-		String tmp_export_path = EditorSettings::get_singleton()->get_cache_dir().plus_file("tmpexport.apk");
+		String tmp_export_path = EditorSettings::get_singleton()->get_cache_dir().plus_file("tmpexport." + uitos(OS::get_singleton()->get_unix_time()) + ".apk");
 
 #define CLEANUP_AND_RETURN(m_err)                         \
 	{                                                     \
@@ -1820,6 +1801,7 @@ public:
 
 		List<String> args;
 		int rv;
+		String output;
 
 		bool remove_prev = p_preset->get("one_click_deploy/clear_previous_install");
 		String version_name = p_preset->get("version/name");
@@ -1837,7 +1819,9 @@ public:
 			args.push_back("uninstall");
 			args.push_back(get_package_name(package_name));
 
-			err = OS::get_singleton()->execute(adb, args, nullptr, &rv);
+			output.clear();
+			err = OS::get_singleton()->execute(adb, args, &output, &rv, true);
+			print_verbose(output);
 		}
 
 		print_line("Installing to device (please wait...): " + devices[p_device].name);
@@ -1852,7 +1836,9 @@ public:
 		args.push_back("-r");
 		args.push_back(tmp_export_path);
 
-		err = OS::get_singleton()->execute(adb, args, nullptr, &rv);
+		output.clear();
+		err = OS::get_singleton()->execute(adb, args, &output, &rv, true);
+		print_verbose(output);
 		if (err || rv != 0) {
 			EditorNode::add_io_error("Could not install to device.");
 			CLEANUP_AND_RETURN(ERR_CANT_CREATE);
@@ -1869,7 +1855,9 @@ public:
 				args.push_back(devices[p_device].id);
 				args.push_back("reverse");
 				args.push_back("--remove-all");
-				OS::get_singleton()->execute(adb, args, nullptr, &rv);
+				output.clear();
+				OS::get_singleton()->execute(adb, args, &output, &rv, true);
+				print_verbose(output);
 
 				if (p_debug_flags & DEBUG_FLAG_REMOTE_DEBUG) {
 					int dbg_port = EditorSettings::get_singleton()->get("network/debug/remote_port");
@@ -1880,7 +1868,9 @@ public:
 					args.push_back("tcp:" + itos(dbg_port));
 					args.push_back("tcp:" + itos(dbg_port));
 
-					OS::get_singleton()->execute(adb, args, nullptr, &rv);
+					output.clear();
+					OS::get_singleton()->execute(adb, args, &output, &rv, true);
+					print_verbose(output);
 					print_line("Reverse result: " + itos(rv));
 				}
 
@@ -1894,7 +1884,9 @@ public:
 					args.push_back("tcp:" + itos(fs_port));
 					args.push_back("tcp:" + itos(fs_port));
 
-					err = OS::get_singleton()->execute(adb, args, nullptr, &rv);
+					output.clear();
+					err = OS::get_singleton()->execute(adb, args, &output, &rv, true);
+					print_verbose(output);
 					print_line("Reverse result2: " + itos(rv));
 				}
 			} else {
@@ -1922,7 +1914,9 @@ public:
 		args.push_back("-n");
 		args.push_back(get_package_name(package_name) + "/com.godot.game.GodotApp");
 
-		err = OS::get_singleton()->execute(adb, args, nullptr, &rv);
+		output.clear();
+		err = OS::get_singleton()->execute(adb, args, &output, &rv, true);
+		print_verbose(output);
 		if (err || rv != 0) {
 			EditorNode::add_io_error("Could not execute on device.");
 			CLEANUP_AND_RETURN(ERR_CANT_CREATE);
@@ -2130,25 +2124,11 @@ public:
 
 		// Validate the Xr features are properly populated
 		int xr_mode_index = p_preset->get("xr_features/xr_mode");
-		int degrees_of_freedom = p_preset->get("xr_features/degrees_of_freedom");
 		int hand_tracking = p_preset->get("xr_features/hand_tracking");
-		bool focus_awareness = p_preset->get("xr_features/focus_awareness");
 		if (xr_mode_index != /* XRMode.OVR*/ 1) {
-			if (degrees_of_freedom > 0) {
-				valid = false;
-				err += TTR("\"Degrees Of Freedom\" is only valid when \"Xr Mode\" is \"Oculus Mobile VR\".");
-				err += "\n";
-			}
-
 			if (hand_tracking > 0) {
 				valid = false;
 				err += TTR("\"Hand Tracking\" is only valid when \"Xr Mode\" is \"Oculus Mobile VR\".");
-				err += "\n";
-			}
-
-			if (focus_awareness) {
-				valid = false;
-				err += TTR("\"Focus Awareness\" is only valid when \"Xr Mode\" is \"Oculus Mobile VR\".");
 				err += "\n";
 			}
 		}
@@ -2262,11 +2242,12 @@ public:
 				CharString command_line_argument = command_line_strings[i].utf8();
 				int base = r_command_line_flags.size();
 				int length = command_line_argument.length();
-				if (length == 0)
+				if (length == 0) {
 					continue;
+				}
 				r_command_line_flags.resize(base + 4 + length);
 				encode_uint32(length, &r_command_line_flags.write[base]);
-				copymem(&r_command_line_flags.write[base + 4], command_line_argument.ptr(), length);
+				memcpy(&r_command_line_flags.write[base + 4], command_line_argument.ptr(), length);
 			}
 		}
 	}
@@ -2318,6 +2299,7 @@ public:
 			return ERR_FILE_CANT_OPEN;
 		}
 
+		String output;
 		List<String> args;
 		args.push_back("sign");
 		args.push_back("--verbose");
@@ -2333,7 +2315,9 @@ public:
 			print_verbose("Signing debug binary using: " + String("\n") + apksigner + " " + join_list(args, String(" ")));
 		}
 		int retval;
-		OS::get_singleton()->execute(apksigner, args, nullptr, &retval);
+		output.clear();
+		OS::get_singleton()->execute(apksigner, args, &output, &retval, true);
+		print_verbose(output);
 		if (retval) {
 			EditorNode::add_io_error("'apksigner' returned with error #" + itos(retval));
 			return ERR_CANT_CREATE;
@@ -2351,7 +2335,9 @@ public:
 			print_verbose("Verifying signed build using: " + String("\n") + apksigner + " " + join_list(args, String(" ")));
 		}
 
-		OS::get_singleton()->execute(apksigner, args, nullptr, &retval);
+		output.clear();
+		OS::get_singleton()->execute(apksigner, args, &output, &retval, true);
+		print_verbose(output);
 		if (retval) {
 			EditorNode::add_io_error("'apksigner' verification of " + export_label + " failed.");
 			return ERR_CANT_CREATE;
@@ -2484,7 +2470,7 @@ public:
 			_clear_assets_directory();
 			if (!apk_expansion) {
 				print_verbose("Exporting project files..");
-				err = export_project_files(p_preset, rename_and_store_file_in_gradle_project, NULL, ignore_so_file);
+				err = export_project_files(p_preset, rename_and_store_file_in_gradle_project, nullptr, ignore_so_file);
 				if (err != OK) {
 					EditorNode::add_io_error("Could not export project files to gradle project\n");
 					return err;
@@ -2615,10 +2601,11 @@ public:
 		}
 		// This is the start of the Legacy build system
 		print_verbose("Starting legacy build system..");
-		if (p_debug)
+		if (p_debug) {
 			src_apk = p_preset->get("custom_template/debug");
-		else
+		} else {
 			src_apk = p_preset->get("custom_template/release");
+		}
 		src_apk = src_apk.strip_edges();
 		if (src_apk == "") {
 			if (p_debug) {
@@ -2655,7 +2642,7 @@ public:
 		FileAccess *dst_f = nullptr;
 		io2.opaque = &dst_f;
 
-		String tmp_unaligned_path = EditorSettings::get_singleton()->get_cache_dir().plus_file("tmpexport-unaligned.apk");
+		String tmp_unaligned_path = EditorSettings::get_singleton()->get_cache_dir().plus_file("tmpexport-unaligned." + uitos(OS::get_singleton()->get_unix_time()) + ".apk");
 
 #define CLEANUP_AND_RETURN(m_err)                            \
 	{                                                        \
@@ -2700,12 +2687,12 @@ public:
 			}
 
 			// Process the splash image
-			if (file == SPLASH_IMAGE_EXPORT_PATH && splash_image.is_valid() && !splash_image->is_empty()) {
+			if ((file == SPLASH_IMAGE_EXPORT_PATH || file == LEGACY_BUILD_SPLASH_IMAGE_EXPORT_PATH) && splash_image.is_valid() && !splash_image->is_empty()) {
 				_load_image_data(splash_image, data);
 			}
 
 			// Process the splash bg color image
-			if (file == SPLASH_BG_COLOR_PATH && splash_bg_color_image.is_valid() && !splash_bg_color_image->is_empty()) {
+			if ((file == SPLASH_BG_COLOR_PATH || file == LEGACY_BUILD_SPLASH_BG_COLOR_PATH) && splash_bg_color_image.is_valid() && !splash_bg_color_image->is_empty()) {
 				_load_image_data(splash_bg_color_image, data);
 			}
 
@@ -2813,11 +2800,11 @@ public:
 		zipOpenNewFileInZip(unaligned_apk,
 				"assets/_cl_",
 				&zipfi,
-				NULL,
+				nullptr,
 				0,
-				NULL,
+				nullptr,
 				0,
-				NULL,
+				nullptr,
 				0, // No compress (little size gain and potentially slower startup)
 				Z_DEFAULT_COMPRESSION);
 		zipWriteInFileInZip(unaligned_apk, command_line_flags.ptr(), command_line_flags.size());

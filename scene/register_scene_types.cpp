@@ -208,6 +208,7 @@
 #include "scene/3d/navigation_agent_3d.h"
 #include "scene/3d/navigation_obstacle_3d.h"
 #include "scene/3d/navigation_region_3d.h"
+#include "scene/3d/occluder_instance_3d.h"
 #include "scene/3d/path_3d.h"
 #include "scene/3d/physics_body_3d.h"
 #include "scene/3d/physics_joint_3d.h"
@@ -442,6 +443,8 @@ void register_scene_types() {
 	ClassDB::register_class<XRAnchor3D>();
 	ClassDB::register_class<XROrigin3D>();
 	ClassDB::register_class<MeshInstance3D>();
+	ClassDB::register_class<OccluderInstance3D>();
+	ClassDB::register_class<Occluder3D>();
 	ClassDB::register_class<ImmediateGeometry3D>();
 	ClassDB::register_virtual_class<SpriteBase3D>();
 	ClassDB::register_class<Sprite3D>();
@@ -532,6 +535,7 @@ void register_scene_types() {
 	ClassDB::register_virtual_class<VisualShaderNodeResizableBase>();
 	ClassDB::register_virtual_class<VisualShaderNodeGroupBase>();
 	ClassDB::register_virtual_class<VisualShaderNodeConstant>();
+	ClassDB::register_class<VisualShaderNodeComment>();
 	ClassDB::register_class<VisualShaderNodeFloatConstant>();
 	ClassDB::register_class<VisualShaderNodeIntConstant>();
 	ClassDB::register_class<VisualShaderNodeBooleanConstant>();
@@ -651,6 +655,9 @@ void register_scene_types() {
 	ClassDB::register_class<GrooveJoint2D>();
 	ClassDB::register_class<DampedSpringJoint2D>();
 	ClassDB::register_class<TileSet>();
+	ClassDB::register_virtual_class<TileSetSource>();
+	ClassDB::register_class<TileSetAtlasSource>();
+	ClassDB::register_class<TileData>();
 	ClassDB::register_class<TileMap>();
 	ClassDB::register_class<ParallaxBackground>();
 	ClassDB::register_class<ParallaxLayer>();
@@ -685,6 +692,8 @@ void register_scene_types() {
 	ClassDB::register_class<PrismMesh>();
 	ClassDB::register_class<QuadMesh>();
 	ClassDB::register_class<SphereMesh>();
+	ClassDB::register_class<TubeTrailMesh>();
+	ClassDB::register_class<RibbonTrailMesh>();
 	ClassDB::register_class<PointMesh>();
 	ClassDB::register_virtual_class<Material>();
 	ClassDB::register_virtual_class<BaseMaterial3D>();
@@ -725,7 +734,6 @@ void register_scene_types() {
 	ClassDB::register_class<ImageTexture>();
 	ClassDB::register_class<AtlasTexture>();
 	ClassDB::register_class<MeshTexture>();
-	ClassDB::register_class<LargeTexture>();
 	ClassDB::register_class<CurveTexture>();
 	ClassDB::register_class<GradientTexture>();
 	ClassDB::register_class<ProxyTexture>();
@@ -955,9 +963,9 @@ void register_scene_types() {
 
 	bool default_theme_hidpi = GLOBAL_DEF("gui/theme/use_hidpi", false);
 	ProjectSettings::get_singleton()->set_custom_property_info("gui/theme/use_hidpi", PropertyInfo(Variant::BOOL, "gui/theme/use_hidpi", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED));
-	String theme_path = GLOBAL_DEF("gui/theme/custom", "");
+	String theme_path = GLOBAL_DEF_RST("gui/theme/custom", "");
 	ProjectSettings::get_singleton()->set_custom_property_info("gui/theme/custom", PropertyInfo(Variant::STRING, "gui/theme/custom", PROPERTY_HINT_FILE, "*.tres,*.res,*.theme", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED));
-	String font_path = GLOBAL_DEF("gui/theme/custom_font", "");
+	String font_path = GLOBAL_DEF_RST("gui/theme/custom_font", "");
 	ProjectSettings::get_singleton()->set_custom_property_info("gui/theme/custom_font", PropertyInfo(Variant::STRING, "gui/theme/custom_font", PROPERTY_HINT_FILE, "*.tres,*.res,*.font", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED));
 
 	Ref<Font> font;

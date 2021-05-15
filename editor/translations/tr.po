@@ -57,12 +57,13 @@
 # Suleyman Poyraz <zaryob.dev@gmail.com>, 2020.
 # Çağlar KOPARIR <ckoparir@gmail.com>, 2021.
 # Cem Eren Fukara <cefukara@hotmail.com>, 2021.
+# Jafar Tarverdiyev <cefertarverdiyevv@gmail.com>, 2021.
 msgid ""
 msgstr ""
 "Project-Id-Version: Godot Engine editor\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2021-03-16 10:40+0000\n"
-"Last-Translator: furkan atalar <fatalar55@gmail.com>\n"
+"PO-Revision-Date: 2021-05-14 11:20+0000\n"
+"Last-Translator: Jafar Tarverdiyev <cefertarverdiyevv@gmail.com>\n"
 "Language-Team: Turkish <https://hosted.weblate.org/projects/godot-engine/"
 "godot/tr/>\n"
 "Language: tr\n"
@@ -70,7 +71,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 4.5.2-dev\n"
+"X-Generator: Weblate 4.7-dev\n"
 
 #: core/math/expression.cpp modules/gdscript/gdscript_functions.cpp
 #: modules/visual_script/visual_script_builtin_funcs.cpp
@@ -2579,18 +2580,19 @@ msgstr ""
 "başarısız oldu."
 
 #: editor/editor_node.cpp
-#, fuzzy
 msgid "Unable to find script field for addon plugin at: '%s'."
-msgstr "Eklentideki betik alanı bulunamıyor: 'res://addons/%s'."
+msgstr "Eklentide için betik alanı bulunamıyor: '%s'."
 
 #: editor/editor_node.cpp
 msgid "Unable to load addon script from path: '%s'."
 msgstr "Yoldaki eklenti betiği yüklenemedi: '%s'."
 
 #: editor/editor_node.cpp
+#, fuzzy
 msgid ""
-"Unable to load addon script from path: '%s' There seems to be an error in "
-"the code, please check the syntax."
+"Unable to load addon script from path: '%s'. This might be due to a code "
+"error in that script. \n"
+"Disabling the addon at '%s' to prevent further errors."
 msgstr ""
 "'%s' adresindeki eklenti betik yüklenemiyor. Kodun içinde bir hata var gibi "
 "görünüyor, lütfen sözdizimini kontrol edin."
@@ -3722,6 +3724,13 @@ msgstr ""
 "aktarın."
 
 #: editor/filesystem_dock.cpp
+msgid ""
+"Importing has been disabled for this file, so it can't be opened for editing."
+msgstr ""
+"İçe aktarma bu dosya için devre dışı bırakıldı, bu nedenle düzenleme için "
+"açılamıyor."
+
+#: editor/filesystem_dock.cpp
 msgid "Cannot move/rename resources root."
 msgstr "Kaynakların kökü taşınamaz/yeniden adlandırılamaz."
 
@@ -4122,6 +4131,10 @@ msgstr "İçe Aktar"
 #: editor/import_defaults_editor.cpp
 msgid "Reset to Defaults"
 msgstr "Varsayılanlara dön"
+
+#: editor/import_dock.cpp
+msgid "Keep File (No Import)"
+msgstr "Dosyayı Koru (İçeri Aktarma Yok)"
 
 #: editor/import_dock.cpp
 msgid "%d Files"
@@ -5257,7 +5270,17 @@ msgstr ""
 
 #: editor/plugins/baked_lightmap_editor_plugin.cpp
 msgid ""
-"Godot editor was built without ray tracing support, lightmaps can't be baked."
+"Godot editor was built without ray tracing support; lightmaps can't be "
+"baked.\n"
+"If you are using an Apple Silicon-based Mac, try forcing Rosetta emulation "
+"on Godot.app in the application settings\n"
+"then restart the editor."
+msgstr ""
+
+#: editor/plugins/baked_lightmap_editor_plugin.cpp
+#, fuzzy
+msgid ""
+"Godot editor was built without ray tracing support; lightmaps can't be baked."
 msgstr ""
 "Godot editör ışın yansıma desteği olmadan derlenmiş, ışık haritaları "
 "pişirilemez."
@@ -7574,6 +7597,13 @@ msgstr "Serbest Bakış Hız Değiştirici"
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid "View Rotation Locked"
 msgstr "Dönme Kilitli Görünüm"
+
+#: editor/plugins/spatial_editor_plugin.cpp
+msgid ""
+"To zoom further, change the camera's clipping planes (View -> Settings...)"
+msgstr ""
+"Daha fazla yakınlaştırmak için, kameranın kırpma düzlemlerini değiştirin "
+"(Görünüm -> Ayarlar ...)"
 
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid ""
@@ -10450,9 +10480,8 @@ msgid "Plugins"
 msgstr "Eklentiler"
 
 #: editor/project_settings_editor.cpp
-#, fuzzy
 msgid "Import Defaults"
-msgstr "Varsayılanları İçe Aktar"
+msgstr "Öntanımlı İçe Aktarma Ayarları"
 
 #: editor/property_editor.cpp
 msgid "Preset..."
@@ -10952,6 +10981,13 @@ msgstr "Seçilen düğümden betiği ayır."
 #: editor/scene_tree_dock.cpp
 msgid "Remote"
 msgstr "Uzak"
+
+#: editor/scene_tree_dock.cpp
+msgid ""
+"If selected, the Remote scene tree dock will cause the project to stutter "
+"every time it updates.\n"
+"Switch back to the Local scene tree dock to improve performance."
+msgstr ""
 
 #: editor/scene_tree_dock.cpp
 msgid "Local"
@@ -12494,11 +12530,12 @@ msgstr "Boş bir CollisionPolygon2D'nin çarpışmaya hiçbir etkisi yoktur."
 
 #: scene/2d/collision_polygon_2d.cpp
 msgid "Invalid polygon. At least 3 points are needed in 'Solids' build mode."
-msgstr ""
+msgstr "Geçersiz çokgen. 'Solids' oluşturma modunda en az 3 nokta gereklidir."
 
 #: scene/2d/collision_polygon_2d.cpp
 msgid "Invalid polygon. At least 2 points are needed in 'Segments' build mode."
 msgstr ""
+"Geçersiz çokgen. 'Segments' oluşturma modunda en az 2 nokta gereklidir."
 
 #: scene/2d/collision_shape_2d.cpp
 msgid ""

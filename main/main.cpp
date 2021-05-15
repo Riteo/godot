@@ -365,7 +365,7 @@ void Main::print_help(const char *p_binary) {
 	OS::get_singleton()->print("                                               <path> should be absolute or relative to the project directory, and include the filename for the binary (e.g. 'builds/game.exe'). The target directory should exist.\n");
 	OS::get_singleton()->print("  --export-debug <preset> <path>               Same as --export, but using the debug template.\n");
 	OS::get_singleton()->print("  --export-pack <preset> <path>                Same as --export, but only export the game pack for the given preset. The <path> extension determines whether it will be in PCK or ZIP format.\n");
-	OS::get_singleton()->print("  --doctool <path>                             Dump the engine API reference to the given <path> in XML format, merging if existing files are found.\n");
+	OS::get_singleton()->print("  --doctool [<path>]                           Dump the engine API reference to the given <path> (defaults to current dir) in XML format, merging if existing files are found.\n");
 	OS::get_singleton()->print("  --no-docbase                                 Disallow dumping the base types (used with --doctool).\n");
 	OS::get_singleton()->print("  --build-solutions                            Build the scripting solutions (e.g. for C# projects). Implies --editor and requires a valid project to edit.\n");
 #ifdef DEBUG_METHODS_ENABLED
@@ -375,8 +375,8 @@ void Main::print_help(const char *p_binary) {
 #ifdef TESTS_ENABLED
 	OS::get_singleton()->print("  --test [--help]                              Run unit tests. Use --test --help for more information.\n");
 #endif
-	OS::get_singleton()->print("\n");
 #endif
+	OS::get_singleton()->print("\n");
 }
 
 #ifdef TESTS_ENABLED
@@ -389,6 +389,8 @@ Error Main::test_setup() {
 
 	register_core_types();
 	register_core_driver_types();
+
+	packed_data = memnew(PackedData);
 
 	globals = memnew(ProjectSettings);
 
@@ -458,6 +460,9 @@ void Main::test_cleanup() {
 	}
 	if (globals) {
 		memdelete(globals);
+	}
+	if (packed_data) {
+		memdelete(packed_data);
 	}
 	if (engine) {
 		memdelete(engine);
@@ -1248,6 +1253,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	}
 
 	GLOBAL_DEF("internationalization/rendering/force_right_to_left_layout_direction", false);
+	GLOBAL_DEF("internationalization/locale/include_text_server_data", false);
 
 	if (!force_lowdpi) {
 		OS::get_singleton()->_allow_hidpi = GLOBAL_DEF("display/window/dpi/allow_hidpi", false);
@@ -1551,8 +1557,8 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 
 	{
 		GLOBAL_DEF_RST_NOVAL("input_devices/pen_tablet/driver", "");
-		GLOBAL_DEF_RST_NOVAL("input_devices/pen_tablet/driver.windows", "");
-		ProjectSettings::get_singleton()->set_custom_property_info("input_devices/pen_tablet/driver.windows", PropertyInfo(Variant::STRING, "input_devices/pen_tablet/driver.windows", PROPERTY_HINT_ENUM, "wintab,winink"));
+		GLOBAL_DEF_RST_NOVAL("input_devices/pen_tablet/driver.Windows", "");
+		ProjectSettings::get_singleton()->set_custom_property_info("input_devices/pen_tablet/driver.Windows", PropertyInfo(Variant::STRING, "input_devices/pen_tablet/driver.Windows", PROPERTY_HINT_ENUM, "wintab,winink"));
 	}
 
 	if (tablet_driver == "") { // specified in project.godot
@@ -1826,8 +1832,7 @@ bool Main::start() {
 	ERR_FAIL_COND_V(!_start_success, false);
 
 	bool hasicon = false;
-	String doc_tool;
-	List<String> removal_docs;
+	String doc_tool_path;
 	String positional_arg;
 	String game_path;
 	String script;
@@ -1881,9 +1886,11 @@ bool Main::start() {
 				script = args[i + 1];
 #ifdef TOOLS_ENABLED
 			} else if (args[i] == "--doctool") {
-				doc_tool = args[i + 1];
-				for (int j = i + 2; j < args.size(); j++) {
-					removal_docs.push_back(args[j]);
+				doc_tool_path = args[i + 1];
+				if (doc_tool_path.begins_with("-")) {
+					// Assuming other command line arg, so default to cwd.
+					doc_tool_path = ".";
+					parsed_pair = false;
 				}
 			} else if (args[i] == "--export") {
 				editor = true; //needs editor
@@ -1904,16 +1911,19 @@ bool Main::start() {
 			if (parsed_pair) {
 				i++;
 			}
+		} else if (args[i] == "--doctool") {
+			// Handle case where no path is given to --doctool.
+			doc_tool_path = ".";
 		}
 	}
 
 #ifdef TOOLS_ENABLED
-	if (doc_tool != "") {
+	if (doc_tool_path != "") {
 		Engine::get_singleton()->set_editor_hint(
 				true); // Needed to instance editor-only classes for their default values
 
 		{
-			DirAccessRef da = DirAccess::open(doc_tool);
+			DirAccessRef da = DirAccess::open(doc_tool_path);
 			ERR_FAIL_COND_V_MSG(!da, false, "Argument supplied to --doctool must be a valid directory path.");
 		}
 
@@ -1943,7 +1953,7 @@ bool Main::start() {
 			// Custom modules are always located by absolute path.
 			String path = _doc_data_class_paths[i].path;
 			if (path.is_rel_path()) {
-				path = doc_tool.plus_file(path);
+				path = doc_tool_path.plus_file(path);
 			}
 			String name = _doc_data_class_paths[i].name;
 			doc_data_classes[name] = path;
@@ -1960,7 +1970,7 @@ bool Main::start() {
 			}
 		}
 
-		String index_path = doc_tool.plus_file("doc/classes");
+		String index_path = doc_tool_path.plus_file("doc/classes");
 		// Create the main documentation directory if it doesn't exist
 		DirAccess *da = DirAccess::create_for_path(index_path);
 		da->make_dir_recursive(index_path);
@@ -2242,7 +2252,7 @@ bool Main::start() {
 			ProjectSettings::get_singleton()->set_custom_property_info(
 					"rendering/textures/canvas_textures/default_texture_filter",
 					PropertyInfo(Variant::INT, "rendering/textures/canvas_textures/default_texture_filter", PROPERTY_HINT_ENUM,
-							"Nearest,Linear,MipmapLinear,MipmapNearest"));
+							"Nearest,Linear,Linear Mipmap,Nearest Mipmap"));
 			GLOBAL_DEF_BASIC("rendering/textures/canvas_textures/default_texture_repeat", 0);
 			ProjectSettings::get_singleton()->set_custom_property_info(
 					"rendering/textures/canvas_textures/default_texture_repeat",
@@ -2533,10 +2543,10 @@ bool Main::iteration() {
 	if (frame > 1000000) {
 		if (editor || project_manager) {
 			if (print_fps) {
-				print_line("Editor FPS: " + itos(frames));
+				print_line(vformat("Editor FPS: %d (%s mspf)", frames, rtos(1000.0 / frames).pad_decimals(1)));
 			}
 		} else if (GLOBAL_GET("debug/settings/stdout/print_fps") || print_fps) {
-			print_line("Game FPS: " + itos(frames));
+			print_line(vformat("Project FPS: %d (%s mspf)", frames, rtos(1000.0 / frames).pad_decimals(1)));
 		}
 
 		Engine::get_singleton()->_fps = frames;

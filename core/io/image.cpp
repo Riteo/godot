@@ -34,7 +34,6 @@
 #include "core/io/image_loader.h"
 #include "core/io/resource_loader.h"
 #include "core/math/math_funcs.h"
-#include "core/os/copymem.h"
 #include "core/string/print_string.h"
 #include "core/templates/hash_map.h"
 
@@ -1537,7 +1536,7 @@ void Image::shrink_x2() {
 			uint8_t *w = new_img.ptrw();
 			const uint8_t *r = data.ptr();
 
-			copymem(w, &r[ofs], new_size);
+			memcpy(w, &r[ofs], new_size);
 		}
 
 		width = MAX(width / 2, 1);
@@ -1932,7 +1931,7 @@ Error Image::generate_mipmap_roughness(RoughnessChannel p_roughness_channel, con
 
 
 			uint8_t* wr = imgdata.ptrw();
-			copymem(wr.ptr(), ptr, size);
+			memcpy(wr.ptr(), ptr, size);
 			wr = uint8_t*();
 			Ref<Image> im;
 			im.instance();
@@ -1982,7 +1981,7 @@ void Image::create(int p_width, int p_height, bool p_use_mipmaps, Format p_forma
 
 	{
 		uint8_t *w = data.ptrw();
-		zeromem(w, size);
+		memset(w, 0, size);
 	}
 
 	width = p_width;
@@ -3010,26 +3009,28 @@ Image::UsedChannels Image::detect_used_channels(CompressSource p_source) {
 	ERR_FAIL_COND_V(is_compressed(), USED_CHANNELS_RGBA);
 	bool r = false, g = false, b = false, a = false, c = false;
 
-	for (int i = 0; i < width; i++) {
-		for (int j = 0; j < height; j++) {
-			Color col = get_pixel(i, j);
+	const uint8_t *data_ptr = data.ptr();
 
-			if (col.r > 0.001) {
-				r = true;
-			}
-			if (col.g > 0.001) {
-				g = true;
-			}
-			if (col.b > 0.001) {
-				b = true;
-			}
-			if (col.a < 0.999) {
-				a = true;
-			}
+	uint32_t data_total = width * height;
 
-			if (col.r != col.b || col.r != col.g || col.b != col.g) {
-				c = true;
-			}
+	for (uint32_t i = 0; i < data_total; i++) {
+		Color col = _get_color_at_ofs(data_ptr, i);
+
+		if (col.r > 0.001) {
+			r = true;
+		}
+		if (col.g > 0.001) {
+			g = true;
+		}
+		if (col.b > 0.001) {
+			b = true;
+		}
+		if (col.a < 0.999) {
+			a = true;
+		}
+
+		if (col.r != col.b || col.r != col.g || col.b != col.g) {
+			c = true;
 		}
 	}
 
@@ -3293,7 +3294,7 @@ Ref<Image> Image::get_image_from_mipmap(int p_mipamp) const {
 	{
 		uint8_t *wr = new_data.ptrw();
 		const uint8_t *rd = data.ptr();
-		copymem(wr, rd + ofs, size);
+		memcpy(wr, rd + ofs, size);
 	}
 
 	Ref<Image> image;
@@ -3620,5 +3621,5 @@ Ref<Resource> Image::duplicate(bool p_subresources) const {
 }
 
 void Image::set_as_black() {
-	zeromem(data.ptrw(), data.size());
+	memset(data.ptrw(), 0, data.size());
 }

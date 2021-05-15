@@ -33,6 +33,7 @@
 #include "core/config/project_settings.h"
 #include "core/input/input.h"
 #include "core/io/resource_saver.h"
+#include "core/object/message_queue.h"
 #include "core/os/keyboard.h"
 #include "editor/debugger/editor_debugger_node.h"
 #include "editor/editor_feature_profile.h"
@@ -61,14 +62,18 @@ void SceneTreeDock::_quick_open() {
 }
 
 void SceneTreeDock::_input(Ref<InputEvent> p_event) {
+	ERR_FAIL_COND(p_event.is_null());
+
 	Ref<InputEventMouseButton> mb = p_event;
 
-	if (mb.is_valid() && !mb->is_pressed() && mb->get_button_index() == BUTTON_LEFT) {
+	if (mb.is_valid() && !mb->is_pressed() && mb->get_button_index() == MOUSE_BUTTON_LEFT) {
 		restore_script_editor_on_drag = false; //lost chance
 	}
 }
 
 void SceneTreeDock::_unhandled_key_input(Ref<InputEvent> p_event) {
+	ERR_FAIL_COND(p_event.is_null());
+
 	if (get_focus_owner() && get_focus_owner()->is_text_field()) {
 		return;
 	}
@@ -136,7 +141,11 @@ void SceneTreeDock::instance_scenes(const Vector<String> &p_files, Node *p_paren
 		parent = scene_tree->get_selected();
 	}
 
-	if (!parent || !edited_scene) {
+	if (!parent) {
+		parent = edited_scene;
+	}
+
+	if (!parent) {
 		if (p_files.size() == 1) {
 			accept->set_text(TTR("No parent to instance a child at."));
 		} else {
@@ -608,7 +617,7 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 			List<Node *> selection = editor_selection->get_selected_node_list();
 			selection.sort_custom<Node::Comparator>(); // sort by index
 			if (MOVING_DOWN) {
-				selection.invert();
+				selection.reverse();
 			}
 
 			int lowest_id = common_parent->get_child_count() - 1;
@@ -897,7 +906,7 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 			Node *scene = editor_data->get_edited_scene_root();
 
 			if (!scene) {
-				accept->set_text(TTR("This operation can't be done without a scene."));
+				accept->set_text(TTR("Saving the branch as a scene requires having a scene open in the editor."));
 				accept->popup_centered();
 				break;
 			}
@@ -905,7 +914,7 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 			List<Node *> selection = editor_selection->get_selected_node_list();
 
 			if (selection.size() != 1) {
-				accept->set_text(TTR("This operation requires a single selected node."));
+				accept->set_text(vformat(TTR("Saving the branch as a scene requires selecting only one node, but you have selected %d nodes."), selection.size()));
 				accept->popup_centered();
 				break;
 			}
@@ -913,13 +922,13 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 			Node *tocopy = selection.front()->get();
 
 			if (tocopy == scene) {
-				accept->set_text(TTR("Can not perform with the root node."));
+				accept->set_text(TTR("Can't save the root node branch as an instanced scene.\nTo create an editable copy of the current scene, duplicate it using the FileSystem dock context menu\nor create an inherited scene using Scene > New Inherited Scene... instead."));
 				accept->popup_centered();
 				break;
 			}
 
 			if (tocopy != editor_data->get_edited_scene_root() && tocopy->get_filename() != "") {
-				accept->set_text(TTR("This operation can't be done on instanced scenes."));
+				accept->set_text(TTR("Can't save the branch of an already instanced scene.\nTo create a variation of a scene, you can make an inherited scene based on the instanced scene using Scene > New Inherited Scene... instead."));
 				accept->popup_centered();
 				break;
 			}
@@ -1384,7 +1393,7 @@ void SceneTreeDock::fill_path_renames(Node *p_node, Node *p_new_parent, List<Pai
 		base_path.push_back(n->get_name());
 		n = n->get_parent();
 	}
-	base_path.invert();
+	base_path.reverse();
 
 	Vector<StringName> new_base_path;
 	if (p_new_parent) {
@@ -1394,7 +1403,7 @@ void SceneTreeDock::fill_path_renames(Node *p_node, Node *p_new_parent, List<Pai
 			n = n->get_parent();
 		}
 
-		new_base_path.invert();
+		new_base_path.reverse();
 	}
 
 	_fill_path_renames(base_path, new_base_path, p_node, p_renames);
@@ -1580,7 +1589,7 @@ void SceneTreeDock::_node_prerenamed(Node *p_node, const String &p_new_name) {
 		base_path.push_back(n->get_name());
 		n = n->get_parent();
 	}
-	base_path.invert();
+	base_path.reverse();
 
 	Vector<StringName> new_base_path = base_path;
 	base_path.push_back(p_node->get_name());
@@ -2578,14 +2587,16 @@ void SceneTreeDock::_tree_rmb(const Vector2 &p_menu_pos) {
 		}
 	}
 
-	if (profile_allow_script_editing) {
+	if (profile_allow_editing) {
 		menu->add_shortcut(ED_GET_SHORTCUT("scene_tree/cut_node"), TOOL_CUT);
 		menu->add_shortcut(ED_GET_SHORTCUT("scene_tree/copy_node"), TOOL_COPY);
 		if (selection.size() == 1 && !node_clipboard.is_empty()) {
 			menu->add_shortcut(ED_GET_SHORTCUT("scene_tree/paste_node"), TOOL_PASTE);
 		}
 		menu->add_separator();
+	}
 
+	if (profile_allow_script_editing) {
 		bool add_separator = false;
 
 		if (full_selection.size() == 1) {
@@ -2613,7 +2624,7 @@ void SceneTreeDock::_tree_rmb(const Vector2 &p_menu_pos) {
 			}
 		}
 
-		if (add_separator) {
+		if (add_separator && profile_allow_editing) {
 			menu->add_separator();
 		}
 	}
@@ -3008,7 +3019,16 @@ void SceneTreeDock::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("node_created", PropertyInfo(Variant::OBJECT, "node", PROPERTY_HINT_RESOURCE_TYPE, "Node")));
 }
 
+SceneTreeDock *SceneTreeDock::singleton = nullptr;
+
+void SceneTreeDock::_update_configuration_warning() {
+	if (singleton) {
+		MessageQueue::get_singleton()->push_callable(callable_mp(singleton->scene_tree, &SceneTreeEditor::update_warning));
+	}
+}
+
 SceneTreeDock::SceneTreeDock(EditorNode *p_editor, Node *p_scene_root, EditorSelection *p_editor_selection, EditorData &p_editor_data) {
+	singleton = this;
 	set_name("Scene");
 	editor = p_editor;
 	edited_scene = nullptr;
@@ -3024,7 +3044,7 @@ SceneTreeDock::SceneTreeDock(EditorNode *p_editor, Node *p_scene_root, EditorSel
 	ED_SHORTCUT("scene_tree/rename", TTR("Rename"), KEY_F2);
 	ED_SHORTCUT("scene_tree/batch_rename", TTR("Batch Rename"), KEY_MASK_SHIFT | KEY_F2);
 	ED_SHORTCUT("scene_tree/add_child_node", TTR("Add Child Node"), KEY_MASK_CMD | KEY_A);
-	ED_SHORTCUT("scene_tree/instance_scene", TTR("Instance Child Scene"));
+	ED_SHORTCUT("scene_tree/instance_scene", TTR("Instance Child Scene"), KEY_MASK_CMD | KEY_MASK_SHIFT | KEY_A);
 	ED_SHORTCUT("scene_tree/expand_collapse_all", TTR("Expand/Collapse All"));
 	ED_SHORTCUT("scene_tree/cut_node", TTR("Cut"), KEY_MASK_CMD | KEY_X);
 	ED_SHORTCUT("scene_tree/copy_node", TTR("Copy"), KEY_MASK_CMD | KEY_C);
@@ -3091,6 +3111,7 @@ SceneTreeDock::SceneTreeDock(EditorNode *p_editor, Node *p_scene_root, EditorSel
 	edit_remote->set_h_size_flags(SIZE_EXPAND_FILL);
 	edit_remote->set_text(TTR("Remote"));
 	edit_remote->set_toggle_mode(true);
+	edit_remote->set_tooltip(TTR("If selected, the Remote scene tree dock will cause the project to stutter every time it updates.\nSwitch back to the Local scene tree dock to improve performance."));
 	edit_remote->connect("pressed", callable_mp(this, &SceneTreeDock::_remote_tree_selected));
 
 	edit_local = memnew(Button);
@@ -3198,9 +3219,12 @@ SceneTreeDock::SceneTreeDock(EditorNode *p_editor, Node *p_scene_root, EditorSel
 	EDITOR_DEF("interface/editors/show_scene_tree_root_selection", true);
 	EDITOR_DEF("interface/editors/derive_script_globals_by_name", true);
 	EDITOR_DEF("_use_favorites_root_selection", false);
+
+	Resource::_update_configuration_warning = _update_configuration_warning;
 }
 
 SceneTreeDock::~SceneTreeDock() {
+	singleton = nullptr;
 	if (!node_clipboard.is_empty()) {
 		_clear_clipboard();
 	}

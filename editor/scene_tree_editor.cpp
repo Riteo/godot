@@ -120,7 +120,7 @@ void SceneTreeEditor::_cell_button_pressed(Object *p_item, int p_column, int p_i
 		}
 		undo_redo->commit_action();
 	} else if (p_id == BUTTON_WARNING) {
-		String config_err = n->get_configuration_warning();
+		String config_err = n->get_configuration_warnings_as_string();
 		if (config_err == String()) {
 			return;
 		}
@@ -252,9 +252,9 @@ bool SceneTreeEditor::_add_nodes(Node *p_node, TreeItem *p_parent, bool p_scroll
 
 	if (can_rename) { //should be can edit..
 
-		String warning = p_node->get_configuration_warning();
+		String warning = p_node->get_configuration_warnings_as_string();
 		if (!warning.is_empty()) {
-			item->add_button(0, get_theme_icon("NodeWarning", "EditorIcons"), BUTTON_WARNING, false, TTR("Node configuration warning:") + "\n" + p_node->get_configuration_warning());
+			item->add_button(0, get_theme_icon("NodeWarning", "EditorIcons"), BUTTON_WARNING, false, TTR("Node configuration warning:") + "\n" + warning);
 		}
 
 		int num_connections = p_node->get_persistent_signal_connection_count();
@@ -277,7 +277,7 @@ bool SceneTreeEditor::_add_nodes(Node *p_node, TreeItem *p_parent, bool p_scroll
 		}
 
 		Ref<Texture2D> icon_temp;
-		auto signal_temp = BUTTON_SIGNALS;
+		SceneTreeEditorButton signal_temp = BUTTON_SIGNALS;
 		if (num_connections >= 1 && num_groups >= 1) {
 			icon_temp = get_theme_icon("SignalsAndGroups", "EditorIcons");
 		} else if (num_connections >= 1) {
@@ -540,6 +540,10 @@ void SceneTreeEditor::_update_tree(bool p_scroll_to_selected) {
 		return;
 	}
 
+	if (tree->is_editing()) {
+		return;
+	}
+
 	updating_tree = true;
 	tree->clear();
 	if (get_scene_node()) {
@@ -665,7 +669,7 @@ void SceneTreeEditor::_notification(int p_what) {
 			get_tree()->connect("tree_process_mode_changed", callable_mp(this, &SceneTreeEditor::_tree_process_mode_changed));
 			get_tree()->connect("node_removed", callable_mp(this, &SceneTreeEditor::_node_removed));
 			get_tree()->connect("node_renamed", callable_mp(this, &SceneTreeEditor::_node_renamed));
-			get_tree()->connect("node_configuration_warning_changed", callable_mp(this, &SceneTreeEditor::_warning_changed));
+			get_tree()->connect("node_configuration_warning_changed", callable_mp(this, &SceneTreeEditor::_warning_changed), varray(), CONNECT_DEFERRED);
 
 			tree->connect("item_collapsed", callable_mp(this, &SceneTreeEditor::_cell_collapsed));
 
@@ -994,9 +998,6 @@ bool SceneTreeEditor::can_drop_data_fw(const Point2 &p_point, const Variant &p_d
 	if (!can_rename) {
 		return false; //not editable tree
 	}
-	if (filter != String()) {
-		return false; //can't rearrange tree with filter turned on
-	}
 
 	Dictionary d = p_data;
 	if (!d.has("type")) {
@@ -1049,7 +1050,7 @@ bool SceneTreeEditor::can_drop_data_fw(const Point2 &p_point, const Variant &p_d
 		}
 	}
 
-	return String(d["type"]) == "nodes";
+	return String(d["type"]) == "nodes" && filter == String();
 }
 
 void SceneTreeEditor::drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from) {
@@ -1105,6 +1106,9 @@ void SceneTreeEditor::_rmb_select(const Vector2 &p_pos) {
 	emit_signal("rmb_pressed", tree->get_screen_transform().xform(p_pos));
 }
 
+void SceneTreeEditor::update_warning() {
+	_warning_changed(nullptr);
+}
 void SceneTreeEditor::_warning_changed(Node *p_for_node) {
 	//should use a timer
 	update_timer->start();

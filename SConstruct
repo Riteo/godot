@@ -115,7 +115,7 @@ opts.Add(BoolVariable("tools", "Build the tools (a.k.a. the Godot editor)", True
 opts.Add(EnumVariable("target", "Compilation target", "debug", ("debug", "release_debug", "release")))
 opts.Add("arch", "Platform-dependent architecture (arm/arm64/x86/x64/mips/...)", "")
 opts.Add(EnumVariable("bits", "Target platform bits", "default", ("default", "32", "64")))
-opts.Add(EnumVariable("optimize", "Optimization type", "speed", ("speed", "size")))
+opts.Add(EnumVariable("optimize", "Optimization type", "speed", ("speed", "size", "none")))
 opts.Add(BoolVariable("production", "Set defaults to build Godot for use in production", False))
 opts.Add(BoolVariable("use_lto", "Use link-time optimization", False))
 
@@ -137,6 +137,7 @@ opts.Add("extra_suffix", "Custom extra suffix added to the base filename of all 
 opts.Add(BoolVariable("vsproj", "Generate a Visual Studio solution", False))
 opts.Add(BoolVariable("disable_3d", "Disable 3D nodes for a smaller executable", False))
 opts.Add(BoolVariable("disable_advanced_gui", "Disable advanced GUI nodes and behaviors", False))
+opts.Add(BoolVariable("modules_enabled_by_default", "If no, disable all modules except ones explicitly enabled", True))
 opts.Add(BoolVariable("no_editor_splash", "Don't use the custom splash screen for the editor", False))
 opts.Add("system_certs_path", "Use this path as SSL certificates default for editor (for package maintainers)", "")
 opts.Add(BoolVariable("use_precise_math_checks", "Math checks use very precise epsilon (debug option)", False))
@@ -144,6 +145,7 @@ opts.Add(BoolVariable("use_precise_math_checks", "Math checks use very precise e
 # Thirdparty libraries
 opts.Add(BoolVariable("builtin_bullet", "Use the built-in Bullet library", True))
 opts.Add(BoolVariable("builtin_certs", "Use the built-in SSL certificates bundles", True))
+opts.Add(BoolVariable("builtin_embree", "Use the built-in Embree library", True))
 opts.Add(BoolVariable("builtin_enet", "Use the built-in ENet library", True))
 opts.Add(BoolVariable("builtin_freetype", "Use the built-in FreeType library", True))
 opts.Add(BoolVariable("builtin_glslang", "Use the built-in glslang library", True))
@@ -259,16 +261,21 @@ for path in module_search_paths:
 
 # Add module options.
 for name, path in modules_detected.items():
-    enabled = True
-    sys.path.insert(0, path)
-    import config
+    if env_base["modules_enabled_by_default"]:
+        enabled = True
 
-    try:
-        enabled = config.is_enabled()
-    except AttributeError:
-        pass
-    sys.path.remove(path)
-    sys.modules.pop("config")
+        sys.path.insert(0, path)
+        import config
+
+        try:
+            enabled = config.is_enabled()
+        except AttributeError:
+            pass
+        sys.path.remove(path)
+        sys.modules.pop("config")
+    else:
+        enabled = False
+
     opts.Add(BoolVariable("module_" + name + "_enabled", "Enable module '%s'" % (name,), enabled))
 
 methods.write_modules(modules_detected)
@@ -301,10 +308,6 @@ if env_base["target"] == "debug":
     # Use cached implicit dependencies by default. Can be overridden by specifying `--implicit-deps-changed` in the command line.
     # http://scons.org/doc/production/HTML/scons-user/ch06s04.html
     env_base.SetOption("implicit_cache", 1)
-
-if not env_base["tools"]:
-    # Export templates can't run unit test tool.
-    env_base["tests"] = False
 
 if env_base["no_editor_splash"]:
     env_base.Append(CPPDEFINES=["NO_EDITOR_SPLASH"])

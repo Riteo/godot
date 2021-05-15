@@ -8,7 +8,7 @@
 # Sebastian Silva <sebastian@sugarlabs.org>, 2016.
 # Jose Luis Bossio <joseluisbossio@gmail.com>, 2018.
 # Reynaldo Cruz <rcruz60@gmail.com>, 2018.
-# Javier Ocampos <xavier.ocampos@gmail.com>, 2018, 2019, 2020.
+# Javier Ocampos <xavier.ocampos@gmail.com>, 2018, 2019, 2020, 2021.
 # Andrés S <andres.segovia.dev@gmail.com>, 2019.
 # Florencia Menéndez <mariaflormz2@gmail.com>, 2019.
 # roger <616steam@gmail.com>, 2019, 2020.
@@ -21,8 +21,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Godot Engine editor\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2021-03-09 04:13+0000\n"
-"Last-Translator: Lisandro Lorea <lisandrolorea@gmail.com>\n"
+"PO-Revision-Date: 2021-04-22 14:39+0000\n"
+"Last-Translator: Javier Ocampos <xavier.ocampos@gmail.com>\n"
 "Language-Team: Spanish (Argentina) <https://hosted.weblate.org/projects/"
 "godot-engine/godot/es_AR/>\n"
 "Language: es_AR\n"
@@ -30,7 +30,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 4.5.1\n"
+"X-Generator: Weblate 4.7-dev\n"
 
 #: core/math/expression.cpp modules/gdscript/gdscript_functions.cpp
 #: modules/visual_script/visual_script_builtin_funcs.cpp
@@ -2564,9 +2564,11 @@ msgid "Unable to load addon script from path: '%s'."
 msgstr "No se pudo cargar el script de addon desde la ruta: '%s'."
 
 #: editor/editor_node.cpp
+#, fuzzy
 msgid ""
-"Unable to load addon script from path: '%s' There seems to be an error in "
-"the code, please check the syntax."
+"Unable to load addon script from path: '%s'. This might be due to a code "
+"error in that script. \n"
+"Disabling the addon at '%s' to prevent further errors."
 msgstr ""
 "No se pudo cargar el script de addon desde la ruta: '%s' Parece haber un "
 "error en el código. Por favor, revisá la sintaxis."
@@ -3708,6 +3710,13 @@ msgstr ""
 "reimportá manualmente."
 
 #: editor/filesystem_dock.cpp
+msgid ""
+"Importing has been disabled for this file, so it can't be opened for editing."
+msgstr ""
+"Se ha desactivado la importación de este archivo, por lo que no se puede "
+"abrir para editarlo."
+
+#: editor/filesystem_dock.cpp
 msgid "Cannot move/rename resources root."
 msgstr "No se puede mover/renombrar la raiz de recursos."
 
@@ -4106,6 +4115,10 @@ msgstr "Importador:"
 #: editor/import_defaults_editor.cpp
 msgid "Reset to Defaults"
 msgstr "Restablecer Valores Por Defecto"
+
+#: editor/import_dock.cpp
+msgid "Keep File (No Import)"
+msgstr "Mantener Archivo (No Importar)"
 
 #: editor/import_dock.cpp
 msgid "%d Files"
@@ -5250,7 +5263,17 @@ msgstr ""
 
 #: editor/plugins/baked_lightmap_editor_plugin.cpp
 msgid ""
-"Godot editor was built without ray tracing support, lightmaps can't be baked."
+"Godot editor was built without ray tracing support; lightmaps can't be "
+"baked.\n"
+"If you are using an Apple Silicon-based Mac, try forcing Rosetta emulation "
+"on Godot.app in the application settings\n"
+"then restart the editor."
+msgstr ""
+
+#: editor/plugins/baked_lightmap_editor_plugin.cpp
+#, fuzzy
+msgid ""
+"Godot editor was built without ray tracing support; lightmaps can't be baked."
 msgstr ""
 "El editor de Godot se compiló sin soporte de ray tracing, los lightmaps no "
 "pueden ser bakeados."
@@ -7576,6 +7599,13 @@ msgstr "Modificador de Velocidad de Vista Libre"
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid "View Rotation Locked"
 msgstr "Rotación de Vista Trabada"
+
+#: editor/plugins/spatial_editor_plugin.cpp
+msgid ""
+"To zoom further, change the camera's clipping planes (View -> Settings...)"
+msgstr ""
+"Para alejar más, cambiá los planos de corte de la cámara (Vista -> "
+"Configuración...)"
 
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid ""
@@ -10969,6 +10999,16 @@ msgstr "Desasignar el script del nodo seleccionado."
 #: editor/scene_tree_dock.cpp
 msgid "Remote"
 msgstr "Remoto"
+
+#: editor/scene_tree_dock.cpp
+msgid ""
+"If selected, the Remote scene tree dock will cause the project to stutter "
+"every time it updates.\n"
+"Switch back to the Local scene tree dock to improve performance."
+msgstr ""
+"Al seleccionar, el panel de árbol de escena remota causará saltos de "
+"framerate en el proyecto cada vez que se actualice.\n"
+"Volvé a seleccionar escena local para mejorar el rendimiento."
 
 #: editor/scene_tree_dock.cpp
 msgid "Local"

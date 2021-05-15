@@ -44,6 +44,12 @@
 				Returns a [Vector3] in global coordinates, that can be moved to, making sure that there are no static objects in the way. If the agent does not have a navigation path, it will return the origin of the agent's parent.
 			</description>
 		</method>
+		<method name="get_rid" qualifiers="const">
+			<return type="RID">
+			</return>
+			<description>
+			</description>
+		</method>
 		<method name="get_target_location" qualifiers="const">
 			<return type="Vector3">
 			</return>
@@ -117,7 +123,7 @@
 			The distance threshold before a target is considered to be reached. This will allow an agent to not have to hit a point on the path exactly, but in the area.
 		</member>
 		<member name="time_horizon" type="float" setter="set_time_horizon" getter="get_time_horizon" default="5.0">
-			The minimal amount of time for which this agent's velocities, that are computed with the collision avoidance algorithim, are safe with respect to other agents. The larger the number, the sooner the agent will respond to other agents, but less freedom in choosing its velocities. Must be positive.
+			The minimal amount of time for which this agent's velocities, that are computed with the collision avoidance algorithm, are safe with respect to other agents. The larger the number, the sooner the agent will respond to other agents, but less freedom in choosing its velocities. Must be positive.
 		</member>
 	</members>
 	<signals>

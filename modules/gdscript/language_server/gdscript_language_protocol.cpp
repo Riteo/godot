@@ -32,7 +32,6 @@
 
 #include "core/config/project_settings.h"
 #include "core/io/json.h"
-#include "core/os/copymem.h"
 #include "editor/doc_tools.h"
 #include "editor/editor_log.h"
 #include "editor/editor_node.h"
@@ -256,7 +255,7 @@ void GDScriptLanguageProtocol::poll() {
 	}
 }
 
-Error GDScriptLanguageProtocol::start(int p_port, const IP_Address &p_bind_ip) {
+Error GDScriptLanguageProtocol::start(int p_port, const IPAddress &p_bind_ip) {
 	return server->listen(p_port, p_bind_ip);
 }
 

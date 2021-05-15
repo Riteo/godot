@@ -332,7 +332,7 @@ static BOOL CALLBACK _MonitorEnumProcUsableSize(HMONITOR hMonitor, HDC hdcMonito
 	EnumRectData *data = (EnumRectData *)dwData;
 	if (data->count == data->screen) {
 		MONITORINFO minfo;
-		zeromem(&minfo, sizeof(MONITORINFO));
+		memset(&minfo, 0, sizeof(MONITORINFO));
 		minfo.cbSize = sizeof(MONITORINFO);
 		GetMonitorInfoA(hMonitor, &minfo);
 
@@ -1299,7 +1299,7 @@ void DisplayServerWindows::cursor_set_custom_image(const RES &p_cursor, CursorSh
 		Rect2 atlas_rect;
 
 		if (texture.is_valid()) {
-			image = texture->get_data();
+			image = texture->get_image();
 		}
 
 		if (!image.is_valid() && atlas_texture.is_valid()) {
@@ -1322,7 +1322,7 @@ void DisplayServerWindows::cursor_set_custom_image(const RES &p_cursor, CursorSh
 		ERR_FAIL_COND(texture_size.width > 256 || texture_size.height > 256);
 		ERR_FAIL_COND(p_hotspot.x > texture_size.width || p_hotspot.y > texture_size.height);
 
-		image = texture->get_data();
+		image = texture->get_image();
 
 		ERR_FAIL_COND(!image.is_valid());
 
@@ -1419,13 +1419,13 @@ void DisplayServerWindows::enable_for_stealing_focus(OS::ProcessID pid) {
 }
 
 int DisplayServerWindows::keyboard_get_layout_count() const {
-	return GetKeyboardLayoutList(0, NULL);
+	return GetKeyboardLayoutList(0, nullptr);
 }
 
 int DisplayServerWindows::keyboard_get_current_layout() const {
 	HKL cur_layout = GetKeyboardLayout(0);
 
-	int layout_count = GetKeyboardLayoutList(0, NULL);
+	int layout_count = GetKeyboardLayoutList(0, nullptr);
 	HKL *layouts = (HKL *)memalloc(layout_count * sizeof(HKL));
 	GetKeyboardLayoutList(layout_count, layouts);
 
@@ -1440,7 +1440,7 @@ int DisplayServerWindows::keyboard_get_current_layout() const {
 }
 
 void DisplayServerWindows::keyboard_set_current_layout(int p_index) {
-	int layout_count = GetKeyboardLayoutList(0, NULL);
+	int layout_count = GetKeyboardLayoutList(0, nullptr);
 
 	ERR_FAIL_INDEX(p_index, layout_count);
 
@@ -1451,7 +1451,7 @@ void DisplayServerWindows::keyboard_set_current_layout(int p_index) {
 }
 
 String DisplayServerWindows::keyboard_get_layout_language(int p_index) const {
-	int layout_count = GetKeyboardLayoutList(0, NULL);
+	int layout_count = GetKeyboardLayoutList(0, nullptr);
 
 	ERR_FAIL_INDEX_V(p_index, layout_count, "");
 
@@ -1481,7 +1481,7 @@ String _get_full_layout_name_from_registry(HKL p_layout) {
 
 	DWORD buffer = 1024;
 	DWORD vtype = REG_SZ;
-	if (RegQueryValueExW(hkey, L"Layout Text", NULL, &vtype, (LPBYTE)layout_text, &buffer) == ERROR_SUCCESS) {
+	if (RegQueryValueExW(hkey, L"Layout Text", nullptr, &vtype, (LPBYTE)layout_text, &buffer) == ERROR_SUCCESS) {
 		ret = String::utf16((const char16_t *)layout_text);
 	}
 	RegCloseKey(hkey);
@@ -1489,7 +1489,7 @@ String _get_full_layout_name_from_registry(HKL p_layout) {
 }
 
 String DisplayServerWindows::keyboard_get_layout_name(int p_index) const {
-	int layout_count = GetKeyboardLayoutList(0, NULL);
+	int layout_count = GetKeyboardLayoutList(0, nullptr);
 
 	ERR_FAIL_INDEX_V(p_index, layout_count, "");
 
@@ -2412,17 +2412,17 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 				case WM_LBUTTONDBLCLK: {
 					mb->set_pressed(true);
 					mb->set_button_index(1);
-					mb->set_doubleclick(true);
+					mb->set_double_click(true);
 				} break;
 				case WM_RBUTTONDBLCLK: {
 					mb->set_pressed(true);
 					mb->set_button_index(2);
-					mb->set_doubleclick(true);
+					mb->set_double_click(true);
 				} break;
 				case WM_MBUTTONDBLCLK: {
 					mb->set_pressed(true);
 					mb->set_button_index(3);
-					mb->set_doubleclick(true);
+					mb->set_double_click(true);
 				} break;
 				case WM_MOUSEWHEEL: {
 					mb->set_pressed(true);
@@ -2431,9 +2431,9 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 						return 0;
 
 					if (motion > 0)
-						mb->set_button_index(BUTTON_WHEEL_UP);
+						mb->set_button_index(MOUSE_BUTTON_WHEEL_UP);
 					else
-						mb->set_button_index(BUTTON_WHEEL_DOWN);
+						mb->set_button_index(MOUSE_BUTTON_WHEEL_DOWN);
 
 				} break;
 				case WM_MOUSEHWHEEL: {
@@ -2443,34 +2443,34 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 						return 0;
 
 					if (motion < 0) {
-						mb->set_button_index(BUTTON_WHEEL_LEFT);
+						mb->set_button_index(MOUSE_BUTTON_WHEEL_LEFT);
 						mb->set_factor(fabs((double)motion / (double)WHEEL_DELTA));
 					} else {
-						mb->set_button_index(BUTTON_WHEEL_RIGHT);
+						mb->set_button_index(MOUSE_BUTTON_WHEEL_RIGHT);
 						mb->set_factor(fabs((double)motion / (double)WHEEL_DELTA));
 					}
 				} break;
 				case WM_XBUTTONDOWN: {
 					mb->set_pressed(true);
 					if (HIWORD(wParam) == XBUTTON1)
-						mb->set_button_index(BUTTON_XBUTTON1);
+						mb->set_button_index(MOUSE_BUTTON_XBUTTON1);
 					else
-						mb->set_button_index(BUTTON_XBUTTON2);
+						mb->set_button_index(MOUSE_BUTTON_XBUTTON2);
 				} break;
 				case WM_XBUTTONUP: {
 					mb->set_pressed(false);
 					if (HIWORD(wParam) == XBUTTON1)
-						mb->set_button_index(BUTTON_XBUTTON1);
+						mb->set_button_index(MOUSE_BUTTON_XBUTTON1);
 					else
-						mb->set_button_index(BUTTON_XBUTTON2);
+						mb->set_button_index(MOUSE_BUTTON_XBUTTON2);
 				} break;
 				case WM_XBUTTONDBLCLK: {
 					mb->set_pressed(true);
 					if (HIWORD(wParam) == XBUTTON1)
-						mb->set_button_index(BUTTON_XBUTTON1);
+						mb->set_button_index(MOUSE_BUTTON_XBUTTON1);
 					else
-						mb->set_button_index(BUTTON_XBUTTON2);
-					mb->set_doubleclick(true);
+						mb->set_button_index(MOUSE_BUTTON_XBUTTON2);
+					mb->set_double_click(true);
 				} break;
 				default: {
 					return 0;
@@ -2566,6 +2566,8 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 					windows[window_id].preserve_window_size = false;
 					window_set_size(Size2(windows[window_id].width, windows[window_id].height), window_id);
 				}
+			} else {
+				windows[window_id].preserve_window_size = true;
 			}
 
 			if (!windows[window_id].rect_changed_callback.is_null()) {

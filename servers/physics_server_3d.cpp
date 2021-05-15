@@ -172,11 +172,11 @@ real_t PhysicsShapeQueryParameters3D::get_margin() const {
 	return margin;
 }
 
-void PhysicsShapeQueryParameters3D::set_collision_mask(int p_collision_mask) {
+void PhysicsShapeQueryParameters3D::set_collision_mask(uint32_t p_collision_mask) {
 	collision_mask = p_collision_mask;
 }
 
-int PhysicsShapeQueryParameters3D::get_collision_mask() const {
+uint32_t PhysicsShapeQueryParameters3D::get_collision_mask() const {
 	return collision_mask;
 }
 
@@ -550,11 +550,15 @@ void PhysicsServer3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_set_omit_force_integration", "body", "enable"), &PhysicsServer3D::body_set_omit_force_integration);
 	ClassDB::bind_method(D_METHOD("body_is_omitting_force_integration", "body"), &PhysicsServer3D::body_is_omitting_force_integration);
 
-	ClassDB::bind_method(D_METHOD("body_set_force_integration_callback", "body", "receiver", "method", "userdata"), &PhysicsServer3D::body_set_force_integration_callback, DEFVAL(Variant()));
+	ClassDB::bind_method(D_METHOD("body_set_force_integration_callback", "body", "callable", "userdata"), &PhysicsServer3D::body_set_force_integration_callback, DEFVAL(Variant()));
 
 	ClassDB::bind_method(D_METHOD("body_set_ray_pickable", "body", "enable"), &PhysicsServer3D::body_set_ray_pickable);
 
 	ClassDB::bind_method(D_METHOD("body_get_direct_state", "body"), &PhysicsServer3D::body_get_direct_state);
+
+	/* SOFT BODY API */
+
+	ClassDB::bind_method(D_METHOD("soft_body_get_bounds", "body"), &PhysicsServer3D::soft_body_get_bounds);
 
 	/* JOINT API */
 
@@ -693,6 +697,7 @@ void PhysicsServer3D::_bind_methods() {
 	BIND_ENUM_CONSTANT(SHAPE_CONVEX_POLYGON);
 	BIND_ENUM_CONSTANT(SHAPE_CONCAVE_POLYGON);
 	BIND_ENUM_CONSTANT(SHAPE_HEIGHTMAP);
+	BIND_ENUM_CONSTANT(SHAPE_SOFT_BODY);
 	BIND_ENUM_CONSTANT(SHAPE_CUSTOM);
 
 	BIND_ENUM_CONSTANT(AREA_PARAM_GRAVITY);

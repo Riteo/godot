@@ -34,6 +34,8 @@
 #include "servers/navigation_server_3d.h"
 
 void NavigationAgent3D::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_rid"), &NavigationAgent3D::get_rid);
+
 	ClassDB::bind_method(D_METHOD("set_target_desired_distance", "desired_distance"), &NavigationAgent3D::set_target_desired_distance);
 	ClassDB::bind_method(D_METHOD("get_target_desired_distance"), &NavigationAgent3D::get_target_desired_distance);
 
@@ -95,8 +97,11 @@ void NavigationAgent3D::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_READY: {
 			agent_parent = Object::cast_to<Node3D>(get_parent());
-
-			NavigationServer3D::get_singleton()->agent_set_callback(agent, this, "_avoidance_done");
+			if (agent_parent != nullptr) {
+				// place agent on navigation map first or else the RVO agent callback creation fails silently later
+				NavigationServer3D::get_singleton()->agent_set_map(get_rid(), agent_parent->get_world_3d()->get_navigation_map());
+				NavigationServer3D::get_singleton()->agent_set_callback(agent, this, "_avoidance_done");
+			}
 			set_physics_process_internal(true);
 		} break;
 		case NOTIFICATION_EXIT_TREE: {
@@ -106,12 +111,7 @@ void NavigationAgent3D::_notification(int p_what) {
 		case NOTIFICATION_INTERNAL_PHYSICS_PROCESS: {
 			if (agent_parent) {
 				NavigationServer3D::get_singleton()->agent_set_position(agent, agent_parent->get_global_transform().origin);
-				if (!target_reached) {
-					if (distance_to_target() < target_desired_distance) {
-						emit_signal("target_reached");
-						target_reached = true;
-					}
-				}
+				_check_distance_to_target();
 			}
 		} break;
 	}
@@ -245,17 +245,14 @@ void NavigationAgent3D::_avoidance_done(Vector3 p_new_velocity) {
 	emit_signal("velocity_computed", p_new_velocity);
 }
 
-String NavigationAgent3D::get_configuration_warning() const {
-	String warning = Node::get_configuration_warning();
+TypedArray<String> NavigationAgent3D::get_configuration_warnings() const {
+	TypedArray<String> warnings = Node::get_configuration_warnings();
 
 	if (!Object::cast_to<Node3D>(get_parent())) {
-		if (!warning.is_empty()) {
-			warning += "\n\n";
-		}
-		warning += TTR("The NavigationAgent3D can be used only under a spatial node.");
+		warnings.push_back(TTR("The NavigationAgent3D can be used only under a spatial node."));
 	}
 
-	return warning;
+	return warnings;
 }
 
 void NavigationAgent3D::update_navigation() {
@@ -312,11 +309,21 @@ void NavigationAgent3D::update_navigation() {
 		while (o.distance_to(navigation_path[nav_path_index] - Vector3(0, navigation_height_offset, 0)) < target_desired_distance) {
 			nav_path_index += 1;
 			if (nav_path_index == navigation_path.size()) {
+				_check_distance_to_target();
 				nav_path_index -= 1;
 				navigation_finished = true;
 				emit_signal("navigation_finished");
 				break;
 			}
+		}
+	}
+}
+
+void NavigationAgent3D::_check_distance_to_target() {
+	if (!target_reached) {
+		if (distance_to_target() < target_desired_distance) {
+			emit_signal("target_reached");
+			target_reached = true;
 		}
 	}
 }

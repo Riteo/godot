@@ -292,7 +292,7 @@ void ScriptTextEditor::_show_warnings_panel(bool p_show) {
 
 void ScriptTextEditor::_warning_clicked(Variant p_line) {
 	if (p_line.get_type() == Variant::INT) {
-		code_editor->get_text_editor()->cursor_set_line(p_line.operator int64_t());
+		goto_line_centered(p_line.operator int64_t());
 	} else if (p_line.get_type() == Variant::DICTIONARY) {
 		Dictionary meta = p_line.operator Dictionary();
 		code_editor->get_text_editor()->insert_at("# warning-ignore:" + meta["code"].operator String(), meta["line"].operator int64_t() - 1);
@@ -601,8 +601,7 @@ void ScriptTextEditor::_bookmark_item_pressed(int p_idx) {
 	if (p_idx < 4) { // Any item before the separator.
 		_edit_option(bookmarks_menu->get_item_id(p_idx));
 	} else {
-		code_editor->goto_line(bookmarks_menu->get_item_metadata(p_idx));
-		code_editor->get_text_editor()->call_deferred("center_viewport_to_cursor"); //Need to be deferred, because goto uses call_deferred().
+		code_editor->goto_line_centered(bookmarks_menu->get_item_metadata(p_idx));
 	}
 }
 
@@ -791,7 +790,7 @@ void ScriptTextEditor::_lookup_symbol(const String &p_symbol, int p_row, int p_c
 					emit_signal("request_open_script_at_line", result.script, result.location - 1);
 				} else {
 					emit_signal("request_save_history");
-					_goto_line(result.location - 1);
+					goto_line_centered(result.location - 1);
 				}
 			} break;
 			case ScriptLanguage::LookupResult::RESULT_CLASS: {
@@ -1517,7 +1516,7 @@ void ScriptTextEditor::_text_edit_gui_input(const Ref<InputEvent> &ev) {
 	bool create_menu = false;
 
 	CodeEdit *tx = code_editor->get_text_editor();
-	if (mb.is_valid() && mb->get_button_index() == BUTTON_RIGHT && mb->is_pressed()) {
+	if (mb.is_valid() && mb->get_button_index() == MOUSE_BUTTON_RIGHT && mb->is_pressed()) {
 		local_pos = mb->get_global_position() - tx->get_global_position();
 		create_menu = true;
 	} else if (k.is_valid() && k->get_keycode() == KEY_MENU) {
@@ -1721,6 +1720,9 @@ void ScriptTextEditor::_enable_code_editor() {
 	} else if (default_color_mode == 2) {
 		color_picker->set_raw_mode(true);
 	}
+
+	int picker_shape = EDITOR_GET("interface/inspector/default_color_picker_shape");
+	color_picker->set_picker_shape((ColorPicker::PickerShapeType)picker_shape);
 
 	quick_open = memnew(ScriptEditorQuickOpen);
 	quick_open->connect("goto_line", callable_mp(this, &ScriptTextEditor::_goto_line));

@@ -78,12 +78,14 @@
 # Joseph Boudou <joseph.boudou@matabio.net>, 2020.
 # Vincent Foulon <vincent.foulon80@gmail.com>, 2020.
 # TechnoPorg <jonah.janzen@gmail.com>, 2021.
+# ASTRALE <jules.cercy@etu.univ-lyon1.fr>, 2021.
+# Julien Vanelian <julienvanelian@hotmail.com>, 2021.
 msgid ""
 msgstr ""
 "Project-Id-Version: Godot Engine editor\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2021-01-22 10:21+0000\n"
-"Last-Translator: Pierre Caye <pierrecaye@laposte.net>\n"
+"PO-Revision-Date: 2021-04-30 23:03+0000\n"
+"Last-Translator: Julien Vanelian <julienvanelian@hotmail.com>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/godot-engine/"
 "godot/fr/>\n"
 "Language: fr\n"
@@ -91,7 +93,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Generator: Weblate 4.5-dev\n"
+"X-Generator: Weblate 4.7-dev\n"
 
 #: core/math/expression.cpp modules/gdscript/gdscript_functions.cpp
 #: modules/visual_script/visual_script_builtin_funcs.cpp
@@ -107,7 +109,7 @@ msgstr "Une chaîne de caractères de longueur 1 est attendue (un caractère)."
 #: modules/mono/glue/gd_glue.cpp
 #: modules/visual_script/visual_script_builtin_funcs.cpp
 msgid "Not enough bytes for decoding bytes, or invalid format."
-msgstr "Pas assez d’octets pour le décodage, ou format non valide."
+msgstr "Pas assez d’octets pour le décodage, ou format invalide."
 
 #: core/math/expression.cpp
 msgid "Invalid input %i (not passed) in expression"
@@ -1244,7 +1246,7 @@ msgstr "Sponsors Bronze"
 
 #: editor/editor_about.cpp
 msgid "Mini Sponsors"
-msgstr "Mini Sponsors"
+msgstr "Petits Sponsors"
 
 #: editor/editor_about.cpp
 msgid "Gold Donors"
@@ -2632,9 +2634,11 @@ msgstr ""
 "Impossible de charger le script de l’extension depuis le chemin : « %s »."
 
 #: editor/editor_node.cpp
+#, fuzzy
 msgid ""
-"Unable to load addon script from path: '%s' There seems to be an error in "
-"the code, please check the syntax."
+"Unable to load addon script from path: '%s'. This might be due to a code "
+"error in that script. \n"
+"Disabling the addon at '%s' to prevent further errors."
 msgstr ""
 "Impossible de charger le script de l’extension depuis le chemin : « %s ». Il "
 "semble y avoir une erreur dans le code, merci de vérifier la syntaxe."
@@ -3779,6 +3783,13 @@ msgstr ""
 "le réimporter manuellement."
 
 #: editor/filesystem_dock.cpp
+msgid ""
+"Importing has been disabled for this file, so it can't be opened for editing."
+msgstr ""
+"L'importation a été désactivée pour ce fichier, il ne peut donc pas être "
+"ouvert dans l'éditeur."
+
+#: editor/filesystem_dock.cpp
 msgid "Cannot move/rename resources root."
 msgstr "Impossible de déplacer / renommer les ressources root."
 
@@ -4178,6 +4189,10 @@ msgstr "Importeur :"
 #: editor/import_defaults_editor.cpp
 msgid "Reset to Defaults"
 msgstr "Réinitialiser"
+
+#: editor/import_dock.cpp
+msgid "Keep File (No Import)"
+msgstr "Conserver le fichier (non importé)"
 
 #: editor/import_dock.cpp
 msgid "%d Files"
@@ -5323,7 +5338,17 @@ msgstr ""
 
 #: editor/plugins/baked_lightmap_editor_plugin.cpp
 msgid ""
-"Godot editor was built without ray tracing support, lightmaps can't be baked."
+"Godot editor was built without ray tracing support; lightmaps can't be "
+"baked.\n"
+"If you are using an Apple Silicon-based Mac, try forcing Rosetta emulation "
+"on Godot.app in the application settings\n"
+"then restart the editor."
+msgstr ""
+
+#: editor/plugins/baked_lightmap_editor_plugin.cpp
+#, fuzzy
+msgid ""
+"Godot editor was built without ray tracing support; lightmaps can't be baked."
 msgstr ""
 "L'éditeur Godot a été compilé sans support du ray tracing, les lightmaps ne "
 "peuvent pas être pré-calculées."
@@ -6304,7 +6329,7 @@ msgstr ""
 
 #: editor/plugins/mesh_library_editor_plugin.cpp
 msgid "Mesh Library"
-msgstr "Mesh Library"
+msgstr "Librairie de maillages"
 
 #: editor/plugins/mesh_library_editor_plugin.cpp
 #: editor/plugins/theme_editor_plugin.cpp
@@ -7381,7 +7406,7 @@ msgstr ""
 
 #: editor/plugins/shader_editor_plugin.cpp
 msgid "Shader"
-msgstr "Shader"
+msgstr "Ombrage"
 
 #: editor/plugins/skeleton_2d_editor_plugin.cpp
 msgid "This skeleton has no bones, create some children Bone2D nodes."
@@ -7664,6 +7689,13 @@ msgstr "Ralentissement de la vue libre"
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid "View Rotation Locked"
 msgstr "Rotation de la vue verrouillée"
+
+#: editor/plugins/spatial_editor_plugin.cpp
+msgid ""
+"To zoom further, change the camera's clipping planes (View -> Settings...)"
+msgstr ""
+"Pour zoomer d'avantage, modifiez les plans de détourage de la caméra "
+"(Affichage -> Paramètres...)"
 
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid ""
@@ -11067,6 +11099,17 @@ msgid "Remote"
 msgstr "Distant"
 
 #: editor/scene_tree_dock.cpp
+msgid ""
+"If selected, the Remote scene tree dock will cause the project to stutter "
+"every time it updates.\n"
+"Switch back to the Local scene tree dock to improve performance."
+msgstr ""
+"S'il est sélectionné, le dock de l'arborescence de la scène distante sera "
+"instable à chaque mise à jour de celui-ci.\n"
+"Revenez au dock de l'arborescence de la scène locale afin d'améliorer les "
+"performances."
+
+#: editor/scene_tree_dock.cpp
 msgid "Local"
 msgstr "Local"
 
@@ -12648,10 +12691,14 @@ msgstr "Un CollisionPolygon2D vide n'a pas d'effet sur les collisions."
 #: scene/2d/collision_polygon_2d.cpp
 msgid "Invalid polygon. At least 3 points are needed in 'Solids' build mode."
 msgstr ""
+"Polygone non valide. Il doit avoir au moins trois points en mode de "
+"construction 'Solide'."
 
 #: scene/2d/collision_polygon_2d.cpp
 msgid "Invalid polygon. At least 2 points are needed in 'Segments' build mode."
 msgstr ""
+"Polygone non valide. Il doit y avoir au moins 2 points en mode de "
+"construction 'Segments'."
 
 #: scene/2d/collision_shape_2d.cpp
 msgid ""

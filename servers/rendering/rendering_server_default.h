@@ -478,6 +478,7 @@ public:
 
 	FUNCRIDSPLIT(particles)
 
+	FUNC2(particles_set_mode, RID, ParticlesMode)
 	FUNC2(particles_set_emitting, RID, bool)
 	FUNC1R(bool, particles_get_emitting, RID)
 	FUNC2(particles_set_amount, RID, int)
@@ -491,13 +492,19 @@ public:
 	FUNC2(particles_set_use_local_coordinates, RID, bool)
 	FUNC2(particles_set_process_material, RID, RID)
 	FUNC2(particles_set_fixed_fps, RID, int)
+	FUNC2(particles_set_interpolate, RID, bool)
 	FUNC2(particles_set_fractional_delta, RID, bool)
 	FUNC1R(bool, particles_is_inactive, RID)
+	FUNC3(particles_set_trails, RID, bool, float)
+	FUNC2(particles_set_trail_bind_poses, RID, const Vector<Transform> &)
+
 	FUNC1(particles_request_process, RID)
 	FUNC1(particles_restart, RID)
 	FUNC6(particles_emit, RID, const Transform &, const Vector3 &, const Color &, const Color &, uint32_t)
 	FUNC2(particles_set_subemitter, RID, RID)
 	FUNC2(particles_set_collision_base_size, RID, float)
+
+	FUNC2(particles_set_transform_align, RID, RS::ParticlesTransformAlign)
 
 	FUNC2(particles_set_draw_order, RID, RS::ParticlesDrawOrder)
 
@@ -539,6 +546,10 @@ public:
 	FUNC2(camera_set_environment, RID, RID)
 	FUNC2(camera_set_camera_effects, RID, RID)
 	FUNC2(camera_set_use_vertical_aspect, RID, bool)
+
+	/* OCCLUDER */
+	FUNCRIDSPLIT(occluder)
+	FUNC3(occluder_set_mesh, RID, const PackedVector3Array &, const PackedInt32Array &);
 
 #undef server_name
 #undef ServerName
@@ -590,6 +601,9 @@ public:
 	FUNC2(viewport_set_msaa, RID, ViewportMSAA)
 	FUNC2(viewport_set_screen_space_aa, RID, ViewportScreenSpaceAA)
 	FUNC2(viewport_set_use_debanding, RID, bool)
+	FUNC2(viewport_set_use_occlusion_culling, RID, bool)
+	FUNC1(viewport_set_occlusion_rays_per_thread, int)
+	FUNC1(viewport_set_occlusion_culling_build_quality, ViewportOcclusionCullingBuildQuality)
 	FUNC2(viewport_set_lod_threshold, RID, float)
 
 	FUNC2R(int, viewport_get_render_info, RID, ViewportRenderInfo)
@@ -703,7 +717,7 @@ public:
 	FUNC2(instance_set_transform, RID, const Transform &)
 	FUNC2(instance_attach_object_instance_id, RID, ObjectID)
 	FUNC3(instance_set_blend_shape_weight, RID, int, float)
-	FUNC3(instance_set_surface_material, RID, int, RID)
+	FUNC3(instance_set_surface_override_material, RID, int, RID)
 	FUNC2(instance_set_visible, RID, bool)
 
 	FUNC2(instance_set_custom_aabb, RID, AABB)

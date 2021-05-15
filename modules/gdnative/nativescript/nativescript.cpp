@@ -41,6 +41,8 @@
 #include "core/os/file_access.h"
 #include "core/os/os.h"
 
+#include "main/main.h"
+
 #include "scene/main/scene_tree.h"
 #include "scene/resources/resource_format_text.h"
 
@@ -1248,6 +1250,7 @@ void NativeScriptLanguage::init() {
 		if (generate_c_api(E->next()->get()) != OK) {
 			ERR_PRINT("Failed to generate C API\n");
 		}
+		Main::cleanup(true);
 		exit(0);
 	}
 
@@ -1257,6 +1260,7 @@ void NativeScriptLanguage::init() {
 		if (generate_c_builtin_api(E->next()->get()) != OK) {
 			ERR_PRINT("Failed to generate C builtin API\n");
 		}
+		Main::cleanup(true);
 		exit(0);
 	}
 #endif
@@ -1283,6 +1287,10 @@ void NativeScriptLanguage::finish() {
 }
 
 void NativeScriptLanguage::get_reserved_words(List<String> *p_words) const {
+}
+
+bool NativeScriptLanguage::is_control_flow_keyword(String p_keyword) const {
+	return false;
 }
 
 void NativeScriptLanguage::get_comment_delimiters(List<String> *p_delimiters) const {
@@ -1729,6 +1737,46 @@ void NativeScriptLanguage::unregister_script(NativeScript *script) {
 
 			Map<String, Ref<GDNative>>::Element *G = library_gdnatives.find(script->lib_path);
 			if (G && G->get()->get_library()->is_reloadable()) {
+				// ONLY if the library is marked as reloadable, and no more instances of its scripts exist do we unload the library
+
+				// First remove meta data related to the library
+				Map<String, Map<StringName, NativeScriptDesc>>::Element *L = library_classes.find(script->lib_path);
+				if (L) {
+					Map<StringName, NativeScriptDesc> classes = L->get();
+
+					for (Map<StringName, NativeScriptDesc>::Element *C = classes.front(); C; C = C->next()) {
+						// free property stuff first
+						for (OrderedHashMap<StringName, NativeScriptDesc::Property>::Element P = C->get().properties.front(); P; P = P.next()) {
+							if (P.get().getter.free_func) {
+								P.get().getter.free_func(P.get().getter.method_data);
+							}
+
+							if (P.get().setter.free_func) {
+								P.get().setter.free_func(P.get().setter.method_data);
+							}
+						}
+
+						// free method stuff
+						for (Map<StringName, NativeScriptDesc::Method>::Element *M = C->get().methods.front(); M; M = M->next()) {
+							if (M->get().method.free_func) {
+								M->get().method.free_func(M->get().method.method_data);
+							}
+						}
+
+						// free constructor/destructor
+						if (C->get().create_func.free_func) {
+							C->get().create_func.free_func(C->get().create_func.method_data);
+						}
+
+						if (C->get().destroy_func.free_func) {
+							C->get().destroy_func.free_func(C->get().destroy_func.method_data);
+						}
+					}
+
+					library_classes.erase(script->lib_path);
+				}
+
+				// now unload the library
 				G->get()->terminate();
 				library_gdnatives.erase(G);
 			}

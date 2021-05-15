@@ -543,6 +543,9 @@ void BaseMaterial3D::_update_shader() {
 	if (flags[FLAG_DISABLE_DEPTH_TEST]) {
 		code += ",depth_test_disabled";
 	}
+	if (flags[FLAG_PARTICLE_TRAILS_MODE]) {
+		code += ",particle_trails";
+	}
 	if (shading_mode == SHADING_MODE_PER_VERTEX) {
 		code += ",vertex_lighting";
 	}
@@ -672,7 +675,7 @@ void BaseMaterial3D::_update_shader() {
 		code += "uniform sampler2D texture_flowmap : hint_aniso," + texfilter_str + ";\n";
 	}
 	if (features[FEATURE_AMBIENT_OCCLUSION]) {
-		code += "uniform sampler2D texture_ambient_occlusion : hint_white;\n";
+		code += "uniform sampler2D texture_ambient_occlusion : hint_white, " + texfilter_str + ";\n";
 		code += "uniform vec4 ao_texture_channel;\n";
 		code += "uniform float ao_light_affect;\n";
 	}
@@ -829,16 +832,26 @@ void BaseMaterial3D::_update_shader() {
 	}
 
 	if (flags[FLAG_UV1_USE_TRIPLANAR]) {
-		code += "\tuv1_power_normal=pow(abs(NORMAL),vec3(uv1_blend_sharpness));\n";
+		if (flags[FLAG_UV1_USE_WORLD_TRIPLANAR]) {
+			code += "\tuv1_power_normal=pow(abs(mat3(WORLD_MATRIX) * NORMAL),vec3(uv1_blend_sharpness));\n";
+			code += "\tuv1_triplanar_pos = (WORLD_MATRIX * vec4(VERTEX, 1.0f)).xyz * uv1_scale + uv1_offset;\n";
+		} else {
+			code += "\tuv1_power_normal=pow(abs(NORMAL),vec3(uv1_blend_sharpness));\n";
+			code += "\tuv1_triplanar_pos = VERTEX * uv1_scale + uv1_offset;\n";
+		}
 		code += "\tuv1_power_normal/=dot(uv1_power_normal,vec3(1.0));\n";
-		code += "\tuv1_triplanar_pos = VERTEX * uv1_scale + uv1_offset;\n";
 		code += "\tuv1_triplanar_pos *= vec3(1.0,-1.0, 1.0);\n";
 	}
 
 	if (flags[FLAG_UV2_USE_TRIPLANAR]) {
-		code += "\tuv2_power_normal=pow(abs(NORMAL), vec3(uv2_blend_sharpness));\n";
+		if (flags[FLAG_UV2_USE_WORLD_TRIPLANAR]) {
+			code += "\tuv2_power_normal=pow(abs(mat3(WORLD_MATRIX) * NORMAL), vec3(uv2_blend_sharpness));\n";
+			code += "\tuv2_triplanar_pos = (WORLD_MATRIX * vec4(VERTEX, 1.0f)).xyz * uv2_scale + uv2_offset;\n";
+		} else {
+			code += "\tuv2_power_normal=pow(abs(NORMAL), vec3(uv2_blend_sharpness));\n";
+			code += "\tuv2_triplanar_pos = VERTEX * uv2_scale + uv2_offset;\n";
+		}
 		code += "\tuv2_power_normal/=dot(uv2_power_normal,vec3(1.0));\n";
-		code += "\tuv2_triplanar_pos = VERTEX * uv2_scale + uv2_offset;\n";
 		code += "\tuv2_triplanar_pos *= vec3(1.0,-1.0, 1.0);\n";
 	}
 
@@ -1019,7 +1032,10 @@ void BaseMaterial3D::_update_shader() {
 
 	if (features[FEATURE_REFRACTION]) {
 		if (features[FEATURE_NORMAL_MAPPING]) {
-			code += "\tvec3 ref_normal = normalize( mix(NORMAL,TANGENT * NORMAL_MAP.x + BINORMAL * NORMAL_MAP.y + NORMAL * NORMAL_MAP.z,NORMAL_MAP_DEPTH) );\n";
+			code += "\tvec3 unpacked_normal = NORMAL_MAP;\n";
+			code += "\tunpacked_normal.xy = unpacked_normal.xy * 2.0 - 1.0;\n";
+			code += "\tunpacked_normal.z = sqrt(max(0.0, 1.0 - dot(unpacked_normal.xy, unpacked_normal.xy)));\n";
+			code += "\tvec3 ref_normal = normalize( mix(NORMAL,TANGENT * unpacked_normal.x + BINORMAL * unpacked_normal.y + NORMAL * unpacked_normal.z,NORMAL_MAP_DEPTH) );\n";
 		} else {
 			code += "\tvec3 ref_normal = NORMAL;\n";
 		}
@@ -1586,6 +1602,9 @@ void BaseMaterial3D::set_flag(Flags p_flag, bool p_enabled) {
 	flags[p_flag] = p_enabled;
 	if (p_flag == FLAG_USE_SHADOW_TO_OPACITY || p_flag == FLAG_USE_TEXTURE_REPEAT || p_flag == FLAG_SUBSURFACE_MODE_SKIN || p_flag == FLAG_USE_POINT_SIZE) {
 		notify_property_list_changed();
+	}
+	if (p_flag == FLAG_PARTICLE_TRAILS_MODE) {
+		update_configuration_warning();
 	}
 	_queue_shader_change();
 }
@@ -2167,6 +2186,8 @@ Shader::Mode BaseMaterial3D::get_shader_mode() const {
 }
 
 void BaseMaterial3D::_bind_methods() {
+	static_assert(sizeof(MaterialKey) == 16, "MaterialKey should be 16 bytes");
+
 	ClassDB::bind_method(D_METHOD("set_albedo", "albedo"), &BaseMaterial3D::set_albedo);
 	ClassDB::bind_method(D_METHOD("get_albedo"), &BaseMaterial3D::get_albedo);
 
@@ -2501,7 +2522,7 @@ void BaseMaterial3D::_bind_methods() {
 	ADD_PROPERTYI(PropertyInfo(Variant::BOOL, "uv2_world_triplanar"), "set_flag", "get_flag", FLAG_UV2_USE_WORLD_TRIPLANAR);
 
 	ADD_GROUP("Sampling", "texture_");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "texture_filter", PROPERTY_HINT_ENUM, "Nearest,Linear,MipmapNearest,MipmapLinear,MipmapNearestAniso,MipmapLinearAniso"), "set_texture_filter", "get_texture_filter");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "texture_filter", PROPERTY_HINT_ENUM, "Nearest,Linear,Nearest Mipmap,Linear Mipmap,Nearest Mipmap Aniso.,Linear Mipmap Aniso."), "set_texture_filter", "get_texture_filter");
 	ADD_PROPERTYI(PropertyInfo(Variant::BOOL, "texture_repeat"), "set_flag", "get_flag", FLAG_USE_TEXTURE_REPEAT);
 
 	ADD_GROUP("Shadows", "");
@@ -2524,6 +2545,7 @@ void BaseMaterial3D::_bind_methods() {
 	ADD_PROPERTYI(PropertyInfo(Variant::BOOL, "fixed_size"), "set_flag", "get_flag", FLAG_FIXED_SIZE);
 	ADD_PROPERTYI(PropertyInfo(Variant::BOOL, "use_point_size"), "set_flag", "get_flag", FLAG_USE_POINT_SIZE);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "point_size", PROPERTY_HINT_RANGE, "0.1,128,0.1"), "set_point_size", "get_point_size");
+	ADD_PROPERTYI(PropertyInfo(Variant::BOOL, "use_particle_trails"), "set_flag", "get_flag", FLAG_PARTICLE_TRAILS_MODE);
 	ADD_GROUP("Proximity Fade", "proximity_fade_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "proximity_fade_enable"), "set_proximity_fade", "is_proximity_fade_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "proximity_fade_distance", PROPERTY_HINT_RANGE, "0,4096,0.01"), "set_proximity_fade_distance", "get_proximity_fade_distance");
@@ -2625,6 +2647,7 @@ void BaseMaterial3D::_bind_methods() {
 	BIND_ENUM_CONSTANT(FLAG_USE_TEXTURE_REPEAT);
 	BIND_ENUM_CONSTANT(FLAG_INVERT_HEIGHTMAP);
 	BIND_ENUM_CONSTANT(FLAG_SUBSURFACE_MODE_SKIN);
+	BIND_ENUM_CONSTANT(FLAG_PARTICLE_TRAILS_MODE);
 	BIND_ENUM_CONSTANT(FLAG_MAX);
 
 	BIND_ENUM_CONSTANT(DIFFUSE_BURLEY);

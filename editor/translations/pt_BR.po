@@ -112,12 +112,15 @@
 # Lucas Castro <castroclucas@gmail.com>, 2021.
 # Ricardo Zamarrenho Carvalho Correa <ricardozcc17@gmail.com>, 2021.
 # Diego dos Reis Macedo <diego_dragon97@hotmail.com>, 2021.
+# Lucas E. <lukas.ed45@gmail.com>, 2021.
+# Gabriel Silveira <gabomfim99@gmail.com>, 2021.
+# Arthur Phillip D. Silva <artphil.dev@gmail.com>, 2021.
 msgid ""
 msgstr ""
 "Project-Id-Version: Godot Engine editor\n"
 "POT-Creation-Date: 2016-05-30\n"
-"PO-Revision-Date: 2021-03-10 22:14+0000\n"
-"Last-Translator: Renato Rotenberg <renato.rotenberg@gmail.com>\n"
+"PO-Revision-Date: 2021-04-11 22:02+0000\n"
+"Last-Translator: Arthur Phillip D. Silva <artphil.dev@gmail.com>\n"
 "Language-Team: Portuguese (Brazil) <https://hosted.weblate.org/projects/"
 "godot-engine/godot/pt_BR/>\n"
 "Language: pt_BR\n"
@@ -125,7 +128,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Generator: Weblate 4.5.2-dev\n"
+"X-Generator: Weblate 4.6-dev\n"
 
 #: core/math/expression.cpp modules/gdscript/gdscript_functions.cpp
 #: modules/visual_script/visual_script_builtin_funcs.cpp
@@ -2635,23 +2638,26 @@ msgstr ""
 "falhou."
 
 #: editor/editor_node.cpp
-#, fuzzy
 msgid "Unable to find script field for addon plugin at: '%s'."
 msgstr ""
-"Não foi possível encontrar o campo de script para o plugin em: 'res://addons/"
-"%s'."
+"Não foi possível localizar a área do script para o complemento do plugin em: "
+"'%s'."
 
 #: editor/editor_node.cpp
 msgid "Unable to load addon script from path: '%s'."
-msgstr "Não foi possível carregar o script complementar do caminho: '%s'."
+msgstr ""
+"Não foi possível localizar a área do script para o complemento do plugin em: "
+"'%s'."
 
 #: editor/editor_node.cpp
+#, fuzzy
 msgid ""
-"Unable to load addon script from path: '%s' There seems to be an error in "
-"the code, please check the syntax."
+"Unable to load addon script from path: '%s'. This might be due to a code "
+"error in that script. \n"
+"Disabling the addon at '%s' to prevent further errors."
 msgstr ""
-"Não foi possível carregar o script complementar do caminho: '%s' Parece "
-"haver um erro no código, por favor verifique a sintaxe."
+"Não foi possível localizar a área do script para o complemento do plugin em: "
+"'%s'."
 
 #: editor/editor_node.cpp
 msgid ""
@@ -3785,6 +3791,13 @@ msgstr ""
 "reimporte manualmente."
 
 #: editor/filesystem_dock.cpp
+msgid ""
+"Importing has been disabled for this file, so it can't be opened for editing."
+msgstr ""
+"A importação foi desativada para este arquivo, por isso não pode ser aberto "
+"para edição."
+
+#: editor/filesystem_dock.cpp
 msgid "Cannot move/rename resources root."
 msgstr "Impossível mover/renomear raiz dos recursos."
 
@@ -4173,19 +4186,20 @@ msgid "Saving..."
 msgstr "Salvando..."
 
 #: editor/import_defaults_editor.cpp
-#, fuzzy
 msgid "Select Importer"
-msgstr "Modo de Seleção"
+msgstr "Selecione o arquivo para importar"
 
 #: editor/import_defaults_editor.cpp
-#, fuzzy
 msgid "Importer:"
-msgstr "Importar"
+msgstr "Importar:"
 
 #: editor/import_defaults_editor.cpp
-#, fuzzy
 msgid "Reset to Defaults"
-msgstr "Usar sRGB Padrão"
+msgstr "Redefinir para os padrões"
+
+#: editor/import_dock.cpp
+msgid "Keep File (No Import)"
+msgstr "Manter Arquivo (Sem Importação)"
 
 #: editor/import_dock.cpp
 msgid "%d Files"
@@ -5159,9 +5173,8 @@ msgid "Got:"
 msgstr "Obtido:"
 
 #: editor/plugins/asset_library_editor_plugin.cpp
-#, fuzzy
 msgid "Failed SHA-256 hash check"
-msgstr "Falha na verificação da hash sha256"
+msgstr "Falha na verificação do hash SHA-256"
 
 #: editor/plugins/asset_library_editor_plugin.cpp
 msgid "Asset Download Error:"
@@ -5329,14 +5342,24 @@ msgstr ""
 
 #: editor/plugins/baked_lightmap_editor_plugin.cpp
 msgid ""
-"Godot editor was built without ray tracing support, lightmaps can't be baked."
+"Godot editor was built without ray tracing support; lightmaps can't be "
+"baked.\n"
+"If you are using an Apple Silicon-based Mac, try forcing Rosetta emulation "
+"on Godot.app in the application settings\n"
+"then restart the editor."
+msgstr ""
+
+#: editor/plugins/baked_lightmap_editor_plugin.cpp
+#, fuzzy
+msgid ""
+"Godot editor was built without ray tracing support; lightmaps can't be baked."
 msgstr ""
 "O editor Godot foi construído sem suporte à ray tracing, os lightmaps não "
 "podem ser bakeados."
 
 #: editor/plugins/baked_lightmap_editor_plugin.cpp
 msgid "Bake Lightmaps"
-msgstr "Bake Lightmaps"
+msgstr "Faça mapas de luz"
 
 #: editor/plugins/baked_lightmap_editor_plugin.cpp
 msgid "Select lightmap bake file:"
@@ -7446,7 +7469,7 @@ msgstr "Escala: "
 
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid "Translating: "
-msgstr "Transladando: "
+msgstr "Transladar: "
 
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid "Rotating %s degrees."
@@ -7651,6 +7674,11 @@ msgstr "Modificador de velocidade lenta da Visão Livre"
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid "View Rotation Locked"
 msgstr "Ver Rotação Bloqueada"
+
+#: editor/plugins/spatial_editor_plugin.cpp
+msgid ""
+"To zoom further, change the camera's clipping planes (View -> Settings...)"
+msgstr ""
 
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid ""
@@ -8892,7 +8920,7 @@ msgstr "Tipo de Entrada de Shader Visual Alterado"
 
 #: editor/plugins/visual_shader_editor_plugin.cpp
 msgid "UniformRef Name Changed"
-msgstr "UniformRef Name foi altearado"
+msgstr "Ref. Uniforme Nome alterado"
 
 #: editor/plugins/visual_shader_editor_plugin.cpp
 msgid "Vertex"
@@ -10500,7 +10528,7 @@ msgstr "Remapeamentos por Localidade:"
 
 #: editor/project_settings_editor.cpp
 msgid "Locale"
-msgstr "Locale"
+msgstr "Localizar"
 
 #: editor/project_settings_editor.cpp
 msgid "Locales Filter"
@@ -10531,9 +10559,8 @@ msgid "Plugins"
 msgstr "Plugins"
 
 #: editor/project_settings_editor.cpp
-#, fuzzy
 msgid "Import Defaults"
-msgstr "Carregar Padrão"
+msgstr "Importar padrões"
 
 #: editor/property_editor.cpp
 msgid "Preset..."
@@ -10545,11 +10572,11 @@ msgstr "Zero"
 
 #: editor/property_editor.cpp
 msgid "Easing In-Out"
-msgstr "Easing In-Out"
+msgstr "Facilitar Entrada-Saída"
 
 #: editor/property_editor.cpp
 msgid "Easing Out-In"
-msgstr "Easing Out-In"
+msgstr "Facilitar Saída-Entrada"
 
 #: editor/property_editor.cpp
 msgid "File..."
@@ -11034,6 +11061,13 @@ msgstr "Remove o script do nó selecionado."
 #: editor/scene_tree_dock.cpp
 msgid "Remote"
 msgstr "Remoto"
+
+#: editor/scene_tree_dock.cpp
+msgid ""
+"If selected, the Remote scene tree dock will cause the project to stutter "
+"every time it updates.\n"
+"Switch back to the Local scene tree dock to improve performance."
+msgstr ""
 
 #: editor/scene_tree_dock.cpp
 msgid "Local"
@@ -11750,12 +11784,10 @@ msgid "Indirect lighting"
 msgstr "Iluminação indireta"
 
 #: modules/lightmapper_cpu/lightmapper_cpu.cpp
-#, fuzzy
 msgid "Post processing"
 msgstr "Pós-processamento"
 
 #: modules/lightmapper_cpu/lightmapper_cpu.cpp
-#, fuzzy
 msgid "Plotting lightmaps"
 msgstr "Traçando mapas de luz"
 
@@ -12826,9 +12858,8 @@ msgid "Generating capture"
 msgstr "Gerando captura"
 
 #: scene/3d/baked_lightmap.cpp
-#, fuzzy
 msgid "Saving lightmaps"
-msgstr "Salvando mapas  de luz"
+msgstr "Salvando mapas de luz"
 
 #: scene/3d/baked_lightmap.cpp
 msgid "Done"

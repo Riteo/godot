@@ -1917,7 +1917,7 @@ void DisplayServerX11::cursor_set_custom_image(const RES &p_cursor, CursorShape 
 		Rect2i atlas_rect;
 
 		if (texture.is_valid()) {
-			image = texture->get_data();
+			image = texture->get_image();
 		}
 
 		if (!image.is_valid() && atlas_texture.is_valid()) {
@@ -1940,7 +1940,7 @@ void DisplayServerX11::cursor_set_custom_image(const RES &p_cursor, CursorShape 
 		ERR_FAIL_COND(texture_size.width > 256 || texture_size.height > 256);
 		ERR_FAIL_COND(p_hotspot.x > texture_size.width || p_hotspot.y > texture_size.height);
 
-		image = texture->get_data();
+		image = texture->get_image();
 
 		ERR_FAIL_COND(!image.is_valid());
 
@@ -2012,7 +2012,7 @@ int DisplayServerX11::keyboard_get_layout_count() const {
 		XkbGetNames(x11_display, XkbSymbolsNameMask, kbd);
 
 		const Atom *groups = kbd->names->groups;
-		if (kbd->ctrls != NULL) {
+		if (kbd->ctrls != nullptr) {
 			_group_count = kbd->ctrls->num_groups;
 		} else {
 			while (_group_count < XkbNumKbdGroups && groups[_group_count] != None) {
@@ -2046,7 +2046,7 @@ String DisplayServerX11::keyboard_get_layout_language(int p_index) const {
 
 		int _group_count = 0;
 		const Atom *groups = kbd->names->groups;
-		if (kbd->ctrls != NULL) {
+		if (kbd->ctrls != nullptr) {
 			_group_count = kbd->ctrls->num_groups;
 		} else {
 			while (_group_count < XkbNumKbdGroups && groups[_group_count] != None) {
@@ -2085,7 +2085,7 @@ String DisplayServerX11::keyboard_get_layout_name(int p_index) const {
 
 		int _group_count = 0;
 		const Atom *groups = kbd->names->groups;
-		if (kbd->ctrls != NULL) {
+		if (kbd->ctrls != nullptr) {
 			_group_count = kbd->ctrls->num_groups;
 		} else {
 			while (_group_count < XkbNumKbdGroups && groups[_group_count] != None) {
@@ -2606,7 +2606,6 @@ void DisplayServerX11::_window_changed(XEvent *event) {
 	}
 #endif
 
-	print_line("DisplayServer::_window_changed: " + itos(window_id) + " rect: " + new_rect);
 	if (!wd.rect_changed_callback.is_null()) {
 		Rect2i r = new_rect;
 
@@ -2684,7 +2683,7 @@ bool DisplayServerX11::_wait_for_events() const {
 	tv.tv_sec = 1;
 
 	// Wait for next event or timeout.
-	int num_ready_fds = select(x11_fd + 1, &in_fds, NULL, NULL, &tv);
+	int num_ready_fds = select(x11_fd + 1, &in_fds, nullptr, nullptr, &tv);
 
 	if (num_ready_fds > 0) {
 		// Event received.
@@ -3162,14 +3161,14 @@ void DisplayServerX11::process_events() {
 							last_click_ms = 0;
 							last_click_pos = Point2i(-100, -100);
 							last_click_button_index = -1;
-							mb->set_doubleclick(true);
+							mb->set_double_click(true);
 						}
 
 					} else if (mb->get_button_index() < 4 || mb->get_button_index() > 7) {
 						last_click_button_index = mb->get_button_index();
 					}
 
-					if (!mb->is_doubleclick()) {
+					if (!mb->is_double_click()) {
 						last_click_ms += diff;
 						last_click_pos = Point2i(event.xbutton.x, event.xbutton.y);
 					}
@@ -3298,7 +3297,7 @@ void DisplayServerX11::process_events() {
 				if (xi.pressure_supported) {
 					mm->set_pressure(xi.pressure);
 				} else {
-					mm->set_pressure((mouse_get_button_state() & (1 << (BUTTON_LEFT - 1))) ? 1.0f : 0.0f);
+					mm->set_pressure((mouse_get_button_state() & (1 << (MOUSE_BUTTON_LEFT - 1))) ? 1.0f : 0.0f);
 				}
 				mm->set_tilt(xi.tilt);
 
@@ -3833,8 +3832,6 @@ DisplayServerX11::WindowID DisplayServerX11::_create_window(WindowMode p_mode, u
 		wd.position.y = xwa.y;
 		wd.size.width = xwa.width;
 		wd.size.height = xwa.height;
-
-		print_line("DisplayServer::_create_window " + itos(id) + " want rect: " + p_rect + " got rect " + Rect2i(xwa.x, xwa.y, xwa.width, xwa.height));
 	}
 
 	//set cursor

@@ -85,7 +85,7 @@
 			</argument>
 			<description>
 				Get axis input by specifying two actions, one negative and one positive.
-				This is a horthand for writing [code]Input.get_action_strength("positive_action") - Input.get_action_strength("negative_action")[/code].
+				This is a shorthand for writing [code]Input.get_action_strength("positive_action") - Input.get_action_strength("negative_action")[/code].
 			</description>
 		</method>
 		<method name="get_connected_joypads">
@@ -126,7 +126,7 @@
 			<argument index="1" name="axis" type="int">
 			</argument>
 			<description>
-				Returns the current value of the joypad axis at given index (see [enum JoyAxisList]).
+				Returns the current value of the joypad axis at given index (see [enum JoyAxis]).
 			</description>
 		</method>
 		<method name="get_joy_guid" qualifiers="const">
@@ -176,7 +176,7 @@
 			<return type="Vector3">
 			</return>
 			<description>
-				Returns the the magnetic field strength in micro-Tesla for all axes of the device's magnetometer sensor, if the device has one. Otherwise, the method returns [constant Vector3.ZERO].
+				Returns the magnetic field strength in micro-Tesla for all axes of the device's magnetometer sensor, if the device has one. Otherwise, the method returns [constant Vector3.ZERO].
 				[b]Note:[/b] This method only works on Android, iOS and UWP. On other platforms, it always returns [constant Vector3.ZERO].
 			</description>
 		</method>
@@ -255,7 +255,7 @@
 			<argument index="1" name="button" type="int">
 			</argument>
 			<description>
-				Returns [code]true[/code] if you are pressing the joypad button (see [enum JoyButtonList]).
+				Returns [code]true[/code] if you are pressing the joypad button (see [enum JoyButton]).
 			</description>
 		</method>
 		<method name="is_joy_known">
@@ -273,7 +273,7 @@
 			<argument index="0" name="keycode" type="int">
 			</argument>
 			<description>
-				Returns [code]true[/code] if you are pressing the key in the current keyboard layout. You can pass a [enum KeyList] constant.
+				Returns [code]true[/code] if you are pressing the key in the current keyboard layout. You can pass a [enum Key] constant.
 			</description>
 		</method>
 		<method name="is_mouse_button_pressed" qualifiers="const">
@@ -282,7 +282,7 @@
 			<argument index="0" name="button" type="int">
 			</argument>
 			<description>
-				Returns [code]true[/code] if you are pressing the mouse button specified with [enum ButtonList].
+				Returns [code]true[/code] if you are pressing the mouse button specified with [enum MouseButton].
 			</description>
 		</method>
 		<method name="joy_connection_changed">

@@ -48,7 +48,7 @@ class Array {
 
 protected:
 	Array(const Array &p_base, uint32_t p_type, const StringName &p_class_name, const Variant &p_script);
-	void _assign(const Array &p_array);
+	bool _assign(const Array &p_array);
 
 public:
 	Variant &operator[](int p_idx);
@@ -74,6 +74,7 @@ public:
 
 	void insert(int p_pos, const Variant &p_value);
 	void remove(int p_pos);
+	void fill(const Variant &p_value);
 
 	Variant front() const;
 	Variant back() const;
@@ -83,7 +84,7 @@ public:
 	void shuffle();
 	int bsearch(const Variant &p_value, bool p_before = true);
 	int bsearch_custom(const Variant &p_value, Callable p_callable, bool p_before = true);
-	void invert();
+	void reverse();
 
 	int find(const Variant &p_value, int p_from = 0) const;
 	int rfind(const Variant &p_value, int p_from = -1) const;
@@ -100,6 +101,9 @@ public:
 	Array duplicate(bool p_deep = false) const;
 
 	Array slice(int p_begin, int p_end, int p_step = 1, bool p_deep = false) const;
+	Array filter(const Callable &p_callable) const;
+	Array map(const Callable &p_callable) const;
+	Variant reduce(const Callable &p_callable, const Variant &p_accum) const;
 
 	bool operator<(const Array &p_array) const;
 	bool operator<=(const Array &p_array) const;
@@ -111,7 +115,12 @@ public:
 
 	const void *id() const;
 
+	bool typed_assign(const Array &p_other);
 	void set_typed(uint32_t p_type, const StringName &p_class_name, const Variant &p_script);
+	bool is_typed() const;
+	uint32_t get_typed_builtin() const;
+	StringName get_typed_class_name() const;
+	Variant get_typed_script() const;
 	Array(const Array &p_from);
 	Array();
 	~Array();

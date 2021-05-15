@@ -176,11 +176,11 @@ real_t PhysicsShapeQueryParameters2D::get_margin() const {
 	return margin;
 }
 
-void PhysicsShapeQueryParameters2D::set_collision_mask(int p_collision_mask) {
+void PhysicsShapeQueryParameters2D::set_collision_mask(uint32_t p_collision_mask) {
 	collision_mask = p_collision_mask;
 }
 
-int PhysicsShapeQueryParameters2D::get_collision_mask() const {
+uint32_t PhysicsShapeQueryParameters2D::get_collision_mask() const {
 	return collision_mask;
 }
 
@@ -647,7 +647,7 @@ void PhysicsServer2D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_set_omit_force_integration", "body", "enable"), &PhysicsServer2D::body_set_omit_force_integration);
 	ClassDB::bind_method(D_METHOD("body_is_omitting_force_integration", "body"), &PhysicsServer2D::body_is_omitting_force_integration);
 
-	ClassDB::bind_method(D_METHOD("body_set_force_integration_callback", "body", "receiver", "method", "userdata"), &PhysicsServer2D::body_set_force_integration_callback, DEFVAL(Variant()));
+	ClassDB::bind_method(D_METHOD("body_set_force_integration_callback", "body", "callable", "userdata"), &PhysicsServer2D::body_set_force_integration_callback, DEFVAL(Variant()));
 
 	ClassDB::bind_method(D_METHOD("body_test_motion", "body", "from", "motion", "infinite_inertia", "margin", "result"), &PhysicsServer2D::_body_test_motion, DEFVAL(0.08), DEFVAL(Variant()));
 

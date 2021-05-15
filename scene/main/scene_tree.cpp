@@ -389,6 +389,7 @@ void SceneTree::set_group(const StringName &p_group, const String &p_name, const
 }
 
 void SceneTree::initialize() {
+	ERR_FAIL_COND(!root);
 	initialized = true;
 	root->_set_tree(this);
 	MainLoop::initialize();
@@ -1348,6 +1349,8 @@ SceneTree::SceneTree() {
 
 	GLOBAL_DEF("debug/shapes/collision/draw_2d_outlines", true);
 
+	Math::randomize();
+
 	// Create with mainloop.
 
 	root = memnew(Window);
@@ -1374,6 +1377,9 @@ SceneTree::SceneTree() {
 
 	const bool use_debanding = GLOBAL_DEF("rendering/anti_aliasing/quality/use_debanding", false);
 	root->set_use_debanding(use_debanding);
+
+	const bool use_occlusion_culling = GLOBAL_DEF("rendering/occlusion_culling/use_occlusion_culling", false);
+	root->set_use_occlusion_culling(use_occlusion_culling);
 
 	float lod_threshold = GLOBAL_DEF("rendering/mesh_lod/lod_change/threshold_pixels", 1.0);
 	ProjectSettings::get_singleton()->set_custom_property_info("rendering/mesh_lod/lod_change/threshold_pixels", PropertyInfo(Variant::FLOAT, "rendering/mesh_lod/lod_change/threshold_pixels", PROPERTY_HINT_RANGE, "0,1024,0.1"));

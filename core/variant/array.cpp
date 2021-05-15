@@ -139,7 +139,7 @@ uint32_t Array::hash() const {
 	return h;
 }
 
-void Array::_assign(const Array &p_array) {
+bool Array::_assign(const Array &p_array) {
 	if (_p->typed.type != Variant::OBJECT && _p->typed.type == p_array._p->typed.type) {
 		//same type or untyped, just reference, should be fine
 		_ref(p_array);
@@ -150,7 +150,7 @@ void Array::_assign(const Array &p_array) {
 			//for objects, it needs full validation, either can be converted or fail
 			for (int i = 0; i < p_array._p->array.size(); i++) {
 				if (!_p->typed.validate(p_array._p->array[i], "assign")) {
-					return;
+					return false;
 				}
 			}
 			_p->array = p_array._p->array; //then just copy, which is cheap anyway
@@ -168,10 +168,10 @@ void Array::_assign(const Array &p_array) {
 					Callable::CallError ce;
 					Variant::construct(_p->typed.type, new_array.write[i], (const Variant **)&ptr, 1, ce);
 					if (ce.error != Callable::CallError::CALL_OK) {
-						ERR_FAIL_MSG("Unable to convert array index " + itos(i) + " from '" + Variant::get_type_name(src_val.get_type()) + "' to '" + Variant::get_type_name(_p->typed.type) + "'.");
+						ERR_FAIL_V_MSG(false, "Unable to convert array index " + itos(i) + " from '" + Variant::get_type_name(src_val.get_type()) + "' to '" + Variant::get_type_name(_p->typed.type) + "'.");
 					}
 				} else {
-					ERR_FAIL_MSG("Unable to convert array index " + itos(i) + " from '" + Variant::get_type_name(src_val.get_type()) + "' to '" + Variant::get_type_name(_p->typed.type) + "'.");
+					ERR_FAIL_V_MSG(false, "Unable to convert array index " + itos(i) + " from '" + Variant::get_type_name(src_val.get_type()) + "' to '" + Variant::get_type_name(_p->typed.type) + "'.");
 				}
 			}
 
@@ -180,12 +180,13 @@ void Array::_assign(const Array &p_array) {
 	} else if (_p->typed.can_reference(p_array._p->typed)) { //same type or compatible
 		_ref(p_array);
 	} else {
-		ERR_FAIL_MSG("Assignment of arrays of incompatible types.");
+		ERR_FAIL_V_MSG(false, "Assignment of arrays of incompatible types.");
 	}
+	return true;
 }
 
 void Array::operator=(const Array &p_array) {
-	_assign(p_array);
+	_ref(p_array);
 }
 
 void Array::push_back(const Variant &p_value) {
@@ -205,6 +206,11 @@ Error Array::resize(int p_new_size) {
 void Array::insert(int p_pos, const Variant &p_value) {
 	ERR_FAIL_COND(!_p->typed.validate(p_value, "insert"));
 	_p->array.insert(p_pos, p_value);
+}
+
+void Array::fill(const Variant &p_value) {
+	ERR_FAIL_COND(!_p->typed.validate(p_value, "fill"));
+	_p->array.fill(p_value);
 }
 
 void Array::erase(const Variant &p_value) {
@@ -355,6 +361,79 @@ Array Array::slice(int p_begin, int p_end, int p_step, bool p_deep) const { // l
 	return new_arr;
 }
 
+Array Array::filter(const Callable &p_callable) const {
+	Array new_arr;
+	new_arr.resize(size());
+	int accepted_count = 0;
+
+	for (int i = 0; i < size(); i++) {
+		const Variant **argptrs = (const Variant **)alloca(sizeof(Variant *));
+		argptrs[0] = &get(i);
+
+		Variant result;
+		Callable::CallError ce;
+		p_callable.call(argptrs, 1, result, ce);
+		if (ce.error != Callable::CallError::CALL_OK) {
+			ERR_FAIL_V_MSG(Array(), "Error calling method from 'filter': " + Variant::get_callable_error_text(p_callable, argptrs, 1, ce));
+		}
+
+		if (result.operator bool()) {
+			new_arr[accepted_count] = get(i);
+			accepted_count++;
+		}
+	}
+
+	new_arr.resize(accepted_count);
+
+	return new_arr;
+}
+
+Array Array::map(const Callable &p_callable) const {
+	Array new_arr;
+	new_arr.resize(size());
+
+	for (int i = 0; i < size(); i++) {
+		const Variant **argptrs = (const Variant **)alloca(sizeof(Variant *));
+		argptrs[0] = &get(i);
+
+		Variant result;
+		Callable::CallError ce;
+		p_callable.call(argptrs, 1, result, ce);
+		if (ce.error != Callable::CallError::CALL_OK) {
+			ERR_FAIL_V_MSG(Array(), "Error calling method from 'map': " + Variant::get_callable_error_text(p_callable, argptrs, 1, ce));
+		}
+
+		new_arr[i] = result;
+	}
+
+	return new_arr;
+}
+
+Variant Array::reduce(const Callable &p_callable, const Variant &p_accum) const {
+	int start = 0;
+	Variant ret = p_accum;
+	if (ret == Variant() && size() > 0) {
+		ret = front();
+		start = 1;
+	}
+
+	for (int i = start; i < size(); i++) {
+		const Variant **argptrs = (const Variant **)alloca(sizeof(Variant *) * 2);
+		argptrs[0] = &ret;
+		argptrs[1] = &get(i);
+
+		Variant result;
+		Callable::CallError ce;
+		p_callable.call(argptrs, 2, result, ce);
+		if (ce.error != Callable::CallError::CALL_OK) {
+			ERR_FAIL_V_MSG(Variant(), "Error calling method from 'reduce': " + Variant::get_callable_error_text(p_callable, argptrs, 2, ce));
+		}
+		ret = result;
+	}
+
+	return ret;
+}
+
 struct _ArrayVariantSort {
 	_FORCE_INLINE_ bool operator()(const Variant &p_l, const Variant &p_r) const {
 		bool valid = false;
@@ -445,8 +524,8 @@ int Array::bsearch_custom(const Variant &p_value, Callable p_callable, bool p_be
 	return bisect(_p->array, p_value, p_before, less);
 }
 
-void Array::invert() {
-	_p->array.invert();
+void Array::reverse() {
+	_p->array.reverse();
 }
 
 void Array::push_front(const Variant &p_value) {
@@ -528,6 +607,10 @@ Array::Array(const Array &p_from, uint32_t p_type, const StringName &p_class_nam
 	_assign(p_from);
 }
 
+bool Array::typed_assign(const Array &p_other) {
+	return _assign(p_other);
+}
+
 void Array::set_typed(uint32_t p_type, const StringName &p_class_name, const Variant &p_script) {
 	ERR_FAIL_COND_MSG(_p->array.size() > 0, "Type can only be set when array is empty.");
 	ERR_FAIL_COND_MSG(_p->refcount.get() > 1, "Type can only be set when array has no more than one user.");
@@ -540,6 +623,22 @@ void Array::set_typed(uint32_t p_type, const StringName &p_class_name, const Var
 	_p->typed.class_name = p_class_name;
 	_p->typed.script = script;
 	_p->typed.where = "TypedArray";
+}
+
+bool Array::is_typed() const {
+	return _p->typed.type != Variant::NIL;
+}
+
+uint32_t Array::get_typed_builtin() const {
+	return _p->typed.type;
+}
+
+StringName Array::get_typed_class_name() const {
+	return _p->typed.class_name;
+}
+
+Variant Array::get_typed_script() const {
+	return _p->typed.script;
 }
 
 Array::Array(const Array &p_from) {

@@ -304,6 +304,26 @@ void CSharpLanguage::get_reserved_words(List<String> *p_words) const {
 	}
 }
 
+bool CSharpLanguage::is_control_flow_keyword(String p_keyword) const {
+	return p_keyword == "break" ||
+		   p_keyword == "case" ||
+		   p_keyword == "catch" ||
+		   p_keyword == "continue" ||
+		   p_keyword == "default" ||
+		   p_keyword == "do" ||
+		   p_keyword == "else" ||
+		   p_keyword == "finally" ||
+		   p_keyword == "for" ||
+		   p_keyword == "foreach" ||
+		   p_keyword == "goto" ||
+		   p_keyword == "if" ||
+		   p_keyword == "return" ||
+		   p_keyword == "switch" ||
+		   p_keyword == "throw" ||
+		   p_keyword == "try" ||
+		   p_keyword == "while";
+}
+
 void CSharpLanguage::get_comment_delimiters(List<String> *p_delimiters) const {
 	p_delimiters->push_back("//"); // single-line comment
 	p_delimiters->push_back("/* */"); // delimited comment
@@ -2016,7 +2036,7 @@ void CSharpInstance::connect_event_signals() {
 		StringName signal_name = event_signal.field->get_name();
 
 		// TODO: Use pooling for ManagedCallable instances.
-		auto event_signal_callable = memnew(EventSignalCallable(owner, &event_signal));
+		EventSignalCallable *event_signal_callable = memnew(EventSignalCallable(owner, &event_signal));
 
 		Callable callable(event_signal_callable);
 		connected_event_signals.push_back(callable);
@@ -2027,7 +2047,7 @@ void CSharpInstance::connect_event_signals() {
 void CSharpInstance::disconnect_event_signals() {
 	for (const List<Callable>::Element *E = connected_event_signals.front(); E; E = E->next()) {
 		const Callable &callable = E->get();
-		auto event_signal_callable = static_cast<const EventSignalCallable *>(callable.get_custom());
+		const EventSignalCallable *event_signal_callable = static_cast<const EventSignalCallable *>(callable.get_custom());
 		owner->disconnect(event_signal_callable->get_signal(), callable);
 	}
 

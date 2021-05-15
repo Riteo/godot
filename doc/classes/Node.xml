@@ -37,13 +37,13 @@
 				Corresponds to the [constant NOTIFICATION_EXIT_TREE] notification in [method Object._notification] and signal [signal tree_exiting]. To get notified when the node has already left the active tree, connect to the [signal tree_exited].
 			</description>
 		</method>
-		<method name="_get_configuration_warning" qualifiers="virtual">
-			<return type="String">
+		<method name="_get_configuration_warnings" qualifiers="virtual">
+			<return type="String[]">
 			</return>
 			<description>
-				The string returned from this method is displayed as a warning in the Scene Dock if the script that overrides it is a [code]tool[/code] script.
-				Returning an empty string produces no warning.
-				Call [method update_configuration_warning] when the warning needs to be updated for this node.
+				The elements in the array returned from this method are displayed as warnings in the Scene Dock if the script that overrides it is a [code]tool[/code] script.
+				Returning an empty array produces no warnings.
+				Call [method update_configuration_warnings] when the warnings need to be updated for this node.
 			</description>
 		</method>
 		<method name="_input" qualifiers="virtual">
@@ -128,7 +128,7 @@
 			</argument>
 			<description>
 				Adds a child node. Nodes can have any number of children, but every child must have a unique name. Child nodes are automatically deleted when the parent node is deleted, so an entire scene can be removed by deleting its topmost node.
-				If [code]legible_unique_name[/code] is [code]true[/code], the child node will have an human-readable name based on the name of the node being instanced instead of its type.
+				If [code]legible_unique_name[/code] is [code]true[/code], the child node will have a human-readable name based on the name of the node being instanced instead of its type.
 				[b]Note:[/b] If the child node already has a parent, the function will fail. Use [method remove_child] first to remove the node from its current parent. For example:
 				[codeblocks]
 				[gdscript]
@@ -158,8 +158,8 @@
 			<argument index="1" name="legible_unique_name" type="bool" default="false">
 			</argument>
 			<description>
-				Adds a [code]sibling[/code] node to current's node parent, at the the same level as that node, right below it.
-				If [code]legible_unique_name[/code] is [code]true[/code], the child node will have an human-readable name based on the name of the node being instanced instead of its type.
+				Adds a [code]sibling[/code] node to current's node parent, at the same level as that node, right below it.
+				If [code]legible_unique_name[/code] is [code]true[/code], the child node will have a human-readable name based on the name of the node being instanced instead of its type.
 				Use [method add_child] instead of this method if you don't need the child node to be added below a specific node in the list of children.
 			</description>
 		</method>
@@ -856,12 +856,12 @@
 				Sets whether this is an instance load placeholder. See [InstancePlaceholder].
 			</description>
 		</method>
-		<method name="update_configuration_warning">
+		<method name="update_configuration_warnings">
 			<return type="void">
 			</return>
 			<description>
 				Updates the warning displayed for this node in the Scene Dock.
-				Use [method _get_configuration_warning] to setup the warning message to display.
+				Use [method _get_configuration_warnings] to setup the warning message to display.
 			</description>
 		</method>
 	</methods>

@@ -560,11 +560,11 @@ void Input::_parse_input_event_impl(const Ref<InputEvent> &p_event, bool p_is_em
 				button_event->set_position(st->get_position());
 				button_event->set_global_position(st->get_position());
 				button_event->set_pressed(st->is_pressed());
-				button_event->set_button_index(BUTTON_LEFT);
+				button_event->set_button_index(MOUSE_BUTTON_LEFT);
 				if (st->is_pressed()) {
-					button_event->set_button_mask(mouse_button_mask | (1 << (BUTTON_LEFT - 1)));
+					button_event->set_button_mask(mouse_button_mask | (1 << (MOUSE_BUTTON_LEFT - 1)));
 				} else {
-					button_event->set_button_mask(mouse_button_mask & ~(1 << (BUTTON_LEFT - 1)));
+					button_event->set_button_mask(mouse_button_mask & ~(1 << (MOUSE_BUTTON_LEFT - 1)));
 				}
 
 				_parse_input_event_impl(button_event, true);
@@ -792,8 +792,8 @@ void Input::ensure_touch_mouse_raised() {
 		button_event->set_position(mouse_pos);
 		button_event->set_global_position(mouse_pos);
 		button_event->set_pressed(false);
-		button_event->set_button_index(BUTTON_LEFT);
-		button_event->set_button_mask(mouse_button_mask & ~(1 << (BUTTON_LEFT - 1)));
+		button_event->set_button_index(MOUSE_BUTTON_LEFT);
+		button_event->set_button_mask(mouse_button_mask & ~(1 << (MOUSE_BUTTON_LEFT - 1)));
 
 		_parse_input_event_impl(button_event, true);
 	}
@@ -907,7 +907,7 @@ void Input::joy_button(int p_device, int p_button, bool p_pressed) {
 	// no event?
 }
 
-void Input::joy_axis(int p_device, int p_axis, const JoyAxis &p_value) {
+void Input::joy_axis(int p_device, int p_axis, const JoyAxisValue &p_value) {
 	_THREAD_SAFE_METHOD_;
 
 	ERR_FAIL_INDEX(p_axis, JOY_AXIS_MAX);
@@ -921,12 +921,12 @@ void Input::joy_axis(int p_device, int p_axis, const JoyAxis &p_value) {
 	//when changing direction quickly, insert fake event to release pending inputmap actions
 	float last = joy.last_axis[p_axis];
 	if (p_value.min == 0 && (last < 0.25 || last > 0.75) && (last - 0.5) * (p_value.value - 0.5) < 0) {
-		JoyAxis jx;
+		JoyAxisValue jx;
 		jx.min = p_value.min;
 		jx.value = p_value.value < 0.5 ? 0.6 : 0.4;
 		joy_axis(p_device, p_axis, jx);
 	} else if (ABS(last) > 0.5 && last * p_value.value <= 0) {
-		JoyAxis jx;
+		JoyAxisValue jx;
 		jx.min = p_value.min;
 		jx.value = last > 0 ? 0.1 : -0.1;
 		joy_axis(p_device, p_axis, jx);
@@ -1206,22 +1206,22 @@ void Input::_get_mapped_hat_events(const JoyDeviceMapping &mapping, int p_hat, J
 	}
 }
 
-JoyButtonList Input::_get_output_button(String output) {
+JoyButton Input::_get_output_button(String output) {
 	for (int i = 0; i < JOY_BUTTON_SDL_MAX; i++) {
 		if (output == _joy_buttons[i]) {
-			return JoyButtonList(i);
+			return JoyButton(i);
 		}
 	}
-	return JoyButtonList::JOY_BUTTON_INVALID;
+	return JoyButton::JOY_BUTTON_INVALID;
 }
 
-JoyAxisList Input::_get_output_axis(String output) {
+JoyAxis Input::_get_output_axis(String output) {
 	for (int i = 0; i < JOY_AXIS_SDL_MAX; i++) {
 		if (output == _joy_axes[i]) {
-			return JoyAxisList(i);
+			return JoyAxis(i);
 		}
 	}
-	return JoyAxisList::JOY_AXIS_INVALID;
+	return JoyAxis::JOY_AXIS_INVALID;
 }
 
 void Input::parse_mapping(String p_mapping) {
@@ -1279,8 +1279,8 @@ void Input::parse_mapping(String p_mapping) {
 			input = input.left(input.length() - 1);
 		}
 
-		JoyButtonList output_button = _get_output_button(output);
-		JoyAxisList output_axis = _get_output_axis(output);
+		JoyButton output_button = _get_output_button(output);
+		JoyAxis output_axis = _get_output_axis(output);
 		ERR_CONTINUE_MSG(output_button == JOY_BUTTON_INVALID && output_axis == JOY_AXIS_INVALID,
 				String(entry[idx] + "\nUnrecognised output string: " + output));
 		ERR_CONTINUE_MSG(output_button != JOY_BUTTON_INVALID && output_axis != JOY_AXIS_INVALID,
@@ -1329,9 +1329,10 @@ void Input::add_joy_mapping(String p_mapping, bool p_update_existing) {
 	if (p_update_existing) {
 		Vector<String> entry = p_mapping.split(",");
 		String uid = entry[0];
-		for (int i = 0; i < joy_names.size(); i++) {
-			if (uid == joy_names[i].uid) {
-				joy_names[i].mapping = map_db.size() - 1;
+		for (Map<int, Joypad>::Element *E = joy_names.front(); E; E = E->next()) {
+			Joypad &joy = E->get();
+			if (joy.uid == uid) {
+				joy.mapping = map_db.size() - 1;
 			}
 		}
 	}
@@ -1343,9 +1344,10 @@ void Input::remove_joy_mapping(String p_guid) {
 			map_db.remove(i);
 		}
 	}
-	for (int i = 0; i < joy_names.size(); i++) {
-		if (joy_names[i].uid == p_guid) {
-			joy_names[i].mapping = -1;
+	for (Map<int, Joypad>::Element *E = joy_names.front(); E; E = E->next()) {
+		Joypad &joy = E->get();
+		if (joy.uid == p_guid) {
+			joy.mapping = -1;
 		}
 	}
 }
@@ -1361,8 +1363,13 @@ void Input::set_fallback_mapping(String p_guid) {
 
 //platforms that use the remapping system can override and call to these ones
 bool Input::is_joy_known(int p_device) {
-	int mapping = joy_names[p_device].mapping;
-	return mapping != -1 ? (mapping != fallback_mapping) : false;
+	if (joy_names.has(p_device)) {
+		int mapping = joy_names[p_device].mapping;
+		if (mapping != -1 && mapping != fallback_mapping) {
+			return true;
+		}
+	}
+	return false;
 }
 
 String Input::get_joy_guid(int p_device) const {

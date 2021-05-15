@@ -680,17 +680,17 @@ void FileSystemDock::_sort_file_info_list(List<FileSystemDock::FileInfo> &r_file
 			break;
 		case FILE_SORT_TYPE_REVERSE:
 			r_file_list.sort_custom<FileInfoTypeComparator>();
-			r_file_list.invert();
+			r_file_list.reverse();
 			break;
 		case FILE_SORT_MODIFIED_TIME:
 			r_file_list.sort_custom<FileInfoModifiedTimeComparator>();
 			break;
 		case FILE_SORT_MODIFIED_TIME_REVERSE:
 			r_file_list.sort_custom<FileInfoModifiedTimeComparator>();
-			r_file_list.invert();
+			r_file_list.reverse();
 			break;
 		case FILE_SORT_NAME_REVERSE:
-			r_file_list.invert();
+			r_file_list.reverse();
 			break;
 		default: // FILE_SORT_NAME
 			break;
@@ -944,8 +944,41 @@ void FileSystemDock::_select_file(const String &p_path, bool p_select_in_favorit
 			fpath = fpath.substr(0, fpath.length() - 1);
 		}
 	} else if (fpath != "Favorites") {
+		if (FileAccess::exists(fpath + ".import")) {
+			Ref<ConfigFile> config;
+			config.instance();
+			Error err = config->load(fpath + ".import");
+			if (err == OK) {
+				if (config->has_section_key("remap", "importer")) {
+					String importer = config->get_value("remap", "importer");
+					if (importer == "keep") {
+						EditorNode::get_singleton()->show_warning(TTR("Importing has been disabled for this file, so it can't be opened for editing."));
+						return;
+					}
+				}
+			}
+		}
+
 		if (ResourceLoader::get_resource_type(fpath) == "PackedScene") {
-			editor->open_request(fpath);
+			bool is_imported = false;
+
+			{
+				List<String> importer_exts;
+				ResourceImporterScene::get_singleton()->get_recognized_extensions(&importer_exts);
+				String extension = fpath.get_extension();
+				for (List<String>::Element *E = importer_exts.front(); E; E = E->next()) {
+					if (extension.nocasecmp_to(E->get()) == 0) {
+						is_imported = true;
+						break;
+					}
+				}
+			}
+
+			if (is_imported) {
+				ResourceImporterScene::get_singleton()->show_advanced_options(fpath);
+			} else {
+				editor->open_request(fpath);
+			}
 		} else {
 			editor->load_resource(fpath);
 		}
@@ -1432,6 +1465,10 @@ void FileSystemDock::_folder_removed(String p_folder) {
 	}
 
 	current_path->set_text(path);
+	EditorFileSystemDirectory *efd = EditorFileSystem::get_singleton()->get_filesystem_path(path);
+	if (efd) {
+		efd->force_update();
+	}
 }
 
 void FileSystemDock::_rename_operation_confirm() {
@@ -1947,6 +1984,20 @@ void FileSystemDock::_resource_created() {
 	}
 
 	editor->save_resource_as(RES(r), fpath);
+}
+
+void FileSystemDock::_focus_current_search_box() {
+	LineEdit *current_search_box = nullptr;
+	if (display_mode == DISPLAY_MODE_TREE_ONLY) {
+		current_search_box = tree_search_box;
+	} else if (display_mode == DISPLAY_MODE_SPLIT) {
+		current_search_box = file_list_search_box;
+	}
+
+	if (current_search_box) {
+		current_search_box->grab_focus();
+		current_search_box->select_all();
+	}
 }
 
 void FileSystemDock::_search_changed(const String &p_text, const Control *p_from) {
@@ -2539,6 +2590,8 @@ void FileSystemDock::_tree_gui_input(Ref<InputEvent> p_event) {
 			_tree_rmb_option(FILE_REMOVE);
 		} else if (ED_IS_SHORTCUT("filesystem_dock/rename", p_event)) {
 			_tree_rmb_option(FILE_RENAME);
+		} else if (ED_IS_SHORTCUT("editor/open_search", p_event)) {
+			_focus_current_search_box();
 		} else {
 			return;
 		}
@@ -2558,6 +2611,8 @@ void FileSystemDock::_file_list_gui_input(Ref<InputEvent> p_event) {
 			_file_list_rmb_option(FILE_REMOVE);
 		} else if (ED_IS_SHORTCUT("filesystem_dock/rename", p_event)) {
 			_file_list_rmb_option(FILE_RENAME);
+		} else if (ED_IS_SHORTCUT("editor/open_search", p_event)) {
+			_focus_current_search_box();
 		} else {
 			return;
 		}
@@ -2588,8 +2643,9 @@ void FileSystemDock::_get_imported_files(const String &p_path, Vector<String> &f
 }
 
 void FileSystemDock::_update_import_dock() {
-	if (!import_dock_needs_update)
+	if (!import_dock_needs_update) {
 		return;
+	}
 
 	// List selected.
 	Vector<String> selected;
@@ -2600,8 +2656,9 @@ void FileSystemDock::_update_import_dock() {
 	} else {
 		// Use the file list.
 		for (int i = 0; i < files->get_item_count(); i++) {
-			if (!files->is_selected(i))
+			if (!files->is_selected(i)) {
 				continue;
+			}
 
 			selected.push_back(files->get_item_metadata(i));
 		}
@@ -2626,7 +2683,10 @@ void FileSystemDock::_update_import_dock() {
 			break;
 		}
 
-		String type = cf->get_value("remap", "type");
+		String type;
+		if (cf->has_section_key("remap", "type")) {
+			type = cf->get_value("remap", "type");
+		}
 		if (import_type == "") {
 			import_type = type;
 		} else if (import_type != type) {
@@ -2764,7 +2824,6 @@ FileSystemDock::FileSystemDock(EditorNode *p_editor) {
 	toolbar_hbc->add_child(current_path);
 
 	button_reload = memnew(Button);
-	button_reload->set_flat(true);
 	button_reload->connect("pressed", callable_mp(this, &FileSystemDock::_rescan));
 	button_reload->set_focus_mode(FOCUS_NONE);
 	button_reload->set_tooltip(TTR("Re-Scan Filesystem"));
@@ -2772,7 +2831,6 @@ FileSystemDock::FileSystemDock(EditorNode *p_editor) {
 	toolbar_hbc->add_child(button_reload);
 
 	button_toggle_display_mode = memnew(Button);
-	button_toggle_display_mode->set_flat(true);
 	button_toggle_display_mode->set_toggle_mode(true);
 	button_toggle_display_mode->connect("toggled", callable_mp(this, &FileSystemDock::_toggle_split_mode));
 	button_toggle_display_mode->set_focus_mode(FOCUS_NONE);

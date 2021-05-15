@@ -229,6 +229,8 @@ public:
 	void set_collapsed(bool p_collapsed);
 	bool is_collapsed();
 
+	void uncollapse_tree();
+
 	void set_custom_minimum_height(int p_height);
 	int get_custom_minimum_height() const;
 
@@ -388,7 +390,7 @@ private:
 	void draw_item_rect(TreeItem::Cell &p_cell, const Rect2i &p_rect, const Color &p_color, const Color &p_icon_color, int p_ol_size, const Color &p_ol_color);
 	int draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, const Size2 &p_draw_size, TreeItem *p_item);
 	void select_single_item(TreeItem *p_selected, TreeItem *p_current, int p_col, TreeItem *p_prev = nullptr, bool *r_in_range = nullptr, bool p_force_deselect = false);
-	int propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y_ofs, bool p_doubleclick, TreeItem *p_item, int p_button, const Ref<InputEventWithModifiers> &p_mod);
+	int propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y_ofs, bool p_double_click, TreeItem *p_item, int p_button, const Ref<InputEventWithModifiers> &p_mod);
 	void _text_editor_enter(String p_text);
 	void _text_editor_modal_close();
 	void value_editor_changed(double p_value);
@@ -602,6 +604,7 @@ public:
 	int get_item_offset(TreeItem *p_item) const;
 	Rect2 get_item_rect(TreeItem *p_item, int p_column = -1) const;
 	bool edit_selected();
+	bool is_editing();
 
 	// First item that starts with the text, from the current focused item down and wraps around.
 	TreeItem *search_item_text(const String &p_find, int *r_col = nullptr, bool p_selectable = false);

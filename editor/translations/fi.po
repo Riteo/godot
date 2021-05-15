@@ -11,11 +11,12 @@
 # Tapani Niemi <tapani.niemi@kapsi.fi>, 2018, 2019, 2020, 2021.
 # Tuomas Lähteenmäki <lahtis@gmail.com>, 2019.
 # Matti Niskanen <matti.t.niskanen@gmail.com>, 2020.
+# Severi Vidnäs <severi.vidnas@gmail.com>, 2021.
 msgid ""
 msgstr ""
 "Project-Id-Version: Godot Engine editor\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2021-03-10 22:14+0000\n"
+"PO-Revision-Date: 2021-04-22 14:40+0000\n"
 "Last-Translator: Tapani Niemi <tapani.niemi@kapsi.fi>\n"
 "Language-Team: Finnish <https://hosted.weblate.org/projects/godot-engine/"
 "godot/fi/>\n"
@@ -24,7 +25,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 4.5.2-dev\n"
+"X-Generator: Weblate 4.7-dev\n"
 
 #: core/math/expression.cpp modules/gdscript/gdscript_functions.cpp
 #: modules/visual_script/visual_script_builtin_funcs.cpp
@@ -1760,7 +1761,7 @@ msgstr "Uusi"
 #: editor/editor_feature_profile.cpp editor/editor_node.cpp
 #: editor/project_manager.cpp
 msgid "Import"
-msgstr "Tuonti"
+msgstr "Tuo"
 
 #: editor/editor_feature_profile.cpp editor/project_export.cpp
 msgid "Export"
@@ -2538,9 +2539,11 @@ msgid "Unable to load addon script from path: '%s'."
 msgstr "Virhe ladattaessa lisäosaa polusta: '%s'."
 
 #: editor/editor_node.cpp
+#, fuzzy
 msgid ""
-"Unable to load addon script from path: '%s' There seems to be an error in "
-"the code, please check the syntax."
+"Unable to load addon script from path: '%s'. This might be due to a code "
+"error in that script. \n"
+"Disabling the addon at '%s' to prevent further errors."
 msgstr ""
 "Virhe ladattaessa lisäosaa polusta: '%s'. Koodissa vaikuttaa olevan virhe, "
 "ole hyvä ja tarkista syntaksi."
@@ -3666,6 +3669,13 @@ msgstr ""
 "Tila: Tuonti epäonnistui. Ole hyvä, korjaa tiedosto ja tuo se uudelleen."
 
 #: editor/filesystem_dock.cpp
+msgid ""
+"Importing has been disabled for this file, so it can't be opened for editing."
+msgstr ""
+"Tuonti on poistettu käytöstä tälle tiedostolle, joten sitä ei voi avata "
+"muokkausta varten."
+
+#: editor/filesystem_dock.cpp
 msgid "Cannot move/rename resources root."
 msgstr "Ei voitu siirtää/nimetä uudelleen resurssien päätasoa."
 
@@ -4066,6 +4076,10 @@ msgstr "Tuoja:"
 #: editor/import_defaults_editor.cpp
 msgid "Reset to Defaults"
 msgstr "Palauta oletusarvoihin"
+
+#: editor/import_dock.cpp
+msgid "Keep File (No Import)"
+msgstr "Pidä tiedosto (ei tuontia)"
 
 #: editor/import_dock.cpp
 msgid "%d Files"
@@ -5205,7 +5219,17 @@ msgstr ""
 
 #: editor/plugins/baked_lightmap_editor_plugin.cpp
 msgid ""
-"Godot editor was built without ray tracing support, lightmaps can't be baked."
+"Godot editor was built without ray tracing support; lightmaps can't be "
+"baked.\n"
+"If you are using an Apple Silicon-based Mac, try forcing Rosetta emulation "
+"on Godot.app in the application settings\n"
+"then restart the editor."
+msgstr ""
+
+#: editor/plugins/baked_lightmap_editor_plugin.cpp
+#, fuzzy
+msgid ""
+"Godot editor was built without ray tracing support; lightmaps can't be baked."
 msgstr ""
 "Godot-editori on käännetty ilman ray tracing -tukea, joten lightmappeja ei "
 "voi kehittää."
@@ -7528,6 +7552,13 @@ msgstr "Liikkumisen hitauskerroin"
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid "View Rotation Locked"
 msgstr "Näkymän kierto lukittu"
+
+#: editor/plugins/spatial_editor_plugin.cpp
+msgid ""
+"To zoom further, change the camera's clipping planes (View -> Settings...)"
+msgstr ""
+"Lähentääksesi tai loitontaaksesi enemmän, muuta kameran leikkaustasoja "
+"(Näytä -> Asetukset...)"
 
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid ""
@@ -10911,6 +10942,16 @@ msgstr "Irrota skripti valitusta solmusta."
 #: editor/scene_tree_dock.cpp
 msgid "Remote"
 msgstr "Etäinen"
+
+#: editor/scene_tree_dock.cpp
+msgid ""
+"If selected, the Remote scene tree dock will cause the project to stutter "
+"every time it updates.\n"
+"Switch back to the Local scene tree dock to improve performance."
+msgstr ""
+"Jos tämä on valittuna, etäskenepuun telakka saa projektin nykimään aina "
+"päivittyessään.\n"
+"Vaihda takaisin paikallisen skenepuun telakkaan parantaaksesi suorituskykyä."
 
 #: editor/scene_tree_dock.cpp
 msgid "Local"

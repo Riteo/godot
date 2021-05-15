@@ -77,7 +77,7 @@ public:
 
 	virtual bool has_alpha() const override;
 
-	virtual Ref<Image> get_data() const override;
+	virtual Ref<Image> get_image() const override;
 
 	ViewportTexture();
 	~ViewportTexture();
@@ -147,6 +147,7 @@ public:
 		DEBUG_DRAW_CLUSTER_SPOT_LIGHTS,
 		DEBUG_DRAW_CLUSTER_DECALS,
 		DEBUG_DRAW_CLUSTER_REFLECTION_PROBES,
+		DEBUG_DRAW_OCCLUDERS,
 	};
 
 	enum DefaultCanvasItemTextureFilter {
@@ -233,6 +234,7 @@ private:
 	Size2i size;
 	Size2i size_2d_override;
 	bool size_allocated = false;
+	bool use_xr = false;
 
 	RID contact_2d_debug;
 	RID contact_3d_debug_multimesh;
@@ -304,6 +306,7 @@ private:
 	ScreenSpaceAA screen_space_aa = SCREEN_SPACE_AA_DISABLED;
 	bool use_debanding = false;
 	float lod_threshold = 1.0;
+	bool use_occlusion_culling = false;
 
 	Ref<ViewportTexture> default_texture;
 	Set<ViewportTexture *> viewport_textures;
@@ -480,7 +483,6 @@ protected:
 	void _notification(int p_what);
 	void _process_picking();
 	static void _bind_methods();
-	virtual void _validate_property(PropertyInfo &property) const override;
 
 public:
 	uint64_t get_processed_events_count() const { return event_count; }
@@ -533,6 +535,9 @@ public:
 	void set_transparent_background(bool p_enable);
 	bool has_transparent_background() const;
 
+	void set_use_xr(bool p_use_xr);
+	bool is_using_xr();
+
 	Ref<ViewportTexture> get_texture() const;
 
 	void set_shadow_atlas_size(int p_size);
@@ -555,6 +560,9 @@ public:
 
 	void set_lod_threshold(float p_pixels);
 	float get_lod_threshold() const;
+
+	void set_use_occlusion_culling(bool p_us_occlusion_culling);
+	bool is_using_occlusion_culling() const;
 
 	Vector2 get_camera_coords(const Vector2 &p_viewport_coords) const;
 	Vector2 get_camera_rect_size() const;
@@ -580,7 +588,7 @@ public:
 	void gui_reset_canvas_sort_index();
 	int gui_get_canvas_sort_index();
 
-	virtual String get_configuration_warning() const override;
+	TypedArray<String> get_configuration_warnings() const override;
 
 	void set_debug_draw(DebugDraw p_debug_draw);
 	DebugDraw get_debug_draw() const;
@@ -652,7 +660,6 @@ public:
 private:
 	UpdateMode update_mode = UPDATE_WHEN_VISIBLE;
 	ClearMode clear_mode = CLEAR_MODE_ALWAYS;
-	bool xr = false;
 	bool size_2d_override_stretch = false;
 
 protected:
@@ -667,9 +674,6 @@ public:
 
 	void set_size_2d_override(const Size2i &p_size);
 	Size2i get_size_2d_override() const;
-
-	void set_use_xr(bool p_use_xr);
-	bool is_using_xr();
 
 	void set_size_2d_override_stretch(bool p_enable);
 	bool is_size_2d_override_stretch_enabled() const;

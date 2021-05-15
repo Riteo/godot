@@ -139,6 +139,8 @@ void EditorSettingsDialog::_notification(int p_what) {
 }
 
 void EditorSettingsDialog::_unhandled_input(const Ref<InputEvent> &p_event) {
+	ERR_FAIL_COND(p_event.is_null());
+
 	const Ref<InputEventKey> k = p_event;
 
 	if (k.is_valid() && k->is_pressed()) {
@@ -268,16 +270,17 @@ void EditorSettingsDialog::_update_shortcuts() {
 		Array events; // Need to get the list of events into an array so it can be set as metadata on the item.
 		Vector<String> event_strings;
 
-		List<Ref<InputEvent>> defaults = InputMap::get_singleton()->get_builtins().find(action_name).value();
-		// Remove all non-key events from the defaults.
-		for (List<Ref<InputEvent>>::Element *I = defaults.front(); I; I = I->next()) {
+		List<Ref<InputEvent>> all_default_events = InputMap::get_singleton()->get_builtins().find(action_name).value();
+		List<Ref<InputEventKey>> key_default_events;
+		// Remove all non-key events from the defaults. Only check keys, since we are in the editor.
+		for (List<Ref<InputEvent>>::Element *I = all_default_events.front(); I; I = I->next()) {
 			Ref<InputEventKey> k = I->get();
-			if (k.is_null()) {
-				I->erase();
+			if (k.is_valid()) {
+				key_default_events.push_back(k);
 			}
 		}
 
-		bool same_as_defaults = defaults.size() == action.inputs.size(); // Initially this is set to just whether the arrays are equal. Later we check the events if needed.
+		bool same_as_defaults = key_default_events.size() == action.inputs.size(); // Initially this is set to just whether the arrays are equal. Later we check the events if needed.
 
 		int count = 0;
 		for (List<Ref<InputEvent>>::Element *I = action.inputs.front(); I; I = I->next()) {
@@ -286,12 +289,8 @@ void EditorSettingsDialog::_update_shortcuts() {
 			event_strings.push_back(I->get()->as_text());
 
 			// Only check if the events have been the same so far - once one fails, we don't need to check any more.
-			if (same_as_defaults) {
-				Ref<InputEventKey> k = defaults[count];
-				// Only check keys, since we are in the editor.
-				if (k.is_valid() && !defaults[count]->shortcut_match(I->get())) {
-					same_as_defaults = false;
-				}
+			if (same_as_defaults && !key_default_events[count]->shortcut_match(I->get())) {
+				same_as_defaults = false;
 			}
 			count++;
 		}
@@ -391,9 +390,10 @@ void EditorSettingsDialog::_shortcut_button_pressed(Object *p_item, int p_column
 	TreeItem *ti = Object::cast_to<TreeItem>(p_item);
 	ERR_FAIL_COND(!ti);
 
+	button_idx = p_idx;
+
 	if (ti->get_metadata(0) == "Common") {
 		// Editing a Built-in action, which can have multiple bindings.
-		button_idx = p_idx;
 		editing_action = true;
 		current_action = ti->get_text(0);
 

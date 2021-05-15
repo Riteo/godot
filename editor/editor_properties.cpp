@@ -38,7 +38,7 @@
 #include "scene/main/window.h"
 #include "scene/resources/font.h"
 
-///////////////////// NULL /////////////////////////
+///////////////////// Nil /////////////////////////
 
 void EditorPropertyNil::update_property() {
 }
@@ -621,7 +621,7 @@ public:
 
 		const Ref<InputEventMouseButton> mb = p_ev;
 
-		if (mb.is_valid() && mb->get_button_index() == BUTTON_LEFT && mb->is_pressed() && hovered_index >= 0) {
+		if (mb.is_valid() && mb->get_button_index() == MOUSE_BUTTON_LEFT && mb->is_pressed() && hovered_index >= 0) {
 			// Toggle the flag.
 			// We base our choice on the hovered flag, so that it always matches the hovered flag.
 			if (value & (1 << hovered_index)) {
@@ -649,14 +649,16 @@ public:
 				Color color = get_theme_color("highlight_color", "Editor");
 				for (int i = 0; i < 2; i++) {
 					Point2 ofs(4, vofs);
-					if (i == 1)
+					if (i == 1) {
 						ofs.y += bsize + 1;
+					}
 
 					ofs += rect.position;
 					for (int j = 0; j < 10; j++) {
 						Point2 o = ofs + Point2(j * (bsize + 1), 0);
-						if (j >= 5)
+						if (j >= 5) {
 							o.x += 1;
+						}
 
 						const int idx = i * 10 + j;
 						const bool on = value & (1 << idx);
@@ -927,11 +929,11 @@ EditorPropertyFloat::EditorPropertyFloat() {
 void EditorPropertyEasing::_drag_easing(const Ref<InputEvent> &p_ev) {
 	const Ref<InputEventMouseButton> mb = p_ev;
 	if (mb.is_valid()) {
-		if (mb->is_doubleclick() && mb->get_button_index() == BUTTON_LEFT) {
+		if (mb->is_double_click() && mb->get_button_index() == MOUSE_BUTTON_LEFT) {
 			_setup_spin();
 		}
 
-		if (mb->is_pressed() && mb->get_button_index() == BUTTON_RIGHT) {
+		if (mb->is_pressed() && mb->get_button_index() == MOUSE_BUTTON_RIGHT) {
 			preset->set_position(easing_draw->get_screen_transform().xform(mb->get_position()));
 			preset->popup();
 
@@ -940,7 +942,7 @@ void EditorPropertyEasing::_drag_easing(const Ref<InputEvent> &p_ev) {
 			easing_draw->update();
 		}
 
-		if (mb->get_button_index() == BUTTON_LEFT) {
+		if (mb->get_button_index() == MOUSE_BUTTON_LEFT) {
 			dragging = mb->is_pressed();
 			// Update to display the correct dragging color
 			easing_draw->update();
@@ -949,7 +951,7 @@ void EditorPropertyEasing::_drag_easing(const Ref<InputEvent> &p_ev) {
 
 	const Ref<InputEventMouseMotion> mm = p_ev;
 
-	if (mm.is_valid() && mm->get_button_mask() & BUTTON_MASK_LEFT) {
+	if (dragging && mm.is_valid() && mm->get_button_mask() & MOUSE_BUTTON_MASK_LEFT) {
 		float rel = mm->get_relative().x;
 		if (rel == 0) {
 			return;
@@ -2188,6 +2190,9 @@ void EditorPropertyColor::_picker_created() {
 	} else if (default_color_mode == 2) {
 		picker->get_picker()->set_raw_mode(true);
 	}
+
+	int picker_shape = EDITOR_GET("interface/inspector/default_color_picker_shape");
+	picker->get_picker()->set_picker_shape((ColorPicker::PickerShapeType)picker_shape);
 }
 
 void EditorPropertyColor::_picker_opening() {
@@ -2814,7 +2819,7 @@ void EditorPropertyResource::_sub_inspector_object_id_selected(int p_id) {
 void EditorPropertyResource::_button_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventMouseButton> mb = p_event;
 	if (mb.is_valid()) {
-		if (mb->is_pressed() && mb->get_button_index() == BUTTON_RIGHT) {
+		if (mb->is_pressed() && mb->get_button_index() == MOUSE_BUTTON_RIGHT) {
 			_update_menu_items();
 			Vector2 pos = get_screen_position() + mb->get_position();
 			//pos = assign->get_global_transform().xform(pos);
@@ -2975,6 +2980,7 @@ void EditorPropertyResource::update_property() {
 	if (res == RES()) {
 		assign->set_icon(Ref<Texture2D>());
 		assign->set_text(TTR("[empty]"));
+		assign->set_custom_minimum_size(Size2(1, 1));
 	} else {
 		assign->set_icon(EditorNode::get_singleton()->get_object_icon(res.operator->(), "Object"));
 
@@ -3248,6 +3254,8 @@ EditorPropertyResource::EditorPropertyResource() {
 	preview->set_offset(SIDE_TOP, 1);
 	preview->set_offset(SIDE_BOTTOM, -1);
 	preview->set_offset(SIDE_RIGHT, -1);
+	// This is required to draw the focus outline in front of the preview, rather than behind.
+	preview->set_draw_behind_parent(true);
 	assign->add_child(preview);
 	assign->connect("gui_input", callable_mp(this, &EditorPropertyResource::_button_input));
 
@@ -3281,7 +3289,7 @@ void EditorInspectorDefaultPlugin::parse_begin(Object *p_object) {
 }
 
 bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Type p_type, const String &p_path, PropertyHint p_hint, const String &p_hint_text, int p_usage, bool p_wide) {
-	float default_float_step = EDITOR_GET("interface/inspector/default_float_step");
+	double default_float_step = EDITOR_GET("interface/inspector/default_float_step");
 
 	switch (p_type) {
 		// atomic types

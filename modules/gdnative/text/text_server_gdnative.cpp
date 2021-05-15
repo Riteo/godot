@@ -359,6 +359,12 @@ Vector2 TextServerGDNative::font_draw_glyph_outline(RID p_font, RID p_canvas, in
 	return advance;
 }
 
+bool TextServerGDNative::font_get_glyph_contours(RID p_font, int p_size, uint32_t p_index, Vector<Vector3> &r_points, Vector<int32_t> &r_contours, bool &r_orientation) const {
+	ERR_FAIL_COND_V(interface == nullptr, false);
+	ERR_FAIL_COND_V(interface->font_get_glyph_contours == nullptr, false);
+	return interface->font_get_glyph_contours(data, (godot_rid *)&p_font, p_size, p_index, (godot_packed_vector3_array *)&r_points, (godot_packed_int32_array *)&r_contours, (bool *)&r_orientation);
+}
+
 float TextServerGDNative::font_get_oversampling() const {
 	ERR_FAIL_COND_V(interface == nullptr, 1.f);
 	return interface->font_get_oversampling(data);
@@ -841,9 +847,9 @@ void GDAPI godot_packed_glyph_array_sort(godot_packed_glyph_array *p_self) {
 	self->sort();
 }
 
-void GDAPI godot_packed_glyph_array_invert(godot_packed_glyph_array *p_self) {
+void GDAPI godot_packed_glyph_array_reverse(godot_packed_glyph_array *p_self) {
 	Vector<TextServer::Glyph> *self = (Vector<TextServer::Glyph> *)p_self;
-	self->invert();
+	self->reverse();
 }
 
 void GDAPI godot_packed_glyph_array_push_back(godot_packed_glyph_array *p_self, const godot_glyph *p_data) {

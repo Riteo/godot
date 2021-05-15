@@ -6,7 +6,8 @@
 	<description>
 		Contains global variables accessible from everywhere. Use [method get_setting], [method set_setting] or [method has_setting] to access them. Variables stored in [code]project.godot[/code] are also loaded into ProjectSettings, making this object very useful for reading custom game configuration options.
 		When naming a Project Settings property, use the full path to the setting including the category. For example, [code]"application/config/name"[/code] for the project name. Category and property names can be viewed in the Project Settings dialog.
-		[b]Overriding:[/b] Any project setting can be overridden by creating a file named [code]override.cfg[/code] in the project's root directory. This can also be used in exported projects by placing this file in the same directory as the project binary.
+		[b]Feature tags:[/b] Project settings can be overriden for specific platforms and configurations (debug, release, ...) using [url=https://docs.godotengine.org/en/latest/tutorials/export/feature_tags.html]feature tags[/url].
+		[b]Overriding:[/b] Any project setting can be overridden by creating a file named [code]override.cfg[/code] in the project's root directory. This can also be used in exported projects by placing this file in the same directory as the project binary. Overriding will still take the base project settings' [url=https://docs.godotengine.org/en/latest/tutorials/export/feature_tags.html]feature tags[/url] in account. Therefore, make sure to [i]also[/i] override the setting with the desired feature tags if you want them to override base project settings on all platforms and configurations.
 	</description>
 	<tutorials>
 		<link title="3D Physics Tests Demo">https://godotengine.org/asset-library/asset/675</link>
@@ -255,8 +256,8 @@
 			[b]Note:[/b] Changing this value will also change the user data folder's path if [member application/config/use_custom_user_dir] is [code]false[/code]. After renaming the project, you will no longer be able to access existing data in [code]user://[/code] unless you rename the old folder to match the new project name. See [url=https://docs.godotengine.org/en/latest/tutorials/io/data_paths.html]Data paths[/url] in the documentation for more information.
 		</member>
 		<member name="application/config/project_settings_override" type="String" setter="" getter="" default="&quot;&quot;">
-			Specifies a file to override project settings. For example: [code]user://custom_settings.cfg[/code].
-			[b]Note:[/b] Regardless of this setting's value, [code]res://override.cfg[/code] will still be read to override the project settings (see this class' description at the top).
+			Specifies a file to override project settings. For example: [code]user://custom_settings.cfg[/code]. See "Overriding" in the [ProjectSettings] class description at the top for more information.
+			[b]Note:[/b] Regardless of this setting's value, [code]res://override.cfg[/code] will still be read to override the project settings.
 		</member>
 		<member name="application/config/use_custom_user_dir" type="bool" setter="" getter="" default="false">
 			If [code]true[/code], the project will save user data to its own user directory (see [member application/config/custom_user_dir_name]). This setting is only effective on desktop platforms. A name must be set in the [member application/config/custom_user_dir_name] setting for this to take effect. If [code]false[/code], the project will save user data to [code](OS user data directory)/Godot/app_userdata/(project name)[/code].
@@ -443,7 +444,7 @@
 		<member name="debug/settings/fps/force_fps" type="int" setter="" getter="" default="0">
 			Maximum number of frames per second allowed. The actual number of frames per second may still be below this value if the game is lagging.
 			If [member display/window/vsync/use_vsync] is enabled, it takes precedence and the forced FPS number cannot exceed the monitor's refresh rate.
-			This setting is therefore mostly relevant for lowering the maximum FPS below VSync, e.g. to perform non real-time rendering of static frames, or test the project under lag conditions.
+			This setting is therefore mostly relevant for lowering the maximum FPS below VSync, e.g. to perform non-real-time rendering of static frames, or test the project under lag conditions.
 		</member>
 		<member name="debug/settings/gdscript/max_call_stack" type="int" setter="" getter="" default="1024">
 			Maximum call stack allowed for debugging GDScript.
@@ -540,6 +541,14 @@
 		</member>
 		<member name="editor/node_naming/name_num_separator" type="int" setter="" getter="" default="0">
 			What to use to separate node name from number. This is mostly an editor setting.
+		</member>
+		<member name="editor/run/main_run_args" type="String" setter="" getter="" default="&quot;&quot;">
+			The command-line arguments to append to Godot's own command line when running the project. This doesn't affect the editor itself.
+			It is possible to make another executable run Godot by using the [code]%command%[/code] placeholder. The placeholder will be replaced with Godot's own command line. Program-specific arguments should be placed [i]before[/i] the placeholder, whereas Godot-specific arguments should be placed [i]after[/i] the placeholder.
+			For example, this can be used to force the project to run on the dedicated GPU in a NVIDIA Optimus system on Linux:
+			[codeblock]
+			prime-run %command%
+			[/codeblock]
 		</member>
 		<member name="editor/script/search_in_file_extensions" type="PackedStringArray" setter="" getter="" default="PackedStringArray( &quot;gd&quot;, &quot;shader&quot; )">
 			Text-based file extensions to include in the script editor's "Find in Files" feature. You can add e.g. [code]tscn[/code] if you wish to also parse your scene files, especially if you use built-in scripts which are serialized in the scene files.
@@ -734,7 +743,7 @@
 		<member name="input_devices/pen_tablet/driver" type="String" setter="" getter="">
 			Specifies the tablet driver to use. If left empty, the default driver will be used.
 		</member>
-		<member name="input_devices/pen_tablet/driver.windows" type="String" setter="" getter="">
+		<member name="input_devices/pen_tablet/driver.Windows" type="String" setter="" getter="">
 			Override for [member input_devices/pen_tablet/driver] on Windows.
 		</member>
 		<member name="input_devices/pointing/emulate_mouse_from_touch" type="bool" setter="" getter="" default="true">
@@ -748,6 +757,11 @@
 		</member>
 		<member name="internationalization/locale/fallback" type="String" setter="" getter="" default="&quot;en&quot;">
 			The locale to fall back to if a translation isn't available in a given language. If left empty, [code]en[/code] (English) will be used.
+		</member>
+		<member name="internationalization/locale/include_text_server_data" type="bool" setter="" getter="" default="false">
+			If [code]true[/code], text server break iteration rule sets, dictionaries and other optional data are included in the exported project.
+			[b]Note:[/b] "ICU / HarfBuzz / Graphite" text server data includes dictionaries for Burmese, Chinese, Japanese, Khmer, Lao and Thai as well as Unicode Standard Annex #29 and Unicode Standard Annex #14 word and line breaking rules. Data is about 4 MB large.
+			[b]Note:[/b] "Fallback" text server does not use additional data.
 		</member>
 		<member name="internationalization/locale/test" type="String" setter="" getter="" default="&quot;&quot;">
 			If non-empty, this locale will be used when running the project from the editor.
@@ -1143,13 +1157,13 @@
 		<member name="navigation/2d/default_cell_size" type="int" setter="" getter="" default="10">
 			Default cell size for 2D navigation maps. See [method NavigationServer2D.map_set_cell_size].
 		</member>
-		<member name="navigation/2d/default_edge_connection_margin" type="int" setter="" getter="" default="100">
+		<member name="navigation/2d/default_edge_connection_margin" type="int" setter="" getter="" default="5">
 			Default edge connection margin for 2D navigation maps. See [method NavigationServer2D.map_set_edge_connection_margin].
 		</member>
 		<member name="navigation/3d/default_cell_size" type="float" setter="" getter="" default="0.3">
 			Default cell size for 3D navigation maps. See [method NavigationServer3D.map_set_cell_size].
 		</member>
-		<member name="navigation/3d/default_edge_connection_margin" type="float" setter="" getter="" default="5.0">
+		<member name="navigation/3d/default_edge_connection_margin" type="float" setter="" getter="" default="0.3">
 			Default edge connection margin for 3D navigation maps. See [method NavigationServer3D.map_set_edge_connection_margin].
 		</member>
 		<member name="network/limits/debugger/max_chars_per_second" type="int" setter="" getter="" default="32768">
@@ -1182,12 +1196,6 @@
 		<member name="network/ssl/certificate_bundle_override" type="String" setter="" getter="" default="&quot;&quot;">
 			The CA certificates bundle to use for SSL connections. If this is set to a non-empty value, this will [i]override[/i] Godot's default [url=https://github.com/godotengine/godot/blob/master/thirdparty/certs/ca-certificates.crt]Mozilla certificate bundle[/url]. If left empty, the default certificate bundle will be used.
 			If in doubt, leave this setting empty.
-		</member>
-		<member name="physics/2d/bp_hash_table_size" type="int" setter="" getter="" default="4096">
-			Size of the hash table used for the broad-phase 2D hash grid algorithm.
-		</member>
-		<member name="physics/2d/cell_size" type="int" setter="" getter="" default="128">
-			Cell size used for the broad-phase 2D hash grid algorithm (in pixels).
 		</member>
 		<member name="physics/2d/default_angular_damp" type="float" setter="" getter="" default="1.0">
 			The default angular damp in 2D.
@@ -1224,9 +1232,6 @@
 		<member name="physics/2d/default_linear_damp" type="float" setter="" getter="" default="0.1">
 			The default linear damp in 2D.
 			[b]Note:[/b] Good values are in the range [code]0[/code] to [code]1[/code]. At value [code]0[/code] objects will keep moving with the same velocity. Values greater than [code]1[/code] will aim to reduce the velocity to [code]0[/code] in less than a second e.g. a value of [code]2[/code] will aim to reduce the velocity to [code]0[/code] in half a second. A value equal to or greater than the physics frame rate ([member ProjectSettings.physics/common/physics_fps], [code]60[/code] by default) will bring the object to a stop in one iteration.
-		</member>
-		<member name="physics/2d/large_object_surface_threshold_in_cells" type="int" setter="" getter="" default="512">
-			Threshold defining the surface size that constitutes a large object with regard to cells in the broad-phase 2D hash grid algorithm.
 		</member>
 		<member name="physics/2d/physics_engine" type="String" setter="" getter="" default="&quot;DEFAULT&quot;">
 			Sets which physics engine to use for 2D physics.
@@ -1350,10 +1355,6 @@
 			[b]FIXME:[/b] No longer valid after DisplayServer split:
 			In such cases, this property is not updated, so use [code]OS.get_current_video_driver[/code] to query it at run-time.
 		</member>
-		<member name="rendering/driver/rd_renderer/use_low_end_renderer" type="bool" setter="" getter="" default="false">
-		</member>
-		<member name="rendering/driver/rd_renderer/use_low_end_renderer.mobile" type="bool" setter="" getter="" default="true">
-		</member>
 		<member name="rendering/driver/threads/thread_model" type="int" setter="" getter="" default="1">
 			Thread model for rendering. Rendering on a thread can vastly improve performance, but synchronizing to the main thread can cause a bit more jitter.
 		</member>
@@ -1463,6 +1464,12 @@
 		</member>
 		<member name="rendering/mesh_lod/lod_change/threshold_pixels" type="float" setter="" getter="" default="1.0">
 		</member>
+		<member name="rendering/occlusion_culling/bvh_build_quality" type="int" setter="" getter="" default="2">
+		</member>
+		<member name="rendering/occlusion_culling/occlusion_rays_per_thread" type="int" setter="" getter="" default="512">
+		</member>
+		<member name="rendering/occlusion_culling/use_occlusion_culling" type="bool" setter="" getter="" default="false">
+		</member>
 		<member name="rendering/reflections/reflection_atlas/reflection_count" type="int" setter="" getter="" default="64">
 			Number of cubemaps to store in the reflection atlas. The number of [ReflectionProbe]s in a scene will be limited by this amount. A higher number requires more VRAM.
 		</member>
@@ -1570,6 +1577,10 @@
 			If [code]true[/code], the texture importer will import VRAM-compressed textures using the S3 Texture Compression algorithm. This algorithm is only supported on desktop platforms and consoles.
 		</member>
 		<member name="rendering/vulkan/descriptor_pools/max_descriptors_per_pool" type="int" setter="" getter="" default="64">
+		</member>
+		<member name="rendering/vulkan/rendering/back_end" type="int" setter="" getter="" default="0">
+		</member>
+		<member name="rendering/vulkan/rendering/back_end.mobile" type="int" setter="" getter="" default="1">
 		</member>
 		<member name="rendering/vulkan/staging_buffer/block_size_kb" type="int" setter="" getter="" default="256">
 		</member>

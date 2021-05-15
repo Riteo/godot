@@ -710,7 +710,7 @@ void VisualScriptEditor::_update_graph(int p_only_id) {
 			has_gnode_text = true;
 			LineEdit *line_edit = memnew(LineEdit);
 			line_edit->set_text(node->get_text());
-			line_edit->set_expand_to_text_length(true);
+			line_edit->set_expand_to_text_length_enabled(true);
 			line_edit->add_theme_font_override("font", get_theme_font("source", "EditorFonts"));
 			gnode->add_child(line_edit);
 			line_edit->connect("text_changed", callable_mp(this, &VisualScriptEditor::_expression_text_changed), varray(E->get()));
@@ -740,21 +740,8 @@ void VisualScriptEditor::_update_graph(int p_only_id) {
 
 			Color c = sbf->get_border_color();
 			Color ic = c;
-			c.a = 1;
-			if (EditorSettings::get_singleton()->get("interface/theme/use_graph_node_headers")) {
-				Color mono_color;
-				if (((c.r + c.g + c.b) / 3) < 0.7) {
-					mono_color = Color(1.0, 1.0, 1.0);
-					ic = Color(0.0, 0.0, 0.0, 0.7);
-				} else {
-					mono_color = Color(0.0, 0.0, 0.0);
-					ic = Color(1.0, 1.0, 1.0, 0.7);
-				}
-				mono_color.a = 0.85;
-				c = mono_color;
-			}
 			gnode->add_theme_color_override("title_color", c);
-			c.a = 0.7;
+			c.a = 1;
 			gnode->add_theme_color_override("close_color", c);
 			gnode->add_theme_color_override("resizer_color", ic);
 			gnode->add_theme_style_override("frame", sbf);
@@ -843,7 +830,7 @@ void VisualScriptEditor::_update_graph(int p_only_id) {
 						hbc->add_child(name_box);
 						name_box->set_custom_minimum_size(Size2(60 * EDSCALE, 0));
 						name_box->set_text(left_name);
-						name_box->set_expand_to_text_length(true);
+						name_box->set_expand_to_text_length_enabled(true);
 						name_box->connect("resized", callable_mp(this, &VisualScriptEditor::_update_node_size), varray(E->get()));
 						name_box->connect("focus_exited", callable_mp(this, &VisualScriptEditor::_port_name_focus_out), varray(name_box, E->get(), i, true));
 					} else {
@@ -938,7 +925,7 @@ void VisualScriptEditor::_update_graph(int p_only_id) {
 						hbc->add_child(name_box);
 						name_box->set_custom_minimum_size(Size2(60 * EDSCALE, 0));
 						name_box->set_text(right_name);
-						name_box->set_expand_to_text_length(true);
+						name_box->set_expand_to_text_length_enabled(true);
 						name_box->connect("resized", callable_mp(this, &VisualScriptEditor::_update_node_size), varray(E->get()));
 						name_box->connect("focus_exited", callable_mp(this, &VisualScriptEditor::_port_name_focus_out), varray(name_box, E->get(), i, false));
 					} else {
@@ -1826,6 +1813,8 @@ void VisualScriptEditor::_generic_search(String p_base_type, Vector2 pos, bool n
 }
 
 void VisualScriptEditor::_input(const Ref<InputEvent> &p_event) {
+	ERR_FAIL_COND(p_event.is_null());
+
 	// GUI input for VS Editor Plugin
 	Ref<InputEventMouseButton> key = p_event;
 
@@ -1837,7 +1826,7 @@ void VisualScriptEditor::_input(const Ref<InputEvent> &p_event) {
 void VisualScriptEditor::_graph_gui_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventMouseButton> key = p_event;
 
-	if (key.is_valid() && key->is_pressed() && key->get_button_mask() == BUTTON_RIGHT) {
+	if (key.is_valid() && key->is_pressed() && key->get_button_mask() == MOUSE_BUTTON_RIGHT) {
 		saved_position = graph->get_local_mouse_position();
 
 		Point2 gpos = Input::get_singleton()->get_mouse_position();
@@ -1873,7 +1862,7 @@ void VisualScriptEditor::_members_gui_input(const Ref<InputEvent> &p_event) {
 	}
 
 	Ref<InputEventMouseButton> btn = p_event;
-	if (btn.is_valid() && btn->is_doubleclick()) {
+	if (btn.is_valid() && btn->is_double_click()) {
 		TreeItem *ti = members->get_selected();
 		if (ti && ti->get_parent() == members->get_root()->get_children()) { // to check if it's a function
 			_center_on_node(script->get_function_node_id(ti->get_metadata(0)));
@@ -3015,9 +3004,9 @@ void VisualScriptEditor::_graph_connect_to_empty(const String &p_from, int p_fro
 	if (!vsn.is_valid()) {
 		return;
 	}
-	if (vsn->get_output_value_port_count())
-
+	if (vsn->get_output_value_port_count()) {
 		port_action_pos = p_release_pos;
+	}
 
 	if (p_from_slot < vsn->get_output_sequence_port_count()) {
 		port_action_node = p_from.to_int();
@@ -3621,32 +3610,33 @@ void VisualScriptEditor::_notification(int p_what) {
 
 			bool dark_theme = tm->get_constant("dark_theme", "Editor");
 
-			List<Pair<String, Color>> colors;
 			if (dark_theme) {
-				colors.push_back(Pair<String, Color>("flow_control", Color(0.96, 0.96, 0.96)));
-				colors.push_back(Pair<String, Color>("functions", Color(0.96, 0.52, 0.51)));
-				colors.push_back(Pair<String, Color>("data", Color(0.5, 0.96, 0.81)));
-				colors.push_back(Pair<String, Color>("operators", Color(0.67, 0.59, 0.87)));
-				colors.push_back(Pair<String, Color>("custom", Color(0.5, 0.73, 0.96)));
-				colors.push_back(Pair<String, Color>("constants", Color(0.96, 0.5, 0.69)));
+				node_colors["flow_control"] = Color(0.96, 0.96, 0.96);
+				node_colors["functions"] = Color(0.96, 0.52, 0.51);
+				node_colors["data"] = Color(0.5, 0.96, 0.81);
+				node_colors["operators"] = Color(0.67, 0.59, 0.87);
+				node_colors["custom"] = Color(0.5, 0.73, 0.96);
+				node_colors["constants"] = Color(0.96, 0.5, 0.69);
 			} else {
-				colors.push_back(Pair<String, Color>("flow_control", Color(0.26, 0.26, 0.26)));
-				colors.push_back(Pair<String, Color>("functions", Color(0.95, 0.4, 0.38)));
-				colors.push_back(Pair<String, Color>("data", Color(0.07, 0.73, 0.51)));
-				colors.push_back(Pair<String, Color>("operators", Color(0.51, 0.4, 0.82)));
-				colors.push_back(Pair<String, Color>("custom", Color(0.31, 0.63, 0.95)));
-				colors.push_back(Pair<String, Color>("constants", Color(0.94, 0.18, 0.49)));
+				node_colors["flow_control"] = Color(0.26, 0.26, 0.26);
+				node_colors["functions"] = Color(0.95, 0.4, 0.38);
+				node_colors["data"] = Color(0.07, 0.73, 0.51);
+				node_colors["operators"] = Color(0.51, 0.4, 0.82);
+				node_colors["custom"] = Color(0.31, 0.63, 0.95);
+				node_colors["constants"] = Color(0.94, 0.18, 0.49);
 			}
 
-			for (List<Pair<String, Color>>::Element *E = colors.front(); E; E = E->next()) {
-				Ref<StyleBoxFlat> sb = tm->get_stylebox("frame", "GraphNode");
+			for (Map<StringName, Color>::Element *E = node_colors.front(); E; E = E->next()) {
+				const Ref<StyleBoxFlat> sb = tm->get_stylebox("frame", "GraphNode");
+
 				if (!sb.is_null()) {
 					Ref<StyleBoxFlat> frame_style = sb->duplicate();
-					Color c = sb->get_border_color();
-					Color cn = E->get().second;
-					cn.a = c.a;
-					frame_style->set_border_color(cn);
-					node_styles[E->get().first] = frame_style;
+					// Adjust the border color to be close to the GraphNode's background color.
+					// This keeps the node's title area from being too distracting.
+					Color color = dark_theme ? E->get().darkened(0.75) : E->get().lightened(0.75);
+					color.a = 0.9;
+					frame_style->set_border_color(color);
+					node_styles[E->key()] = frame_style;
 				}
 			}
 
@@ -4320,7 +4310,7 @@ VisualScriptEditor::VisualScriptEditor() {
 	function_name_box = memnew(LineEdit);
 	function_name_edit->add_child(function_name_box);
 	function_name_box->connect("gui_input", callable_mp(this, &VisualScriptEditor::_fn_name_box_input));
-	function_name_box->set_expand_to_text_length(true);
+	function_name_box->set_expand_to_text_length_enabled(true);
 	add_child(function_name_edit);
 
 	///       Actual Graph          ///

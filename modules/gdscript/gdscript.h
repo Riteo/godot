@@ -270,6 +270,7 @@ public:
 class GDScriptInstance : public ScriptInstance {
 	friend class GDScript;
 	friend class GDScriptFunction;
+	friend class GDScriptLambdaCallable;
 	friend class GDScriptCompiler;
 	friend struct GDScriptUtilityFunctionsDefinitions;
 
@@ -460,6 +461,7 @@ public:
 
 	/* EDITOR FUNCTIONS */
 	virtual void get_reserved_words(List<String> *p_words) const;
+	virtual bool is_control_flow_keyword(String p_keywords) const;
 	virtual void get_comment_delimiters(List<String> *p_delimiters) const;
 	virtual void get_string_delimiters(List<String> *p_delimiters) const;
 	virtual String _get_processed_template(const String &p_template, const String &p_base_class_name) const;

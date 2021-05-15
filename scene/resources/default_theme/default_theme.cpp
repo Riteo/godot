@@ -114,7 +114,7 @@ static Ref<Texture2D> flip_icon(Ref<Texture2D> p_texture, bool p_flip_y = false,
 	}
 
 	Ref<ImageTexture> texture(memnew(ImageTexture));
-	Ref<Image> img = p_texture->get_data();
+	Ref<Image> img = p_texture->get_image();
 	img = img->duplicate();
 
 	if (p_flip_y) {
@@ -348,9 +348,13 @@ void fill_default_theme(Ref<Theme> &theme, const Ref<Font> &default_font, const 
 	theme->set_stylebox("focus", "CheckBox", cbx_focus);
 
 	theme->set_icon("checked", "CheckBox", make_icon(checked_png));
+	theme->set_icon("checked_disabled", "CheckBox", make_icon(checked_disabled_png));
 	theme->set_icon("unchecked", "CheckBox", make_icon(unchecked_png));
+	theme->set_icon("unchecked_disabled", "CheckBox", make_icon(unchecked_disabled_png));
 	theme->set_icon("radio_checked", "CheckBox", make_icon(radio_checked_png));
+	theme->set_icon("radio_checked_disabled", "CheckBox", make_icon(radio_checked_disabled_png));
 	theme->set_icon("radio_unchecked", "CheckBox", make_icon(radio_unchecked_png));
+	theme->set_icon("radio_unchecked_disabled", "CheckBox", make_icon(radio_unchecked_disabled_png));
 
 	theme->set_font("font", "CheckBox", Ref<Font>());
 	theme->set_font_size("font_size", "CheckBox", -1);
@@ -434,7 +438,7 @@ void fill_default_theme(Ref<Theme> &theme, const Ref<Font> &default_font, const 
 	theme->set_color("font_selected_color", "LineEdit", Color(0, 0, 0));
 	theme->set_color("font_uneditable_color", "LineEdit", Color(control_font_color.r, control_font_color.g, control_font_color.b, 0.5f));
 	theme->set_color("font_outline_color", "LineEdit", Color(1, 1, 1));
-	theme->set_color("cursor_color", "LineEdit", control_font_hover_color);
+	theme->set_color("caret_color", "LineEdit", control_font_hover_color);
 	theme->set_color("selection_color", "LineEdit", control_selection_color);
 	theme->set_color("clear_button_color", "LineEdit", control_font_color);
 	theme->set_color("clear_button_color_pressed", "LineEdit", control_font_pressed_color);
@@ -628,6 +632,8 @@ void fill_default_theme(Ref<Theme> &theme, const Ref<Font> &default_font, const 
 	// File Dialog
 
 	theme->set_icon("parent_folder", "FileDialog", make_icon(icon_parent_folder_png));
+	theme->set_icon("back_folder", "FileDialog", make_icon(arrow_left_png));
+	theme->set_icon("forward_folder", "FileDialog", make_icon(arrow_right_png));
 	theme->set_icon("reload", "FileDialog", make_icon(icon_reload_png));
 	theme->set_icon("toggle_hidden", "FileDialog", make_icon(icon_visibility_png));
 
@@ -824,7 +830,6 @@ void fill_default_theme(Ref<Theme> &theme, const Ref<Font> &default_font, const 
 	theme->set_stylebox("tab_selected", "Tabs", sb_expand(make_stylebox(tab_current_png, 4, 3, 4, 1, 16, 3, 16, 2), 2, 2, 2, 2));
 	theme->set_stylebox("tab_unselected", "Tabs", sb_expand(make_stylebox(tab_behind_png, 5, 4, 5, 1, 16, 5, 16, 2), 3, 3, 3, 3));
 	theme->set_stylebox("tab_disabled", "Tabs", sb_expand(make_stylebox(tab_disabled_png, 5, 5, 5, 1, 16, 6, 16, 4), 3, 0, 3, 3));
-	theme->set_stylebox("panel", "Tabs", tc_sb);
 	theme->set_stylebox("button_pressed", "Tabs", make_stylebox(button_pressed_png, 4, 4, 4, 4));
 	theme->set_stylebox("button", "Tabs", make_stylebox(button_normal_png, 4, 4, 4, 4));
 
@@ -885,6 +890,7 @@ void fill_default_theme(Ref<Theme> &theme, const Ref<Font> &default_font, const 
 	theme->set_icon("preset_bg", "ColorPicker", make_icon(mini_checkerboard_png));
 	theme->set_icon("overbright_indicator", "ColorPicker", make_icon(overbright_indicator_png));
 	theme->set_icon("bar_arrow", "ColorPicker", make_icon(bar_arrow_png));
+	theme->set_icon("picker_cursor", "ColorPicker", make_icon(picker_cursor_png));
 
 	theme->set_icon("bg", "ColorPickerButton", make_icon(mini_checkerboard_png));
 

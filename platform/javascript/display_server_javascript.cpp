@@ -189,19 +189,19 @@ EM_BOOL DisplayServerJavaScript::mouse_button_callback(int p_event_type, const E
 
 	switch (p_event->button) {
 		case DOM_BUTTON_LEFT:
-			ev->set_button_index(BUTTON_LEFT);
+			ev->set_button_index(MOUSE_BUTTON_LEFT);
 			break;
 		case DOM_BUTTON_MIDDLE:
-			ev->set_button_index(BUTTON_MIDDLE);
+			ev->set_button_index(MOUSE_BUTTON_MIDDLE);
 			break;
 		case DOM_BUTTON_RIGHT:
-			ev->set_button_index(BUTTON_RIGHT);
+			ev->set_button_index(MOUSE_BUTTON_RIGHT);
 			break;
 		case DOM_BUTTON_XBUTTON1:
-			ev->set_button_index(BUTTON_XBUTTON1);
+			ev->set_button_index(MOUSE_BUTTON_XBUTTON1);
 			break;
 		case DOM_BUTTON_XBUTTON2:
-			ev->set_button_index(BUTTON_XBUTTON2);
+			ev->set_button_index(MOUSE_BUTTON_XBUTTON2);
 			break;
 		default:
 			return false;
@@ -215,14 +215,14 @@ EM_BOOL DisplayServerJavaScript::mouse_button_callback(int p_event_type, const E
 				display->last_click_ms = 0;
 				display->last_click_pos = Point2(-100, -100);
 				display->last_click_button_index = -1;
-				ev->set_doubleclick(true);
+				ev->set_double_click(true);
 			}
 
 		} else {
 			display->last_click_button_index = ev->get_button_index();
 		}
 
-		if (!ev->is_doubleclick()) {
+		if (!ev->is_double_click()) {
 			display->last_click_ms += diff;
 			display->last_click_pos = ev->get_position();
 		}
@@ -341,7 +341,7 @@ void DisplayServerJavaScript::cursor_set_custom_image(const RES &p_cursor, Curso
 		Rect2 atlas_rect;
 
 		if (texture.is_valid()) {
-			image = texture->get_data();
+			image = texture->get_image();
 		}
 
 		if (!image.is_valid() && atlas_texture.is_valid()) {
@@ -364,7 +364,7 @@ void DisplayServerJavaScript::cursor_set_custom_image(const RES &p_cursor, Curso
 		ERR_FAIL_COND(texture_size.width > 256 || texture_size.height > 256);
 		ERR_FAIL_COND(p_hotspot.x > texture_size.width || p_hotspot.y > texture_size.height);
 
-		image = texture->get_data();
+		image = texture->get_image();
 
 		ERR_FAIL_COND(!image.is_valid());
 
@@ -399,7 +399,7 @@ void DisplayServerJavaScript::cursor_set_custom_image(const RES &p_cursor, Curso
 		godot_js_display_cursor_set_custom_shape(godot2dom_cursor(p_shape), png.ptr(), len, p_hotspot.x, p_hotspot.y);
 
 	} else {
-		godot_js_display_cursor_set_custom_shape(godot2dom_cursor(p_shape), NULL, 0, 0, 0);
+		godot_js_display_cursor_set_custom_shape(godot2dom_cursor(p_shape), nullptr, 0, 0, 0);
 	}
 
 	cursor_set_shape(cursor_shape);
@@ -461,13 +461,13 @@ EM_BOOL DisplayServerJavaScript::wheel_callback(int p_event_type, const Emscript
 	ev->set_metakey(input->is_key_pressed(KEY_META));
 
 	if (p_event->deltaY < 0)
-		ev->set_button_index(BUTTON_WHEEL_UP);
+		ev->set_button_index(MOUSE_BUTTON_WHEEL_UP);
 	else if (p_event->deltaY > 0)
-		ev->set_button_index(BUTTON_WHEEL_DOWN);
+		ev->set_button_index(MOUSE_BUTTON_WHEEL_DOWN);
 	else if (p_event->deltaX > 0)
-		ev->set_button_index(BUTTON_WHEEL_LEFT);
+		ev->set_button_index(MOUSE_BUTTON_WHEEL_LEFT);
 	else if (p_event->deltaX < 0)
-		ev->set_button_index(BUTTON_WHEEL_RIGHT);
+		ev->set_button_index(MOUSE_BUTTON_WHEEL_RIGHT);
 	else
 		return false;
 
@@ -601,7 +601,7 @@ void DisplayServerJavaScript::process_joypads() {
 			// Buttons 6 and 7 in the standard mapping need to be
 			// axis to be handled as JOY_AXIS_TRIGGER by Godot.
 			if (s_standard && (b == 6 || b == 7)) {
-				Input::JoyAxis joy_axis;
+				Input::JoyAxisValue joy_axis;
 				joy_axis.min = 0;
 				joy_axis.value = value;
 				int a = b == 6 ? JOY_AXIS_TRIGGER_LEFT : JOY_AXIS_TRIGGER_RIGHT;
@@ -611,7 +611,7 @@ void DisplayServerJavaScript::process_joypads() {
 			}
 		}
 		for (int a = 0; a < s_axes_num; a++) {
-			Input::JoyAxis joy_axis;
+			Input::JoyAxisValue joy_axis;
 			joy_axis.min = -1;
 			joy_axis.value = s_axes[a];
 			input->joy_axis(idx, a, joy_axis);
@@ -771,8 +771,8 @@ DisplayServerJavaScript::DisplayServerJavaScript(const String &p_rendering_drive
 #define SET_EM_CALLBACK(target, ev, cb)                                  \
 	result = emscripten_set_##ev##_callback(target, nullptr, true, &cb); \
 	EM_CHECK(ev)
-#define SET_EM_WINDOW_CALLBACK(ev, cb)                                                         \
-	result = emscripten_set_##ev##_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, false, &cb); \
+#define SET_EM_WINDOW_CALLBACK(ev, cb)                                                            \
+	result = emscripten_set_##ev##_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, false, &cb); \
 	EM_CHECK(ev)
 	// These callbacks from Emscripten's html5.h suffice to access most
 	// JavaScript APIs.
@@ -827,7 +827,6 @@ bool DisplayServerJavaScript::has_feature(Feature p_feature) const {
 		//case FEATURE_MOUSE_WARP:
 		//case FEATURE_NATIVE_DIALOG:
 		//case FEATURE_NATIVE_ICON:
-		//case FEATURE_NATIVE_VIDEO:
 		//case FEATURE_WINDOW_TRANSPARENCY:
 		//case FEATURE_KEEP_SCREEN_ON:
 		//case FEATURE_ORIENTATION:

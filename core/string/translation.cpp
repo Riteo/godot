@@ -835,7 +835,7 @@ Vector<String> Translation::_get_message_list() const {
 void Translation::_set_messages(const Dictionary &p_messages) {
 	List<Variant> keys;
 	p_messages.get_key_list(&keys);
-	for (auto E = keys.front(); E; E = E->next()) {
+	for (List<Variant>::Element *E = keys.front(); E; E = E->next()) {
 		translation_map[E->get()] = p_messages[E->get()];
 	}
 }
@@ -853,7 +853,7 @@ void Translation::set_locale(const String &p_locale) {
 		locale = univ_locale;
 	}
 
-	if (OS::get_singleton()->get_main_loop()) {
+	if (OS::get_singleton()->get_main_loop() && TranslationServer::get_singleton()->get_loaded_locales().has(this)) {
 		OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_TRANSLATION_CHANGED);
 	}
 }

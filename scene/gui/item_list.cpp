@@ -406,6 +406,9 @@ void ItemList::remove_item(int p_idx) {
 	ERR_FAIL_INDEX(p_idx, items.size());
 
 	items.remove(p_idx);
+	if (current == p_idx) {
+		current = -1;
+	}
 	update();
 	shape_changed = true;
 	defer_select_single = -1;
@@ -530,6 +533,8 @@ Size2 ItemList::Item::get_icon_size() const {
 }
 
 void ItemList::_gui_input(const Ref<InputEvent> &p_event) {
+	ERR_FAIL_COND(p_event.is_null());
+
 	double prev_scroll = scroll_bar->get_value();
 
 	Ref<InputEventMouseMotion> mm = p_event;
@@ -540,7 +545,7 @@ void ItemList::_gui_input(const Ref<InputEvent> &p_event) {
 
 	Ref<InputEventMouseButton> mb = p_event;
 
-	if (defer_select_single >= 0 && mb.is_valid() && mb->get_button_index() == BUTTON_LEFT && !mb->is_pressed()) {
+	if (defer_select_single >= 0 && mb.is_valid() && mb->get_button_index() == MOUSE_BUTTON_LEFT && !mb->is_pressed()) {
 		select(defer_select_single, true);
 
 		emit_signal("multi_selected", defer_select_single, true);
@@ -548,7 +553,7 @@ void ItemList::_gui_input(const Ref<InputEvent> &p_event) {
 		return;
 	}
 
-	if (mb.is_valid() && (mb->get_button_index() == BUTTON_LEFT || (allow_rmb_select && mb->get_button_index() == BUTTON_RIGHT)) && mb->is_pressed()) {
+	if (mb.is_valid() && (mb->get_button_index() == MOUSE_BUTTON_LEFT || (allow_rmb_select && mb->get_button_index() == MOUSE_BUTTON_RIGHT)) && mb->is_pressed()) {
 		search_string = ""; //any mousepress cancels
 		Vector2 pos = mb->get_position();
 		Ref<StyleBox> bg = get_theme_stylebox("bg");
@@ -594,16 +599,16 @@ void ItemList::_gui_input(const Ref<InputEvent> &p_event) {
 					}
 				}
 
-				if (mb->get_button_index() == BUTTON_RIGHT) {
+				if (mb->get_button_index() == MOUSE_BUTTON_RIGHT) {
 					emit_signal("item_rmb_selected", i, get_local_mouse_position());
 				}
 			} else {
-				if (!mb->is_doubleclick() && !mb->get_command() && select_mode == SELECT_MULTI && items[i].selectable && !items[i].disabled && items[i].selected && mb->get_button_index() == BUTTON_LEFT) {
+				if (!mb->is_double_click() && !mb->get_command() && select_mode == SELECT_MULTI && items[i].selectable && !items[i].disabled && items[i].selected && mb->get_button_index() == MOUSE_BUTTON_LEFT) {
 					defer_select_single = i;
 					return;
 				}
 
-				if (items[i].selected && mb->get_button_index() == BUTTON_RIGHT) {
+				if (items[i].selected && mb->get_button_index() == MOUSE_BUTTON_RIGHT) {
 					emit_signal("item_rmb_selected", i, get_local_mouse_position());
 				} else {
 					bool selected = items[i].selected;
@@ -618,9 +623,9 @@ void ItemList::_gui_input(const Ref<InputEvent> &p_event) {
 						}
 					}
 
-					if (mb->get_button_index() == BUTTON_RIGHT) {
+					if (mb->get_button_index() == MOUSE_BUTTON_RIGHT) {
 						emit_signal("item_rmb_selected", i, get_local_mouse_position());
-					} else if (/*select_mode==SELECT_SINGLE &&*/ mb->is_doubleclick()) {
+					} else if (/*select_mode==SELECT_SINGLE &&*/ mb->is_double_click()) {
 						emit_signal("item_activated", i);
 					}
 				}
@@ -628,7 +633,7 @@ void ItemList::_gui_input(const Ref<InputEvent> &p_event) {
 
 			return;
 		}
-		if (mb->get_button_index() == BUTTON_RIGHT) {
+		if (mb->get_button_index() == MOUSE_BUTTON_RIGHT) {
 			emit_signal("rmb_clicked", mb->get_position());
 
 			return;
@@ -637,10 +642,10 @@ void ItemList::_gui_input(const Ref<InputEvent> &p_event) {
 		// Since closest is null, more likely we clicked on empty space, so send signal to interested controls. Allows, for example, implement items deselecting.
 		emit_signal("nothing_selected");
 	}
-	if (mb.is_valid() && mb->get_button_index() == BUTTON_WHEEL_UP && mb->is_pressed()) {
+	if (mb.is_valid() && mb->get_button_index() == MOUSE_BUTTON_WHEEL_UP && mb->is_pressed()) {
 		scroll_bar->set_value(scroll_bar->get_value() - scroll_bar->get_page() * mb->get_factor() / 8);
 	}
-	if (mb.is_valid() && mb->get_button_index() == BUTTON_WHEEL_DOWN && mb->is_pressed()) {
+	if (mb.is_valid() && mb->get_button_index() == MOUSE_BUTTON_WHEEL_DOWN && mb->is_pressed()) {
 		scroll_bar->set_value(scroll_bar->get_value() + scroll_bar->get_page() * mb->get_factor() / 8);
 	}
 

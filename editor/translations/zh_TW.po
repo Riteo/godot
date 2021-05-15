@@ -2513,9 +2513,11 @@ msgid "Unable to load addon script from path: '%s'."
 msgstr "無法自路徑「%s」載入擴充腳本。"
 
 #: editor/editor_node.cpp
+#, fuzzy
 msgid ""
-"Unable to load addon script from path: '%s' There seems to be an error in "
-"the code, please check the syntax."
+"Unable to load addon script from path: '%s'. This might be due to a code "
+"error in that script. \n"
+"Disabling the addon at '%s' to prevent further errors."
 msgstr "無法自路徑「%s」載入擴充腳本。可能為程式碼中有錯誤，請檢查語法。"
 
 #: editor/editor_node.cpp
@@ -3610,6 +3612,11 @@ msgid "Status: Import of file failed. Please fix file and reimport manually."
 msgstr "狀態：檔案匯入失敗。請修正檔案並手動重新匯入。"
 
 #: editor/filesystem_dock.cpp
+msgid ""
+"Importing has been disabled for this file, so it can't be opened for editing."
+msgstr ""
+
+#: editor/filesystem_dock.cpp
 msgid "Cannot move/rename resources root."
 msgstr "無法移動或重新命名根資源。"
 
@@ -4005,6 +4012,10 @@ msgstr "匯入程式："
 #: editor/import_defaults_editor.cpp
 msgid "Reset to Defaults"
 msgstr "重設為預設"
+
+#: editor/import_dock.cpp
+msgid "Keep File (No Import)"
+msgstr ""
 
 #: editor/import_dock.cpp
 msgid "%d Files"
@@ -5123,7 +5134,17 @@ msgstr "部分網格無效。請確保 UV2 通道的值位於 [0.0,1.0] 矩形�
 
 #: editor/plugins/baked_lightmap_editor_plugin.cpp
 msgid ""
-"Godot editor was built without ray tracing support, lightmaps can't be baked."
+"Godot editor was built without ray tracing support; lightmaps can't be "
+"baked.\n"
+"If you are using an Apple Silicon-based Mac, try forcing Rosetta emulation "
+"on Godot.app in the application settings\n"
+"then restart the editor."
+msgstr ""
+
+#: editor/plugins/baked_lightmap_editor_plugin.cpp
+#, fuzzy
+msgid ""
+"Godot editor was built without ray tracing support; lightmaps can't be baked."
 msgstr ""
 "Godot 編輯器在建制時未啟用光線追蹤 (Ray Tracing) 支援，無法烘焙光照圖。"
 
@@ -7419,6 +7440,11 @@ msgstr "放慢自由視圖速度"
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid "View Rotation Locked"
 msgstr "視圖旋轉已鎖定"
+
+#: editor/plugins/spatial_editor_plugin.cpp
+msgid ""
+"To zoom further, change the camera's clipping planes (View -> Settings...)"
+msgstr ""
 
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid ""
@@ -10727,6 +10753,13 @@ msgstr "自所選節點取消附加腳本。"
 #: editor/scene_tree_dock.cpp
 msgid "Remote"
 msgstr "遠端"
+
+#: editor/scene_tree_dock.cpp
+msgid ""
+"If selected, the Remote scene tree dock will cause the project to stutter "
+"every time it updates.\n"
+"Switch back to the Local scene tree dock to improve performance."
+msgstr ""
 
 #: editor/scene_tree_dock.cpp
 msgid "Local"

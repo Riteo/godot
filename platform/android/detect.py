@@ -197,12 +197,11 @@ def configure(env):
         if env["optimize"] == "speed":  # optimize for speed (default)
             env.Append(LINKFLAGS=["-O2"])
             env.Append(CCFLAGS=["-O2", "-fomit-frame-pointer"])
-            env.Append(CPPDEFINES=["NDEBUG"])
-        else:  # optimize for size
+        elif env["optimize"] == "size":  # optimize for size
             env.Append(CCFLAGS=["-Os"])
-            env.Append(CPPDEFINES=["NDEBUG"])
             env.Append(LINKFLAGS=["-Os"])
 
+        env.Append(CPPDEFINES=["NDEBUG"])
         if can_vectorize:
             env.Append(CCFLAGS=["-ftree-vectorize"])
         if env["target"] == "release_debug":
@@ -259,8 +258,10 @@ def configure(env):
     env.Append(CPPFLAGS=["-isystem", env["ANDROID_NDK_ROOT"] + "/sources/cxx-stl/llvm-libc++abi/include"])
 
     # Disable exceptions and rtti on non-tools (template) builds
-    if env["tools"] or env["builtin_icu"]:
+    if env["tools"]:
         env.Append(CXXFLAGS=["-frtti"])
+    elif env["builtin_icu"]:
+        env.Append(CXXFLAGS=["-frtti", "-fno-exceptions"])
     else:
         env.Append(CXXFLAGS=["-fno-rtti", "-fno-exceptions"])
         # Don't use dynamic_cast, necessary with no-rtti.

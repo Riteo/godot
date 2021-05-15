@@ -117,8 +117,8 @@ void AnimationPlayerEditor::_notification(int p_what) {
 			autoplay_icon = get_theme_icon("AutoPlay", "EditorIcons");
 			reset_icon = get_theme_icon("Reload", "EditorIcons");
 			{
-				Ref<Image> autoplay_img = autoplay_icon->get_data();
-				Ref<Image> reset_img = reset_icon->get_data();
+				Ref<Image> autoplay_img = autoplay_icon->get_image();
+				Ref<Image> reset_img = reset_icon->get_image();
 				Ref<Image> autoplay_reset_img;
 				Size2 icon_size = Size2(autoplay_img->get_width(), autoplay_img->get_height());
 				autoplay_reset_img.instance();
@@ -1219,6 +1219,8 @@ void AnimationPlayerEditor::_onion_skinning_menu(int p_option) {
 }
 
 void AnimationPlayerEditor::_unhandled_key_input(const Ref<InputEvent> &p_ev) {
+	ERR_FAIL_COND(p_ev.is_null());
+
 	Ref<InputEventKey> k = p_ev;
 	if (is_visible_in_tree() && k.is_valid() && k->is_pressed() && !k->is_echo() && !k->get_alt() && !k->get_control() && !k->get_metakey()) {
 		switch (k->get_keycode()) {

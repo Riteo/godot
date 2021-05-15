@@ -141,6 +141,7 @@ public:
 	virtual Ref<Material> surface_get_material(int p_idx) const = 0;
 	virtual int get_blend_shape_count() const = 0;
 	virtual StringName get_blend_shape_name(int p_index) const = 0;
+	virtual void set_blend_shape_name(int p_index, const StringName &p_name) = 0;
 
 	Vector<Face3> get_faces() const;
 	Ref<TriangleMesh> generate_triangle_mesh() const;
@@ -163,6 +164,9 @@ public:
 	static ConvexDecompositionFunc convex_composition_function;
 
 	Vector<Ref<Shape3D>> convex_decompose() const;
+
+	virtual int get_builtin_bind_pose_count() const;
+	virtual Transform get_builtin_bind_pose(int p_index) const;
 
 	Mesh();
 };
@@ -223,6 +227,7 @@ public:
 	void add_blend_shape(const StringName &p_name);
 	int get_blend_shape_count() const override;
 	StringName get_blend_shape_name(int p_index) const override;
+	void set_blend_shape_name(int p_index, const StringName &p_name) override;
 	void clear_blend_shapes();
 
 	void set_blend_shape_mode(BlendShapeMode p_mode);
@@ -258,7 +263,7 @@ public:
 	void regen_normal_maps();
 
 	Error lightmap_unwrap(const Transform &p_base_transform = Transform(), float p_texel_size = 0.05);
-	Error lightmap_unwrap_cached(int *&r_cache_data, unsigned int &r_cache_size, bool &r_used_cache, const Transform &p_base_transform = Transform(), float p_texel_size = 0.05);
+	Error lightmap_unwrap_cached(const Transform &p_base_transform, float p_texel_size, const Vector<uint8_t> &p_src_cache, Vector<uint8_t> &r_dst_cache, bool p_generate_cache = true);
 
 	virtual void reload_from_file() override;
 

@@ -730,6 +730,12 @@ Error EditorExportPlatform::export_project_files(const Ref<EditorExportPreset> &
 	if (p_preset->get_export_filter() == EditorExportPreset::EXPORT_ALL_RESOURCES) {
 		//find stuff
 		_export_find_resources(EditorFileSystem::get_singleton()->get_filesystem(), paths);
+	} else if (p_preset->get_export_filter() == EditorExportPreset::EXCLUDE_SELECTED_RESOURCES) {
+		_export_find_resources(EditorFileSystem::get_singleton()->get_filesystem(), paths);
+		Vector<String> files = p_preset->get_files_to_export();
+		for (int i = 0; i < files.size(); i++) {
+			paths.erase(files[i]);
+		}
 	} else {
 		bool scenes_only = p_preset->get_export_filter() == EditorExportPreset::EXPORT_SELECTED_SCENES;
 
@@ -871,6 +877,20 @@ Error EditorExportPlatform::export_project_files(const Ref<EditorExportPreset> &
 			err = config->load(path + ".import");
 			if (err != OK) {
 				ERR_PRINT("Could not parse: '" + path + "', not exported.");
+				continue;
+			}
+
+			String importer_type = config->get_value("remap", "importer");
+
+			if (importer_type == "keep") {
+				//just keep file as-is
+				Vector<uint8_t> array = FileAccess::get_file_as_array(path);
+				err = p_func(p_udata, path, array, idx, total, enc_in_filters, enc_ex_filters, key);
+
+				if (err != OK) {
+					return err;
+				}
+
 				continue;
 			}
 
@@ -1031,14 +1051,28 @@ Error EditorExportPlatform::export_project_files(const Ref<EditorExportPreset> &
 		}
 	}
 
-	// Store text server data if exists.
+	// Store text server data if it is supported.
 	if (TS->has_feature(TextServer::FEATURE_USE_SUPPORT_DATA)) {
-		String ts_data = "res://" + TS->get_support_data_filename();
-		if (FileAccess::exists(ts_data)) {
-			Vector<uint8_t> array = FileAccess::get_file_as_array(ts_data);
-			err = p_func(p_udata, ts_data, array, idx, total, enc_in_filters, enc_ex_filters, key);
-			if (err != OK) {
-				return err;
+		bool use_data = ProjectSettings::get_singleton()->get("internationalization/locale/include_text_server_data");
+		if (use_data) {
+			// Try using user provided data file.
+			String ts_data = "res://" + TS->get_support_data_filename();
+			if (FileAccess::exists(ts_data)) {
+				Vector<uint8_t> array = FileAccess::get_file_as_array(ts_data);
+				err = p_func(p_udata, ts_data, array, idx, total, enc_in_filters, enc_ex_filters, key);
+				if (err != OK) {
+					return err;
+				}
+			} else {
+				// Use default text server data.
+				String icu_data_file = EditorSettings::get_singleton()->get_cache_dir().plus_file("tmp_icu_data");
+				TS->save_support_data(icu_data_file);
+				Vector<uint8_t> array = FileAccess::get_file_as_array(icu_data_file);
+				err = p_func(p_udata, ts_data, array, idx, total, enc_in_filters, enc_ex_filters, key);
+				DirAccess::remove_file_or_error(icu_data_file);
+				if (err != OK) {
+					return err;
+				}
 			}
 		}
 	}
@@ -1380,6 +1414,10 @@ void EditorExport::_save() {
 				config->set_value(section, "export_filter", "resources");
 				save_files = true;
 			} break;
+			case EditorExportPreset::EXCLUDE_SELECTED_RESOURCES: {
+				config->set_value(section, "export_filter", "exclude");
+				save_files = true;
+			} break;
 		}
 
 		if (save_files) {
@@ -1557,6 +1595,9 @@ void EditorExport::load_config() {
 			get_files = true;
 		} else if (export_filter == "resources") {
 			preset->set_export_filter(EditorExportPreset::EXPORT_SELECTED_RESOURCES);
+			get_files = true;
+		} else if (export_filter == "exclude") {
+			preset->set_export_filter(EditorExportPreset::EXCLUDE_SELECTED_RESOURCES);
 			get_files = true;
 		}
 

@@ -155,10 +155,11 @@ void EditorExportPlatformOSX::get_export_options(List<ExportOption> *r_options) 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "privacy/microphone_usage_description", PROPERTY_HINT_PLACEHOLDER_TEXT, "Provide a message if you need to use the microphone"), ""));
 
 #ifdef OSX_ENABLED
-	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/enable"), false));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/enable"), true));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "codesign/identity", PROPERTY_HINT_PLACEHOLDER_TEXT, "Type: Name (ID)"), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/timestamp"), true));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/hardened_runtime"), true));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/replace_existing_signature"), true));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "codesign/entitlements/custom_file", PROPERTY_HINT_GLOBAL_FILE, "*.plist"), ""));
 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/entitlements/allow_jit_code_execution"), false));
@@ -214,7 +215,7 @@ void _rgba8_to_packbits_encode(int p_ch, int p_size, Vector<uint8_t> &p_source, 
 			if ((p_source.ptr()[(i + 1) * 4 + p_ch] == cur) && (p_source.ptr()[(i + 2) * 4 + p_ch] == cur)) {
 				if (buf_size > 0) {
 					result.write[res_size++] = (uint8_t)(buf_size - 1);
-					copymem(&result.write[res_size], &buf, buf_size);
+					memcpy(&result.write[res_size], &buf, buf_size);
 					res_size += buf_size;
 					buf_size = 0;
 				}
@@ -240,7 +241,7 @@ void _rgba8_to_packbits_encode(int p_ch, int p_size, Vector<uint8_t> &p_source, 
 				buf[buf_size++] = cur;
 				if (buf_size == 128) {
 					result.write[res_size++] = (uint8_t)(buf_size - 1);
-					copymem(&result.write[res_size], &buf, buf_size);
+					memcpy(&result.write[res_size], &buf, buf_size);
 					res_size += buf_size;
 					buf_size = 0;
 				}
@@ -248,7 +249,7 @@ void _rgba8_to_packbits_encode(int p_ch, int p_size, Vector<uint8_t> &p_source, 
 		} else {
 			buf[buf_size++] = cur;
 			result.write[res_size++] = (uint8_t)(buf_size - 1);
-			copymem(&result.write[res_size], &buf, buf_size);
+			memcpy(&result.write[res_size], &buf, buf_size);
 			res_size += buf_size;
 			buf_size = 0;
 		}
@@ -258,7 +259,7 @@ void _rgba8_to_packbits_encode(int p_ch, int p_size, Vector<uint8_t> &p_source, 
 
 	int ofs = p_dest.size();
 	p_dest.resize(p_dest.size() + res_size);
-	copymem(&p_dest.write[ofs], result.ptr(), res_size);
+	memcpy(&p_dest.write[ofs], result.ptr(), res_size);
 }
 
 void EditorExportPlatformOSX::_make_icon(const Ref<Image> &p_icon, Vector<uint8_t> &p_data) {
@@ -317,7 +318,7 @@ void EditorExportPlatformOSX::_make_icon(const Ref<Image> &p_icon, Vector<uint8_
 			memdelete(f);
 			len += 8;
 			len = BSWAP32(len);
-			copymem(&data.write[ofs], icon_infos[i].name, 4);
+			memcpy(&data.write[ofs], icon_infos[i].name, 4);
 			encode_uint32(len, &data.write[ofs + 4]);
 
 			// Clean up generated file.
@@ -337,7 +338,7 @@ void EditorExportPlatformOSX::_make_icon(const Ref<Image> &p_icon, Vector<uint8_
 
 				int len = data.size() - ofs;
 				len = BSWAP32(len);
-				copymem(&data.write[ofs], icon_infos[i].name, 4);
+				memcpy(&data.write[ofs], icon_infos[i].name, 4);
 				encode_uint32(len, &data.write[ofs + 4]);
 			}
 
@@ -352,7 +353,7 @@ void EditorExportPlatformOSX::_make_icon(const Ref<Image> &p_icon, Vector<uint8_
 				}
 				len += 8;
 				len = BSWAP32(len);
-				copymem(&data.write[ofs], icon_infos[i].mask_name, 4);
+				memcpy(&data.write[ofs], icon_infos[i].mask_name, 4);
 				encode_uint32(len, &data.write[ofs + 4]);
 			}
 		}
@@ -486,9 +487,17 @@ Error EditorExportPlatformOSX::_code_sign(const Ref<EditorExportPreset> &p_prese
 	}
 
 	args.push_back("-s");
-	args.push_back(p_preset->get("codesign/identity"));
+	if (p_preset->get("codesign/identity") == "") {
+		args.push_back("-");
+	} else {
+		args.push_back(p_preset->get("codesign/identity"));
+	}
 
 	args.push_back("-v"); /* provide some more feedback */
+
+	if (p_preset->get("codesign/replace_existing_signature")) {
+		args.push_back("-f");
+	}
 
 	args.push_back(p_path);
 
@@ -1055,12 +1064,6 @@ bool EditorExportPlatformOSX::can_export(const Ref<EditorExportPreset> &p_preset
 	}
 
 	bool sign_enabled = p_preset->get("codesign/enable");
-	if (sign_enabled) {
-		if (p_preset->get("codesign/identity") == "") {
-			err += TTR("Codesign: identity not specified.") + "\n";
-			valid = false;
-		}
-	}
 	bool noto_enabled = p_preset->get("notarization/enable");
 	if (noto_enabled) {
 		if (!sign_enabled) {

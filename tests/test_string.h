@@ -860,10 +860,10 @@ TEST_CASE("[String] match") {
 }
 
 TEST_CASE("[String] IPVX address to string") {
-	IP_Address ip0("2001:0db8:85a3:0000:0000:8a2e:0370:7334");
-	IP_Address ip(0x0123, 0x4567, 0x89ab, 0xcdef, true);
-	IP_Address ip2("fe80::52e5:49ff:fe93:1baf");
-	IP_Address ip3("::ffff:192.168.0.1");
+	IPAddress ip0("2001:0db8:85a3:0000:0000:8a2e:0370:7334");
+	IPAddress ip(0x0123, 0x4567, 0x89ab, 0xcdef, true);
+	IPAddress ip2("fe80::52e5:49ff:fe93:1baf");
+	IPAddress ip3("::ffff:192.168.0.1");
 	String ip4 = "192.168.0.1";
 	CHECK(ip4.is_valid_ip_address());
 
@@ -1045,7 +1045,7 @@ TEST_CASE("[String] lstrip and rstrip") {
 
 TEST_CASE("[String] ensuring empty string into parse_utf8 passes empty string") {
 	String empty;
-	CHECK(empty.parse_utf8(NULL, -1));
+	CHECK(empty.parse_utf8(nullptr, -1));
 }
 
 TEST_CASE("[String] Cyrillic to_lower()") {
@@ -1155,6 +1155,17 @@ TEST_CASE("[String] hash") {
 TEST_CASE("[String] uri_encode/unescape") {
 	String s = "Godot Engine:'docs'";
 	String t = "Godot%20Engine%3A%27docs%27";
+
+	String x1 = "T%C4%93%C5%A1t";
+	static const uint8_t u8str[] = { 0x54, 0xC4, 0x93, 0xC5, 0xA1, 0x74, 0x00 };
+	String x2 = String::utf8((const char *)u8str);
+	String x3 = U"Tēšt";
+
+	CHECK(x1.uri_decode() == x2);
+	CHECK(x1.uri_decode() == x3);
+	CHECK((x1 + x3).uri_decode() == (x2 + x3)); // Mixed unicode and URL encoded string, e.g. GTK+ bookmark.
+	CHECK(x2.uri_encode() == x1);
+	CHECK(x3.uri_encode() == x1);
 
 	CHECK(s.uri_encode() == t);
 	CHECK(t.uri_decode() == s);

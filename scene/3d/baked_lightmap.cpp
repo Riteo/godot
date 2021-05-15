@@ -259,7 +259,7 @@ void BakedLightmap::_find_meshes_and_lights(Node *p_at_node, Vector<MeshesFound>
 					if (all_override.is_valid()) {
 						mf.overrides.push_back(all_override);
 					} else {
-						mf.overrides.push_back(mi->get_surface_material(i));
+						mf.overrides.push_back(mi->get_surface_override_material(i));
 					}
 				}
 
@@ -619,10 +619,6 @@ void BakedLightmap::_gen_new_positions_from_octree(const GenProbesOctree *p_cell
 }
 
 BakedLightmap::BakeError BakedLightmap::bake(Node *p_from_node, String p_image_data_path, Lightmapper::BakeStepFunc p_bake_step, void *p_bake_userdata) {
-	if (p_image_data_path == "" && (get_light_data().is_null() || !get_light_data()->get_path().is_resource_file())) {
-		return BAKE_ERROR_NO_SAVE_PATH;
-	}
-
 	if (p_image_data_path == "") {
 		if (get_light_data().is_null()) {
 			return BAKE_ERROR_NO_SAVE_PATH;

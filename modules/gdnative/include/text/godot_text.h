@@ -118,6 +118,7 @@ typedef struct {
 	godot_vector2 (*font_get_glyph_kerning)(void *, godot_rid *, uint32_t, uint32_t, int);
 	godot_vector2 (*font_draw_glyph)(void *, godot_rid *, godot_rid *, int, const godot_vector2 *, uint32_t, const godot_color *);
 	godot_vector2 (*font_draw_glyph_outline)(void *, godot_rid *, godot_rid *, int, int, const godot_vector2 *, uint32_t, const godot_color *);
+	bool (*font_get_glyph_contours)(void *, godot_rid *, int, uint32_t, godot_packed_vector3_array *, godot_packed_int32_array *, bool *);
 	float (*font_get_oversampling)(void *);
 	void (*font_set_oversampling)(void *, float);
 	godot_packed_string_array (*get_system_fonts)(void *);
@@ -213,7 +214,7 @@ godot_bool GDAPI godot_packed_glyph_array_has(godot_packed_glyph_array *p_self, 
 
 void GDAPI godot_packed_glyph_array_sort(godot_packed_glyph_array *p_self);
 
-void GDAPI godot_packed_glyph_array_invert(godot_packed_glyph_array *p_self);
+void GDAPI godot_packed_glyph_array_reverse(godot_packed_glyph_array *p_self);
 
 void GDAPI godot_packed_glyph_array_push_back(godot_packed_glyph_array *p_self, const godot_glyph *p_data);
 

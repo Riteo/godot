@@ -131,7 +131,7 @@ bool ViewportTexture::has_alpha() const {
 	return false;
 }
 
-Ref<Image> ViewportTexture::get_data() const {
+Ref<Image> ViewportTexture::get_image() const {
 	ERR_FAIL_COND_V_MSG(!vp, Ref<Image>(), "Viewport Texture must be set to use it.");
 	return RS::get_singleton()->texture_2d_get(vp->texture_rid);
 }
@@ -1412,6 +1412,16 @@ void Viewport::_update_canvas_items(Node *p_node) {
 	}
 }
 
+void Viewport::set_use_xr(bool p_use_xr) {
+	use_xr = p_use_xr;
+
+	RS::get_singleton()->viewport_set_use_xr(viewport, use_xr);
+}
+
+bool Viewport::is_using_xr() {
+	return use_xr;
+}
+
 Ref<ViewportTexture> Viewport::get_texture() const {
 	return default_texture;
 }
@@ -1621,10 +1631,10 @@ void Viewport::_gui_call_input(Control *p_control, const Ref<InputEvent> &p_inpu
 	Ref<InputEventMouseButton> mb = p_input;
 
 	bool cant_stop_me_now = (mb.is_valid() &&
-							 (mb->get_button_index() == BUTTON_WHEEL_DOWN ||
-									 mb->get_button_index() == BUTTON_WHEEL_UP ||
-									 mb->get_button_index() == BUTTON_WHEEL_LEFT ||
-									 mb->get_button_index() == BUTTON_WHEEL_RIGHT));
+							 (mb->get_button_index() == MOUSE_BUTTON_WHEEL_DOWN ||
+									 mb->get_button_index() == MOUSE_BUTTON_WHEEL_UP ||
+									 mb->get_button_index() == MOUSE_BUTTON_WHEEL_LEFT ||
+									 mb->get_button_index() == MOUSE_BUTTON_WHEEL_RIGHT));
 	Ref<InputEventPanGesture> pn = p_input;
 	cant_stop_me_now = pn.is_valid() || cant_stop_me_now;
 
@@ -1830,6 +1840,7 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 		Control *over = nullptr;
 
 		Point2 mpos = mb->get_position();
+		gui.last_mouse_pos = mpos;
 		if (mb->is_pressed()) {
 			Size2 pos = mpos;
 			if (gui.mouse_focus_mask) {
@@ -1860,7 +1871,7 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 
 				gui.mouse_focus_mask = 1 << (mb->get_button_index() - 1);
 
-				if (mb->get_button_index() == BUTTON_LEFT) {
+				if (mb->get_button_index() == MOUSE_BUTTON_LEFT) {
 					gui.drag_accum = Vector2();
 					gui.drag_attempted = false;
 				}
@@ -1883,7 +1894,7 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 			}
 #endif
 
-			if (mb->get_button_index() == BUTTON_LEFT) { //assign focus
+			if (mb->get_button_index() == MOUSE_BUTTON_LEFT) { //assign focus
 				CanvasItem *ci = gui.mouse_focus;
 				while (ci) {
 					Control *control = Object::cast_to<Control>(ci);
@@ -1914,7 +1925,7 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 
 			set_input_as_handled();
 
-			if (gui.drag_data.get_type() != Variant::NIL && mb->get_button_index() == BUTTON_LEFT) {
+			if (gui.drag_data.get_type() != Variant::NIL && mb->get_button_index() == MOUSE_BUTTON_LEFT) {
 				//alternate drop use (when using force_drag(), as proposed by #5342
 				if (gui.mouse_focus) {
 					_gui_drop(gui.mouse_focus, pos, false);
@@ -1934,7 +1945,7 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 
 			_gui_cancel_tooltip();
 		} else {
-			if (gui.drag_data.get_type() != Variant::NIL && mb->get_button_index() == BUTTON_LEFT) {
+			if (gui.drag_data.get_type() != Variant::NIL && mb->get_button_index() == MOUSE_BUTTON_LEFT) {
 				if (gui.drag_mouse_over) {
 					_gui_drop(gui.drag_mouse_over, gui.drag_mouse_over_pos, false);
 				}
@@ -1978,7 +1989,7 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 				_gui_call_input(mouse_focus, mb);
 			}
 
-			/*if (gui.drag_data.get_type()!=Variant::NIL && mb->get_button_index()==BUTTON_LEFT) {
+			/*if (gui.drag_data.get_type()!=Variant::NIL && mb->get_button_index()==MOUSE_BUTTON_LEFT) {
 				_propagate_viewport_notification(this,NOTIFICATION_DRAG_END);
 				gui.drag_data=Variant(); //always clear
 			}*/
@@ -2022,7 +2033,7 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 		Control *over = nullptr;
 
 		// D&D
-		if (!gui.drag_attempted && gui.mouse_focus && mm->get_button_mask() & BUTTON_MASK_LEFT) {
+		if (!gui.drag_attempted && gui.mouse_focus && mm->get_button_mask() & MOUSE_BUTTON_MASK_LEFT) {
 			gui.drag_accum += mm->get_relative();
 			float len = gui.drag_accum.length();
 			if (len > 10) {
@@ -2266,7 +2277,7 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 					Transform2D localizer = gui.drag_mouse_over->get_global_transform_with_canvas().affine_inverse();
 					gui.drag_mouse_over_pos = localizer.xform(viewport_pos);
 
-					if (mm->get_button_mask() & BUTTON_MASK_LEFT) {
+					if (mm->get_button_mask() & MOUSE_BUTTON_MASK_LEFT) {
 						bool can_drop = _gui_drop(gui.drag_mouse_over, gui.drag_mouse_over_pos, true);
 
 						if (!can_drop) {
@@ -2399,29 +2410,27 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 		if (from && p_event->is_pressed()) {
 			Control *next = nullptr;
 
-			Input *input = Input::get_singleton();
-
-			if (p_event->is_action_pressed("ui_focus_next") && input->is_action_just_pressed("ui_focus_next")) {
+			if (p_event->is_action_pressed("ui_focus_next", true)) {
 				next = from->find_next_valid_focus();
 			}
 
-			if (p_event->is_action_pressed("ui_focus_prev") && input->is_action_just_pressed("ui_focus_prev")) {
+			if (p_event->is_action_pressed("ui_focus_prev", true)) {
 				next = from->find_prev_valid_focus();
 			}
 
-			if (!mods && p_event->is_action_pressed("ui_up") && input->is_action_just_pressed("ui_up")) {
+			if (!mods && p_event->is_action_pressed("ui_up", true)) {
 				next = from->_get_focus_neighbor(SIDE_TOP);
 			}
 
-			if (!mods && p_event->is_action_pressed("ui_left") && input->is_action_just_pressed("ui_left")) {
+			if (!mods && p_event->is_action_pressed("ui_left", true)) {
 				next = from->_get_focus_neighbor(SIDE_LEFT);
 			}
 
-			if (!mods && p_event->is_action_pressed("ui_right") && input->is_action_just_pressed("ui_right")) {
+			if (!mods && p_event->is_action_pressed("ui_right", true)) {
 				next = from->_get_focus_neighbor(SIDE_RIGHT);
 			}
 
-			if (!mods && p_event->is_action_pressed("ui_down") && input->is_action_just_pressed("ui_down")) {
+			if (!mods && p_event->is_action_pressed("ui_down", true)) {
 				next = from->_get_focus_neighbor(SIDE_BOTTOM);
 			}
 
@@ -2783,7 +2792,7 @@ bool Viewport::_sub_windows_forward_input(const Ref<InputEvent> &p_event) {
 		ERR_FAIL_COND_V(gui.subwindow_focused == nullptr, false);
 
 		Ref<InputEventMouseButton> mb = p_event;
-		if (mb.is_valid() && !mb->is_pressed() && mb->get_button_index() == BUTTON_LEFT) {
+		if (mb.is_valid() && !mb->is_pressed() && mb->get_button_index() == MOUSE_BUTTON_LEFT) {
 			if (gui.subwindow_drag == SUB_WINDOW_DRAG_CLOSE) {
 				if (gui.subwindow_drag_close_rect.has_point(mb->get_position())) {
 					//close window
@@ -2908,7 +2917,7 @@ bool Viewport::_sub_windows_forward_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventMouseButton> mb = p_event;
 	//if the event is a mouse button, we need to check whether another window was clicked
 
-	if (mb.is_valid() && mb->is_pressed() && mb->get_button_index() == BUTTON_LEFT) {
+	if (mb.is_valid() && mb->is_pressed() && mb->get_button_index() == MOUSE_BUTTON_LEFT) {
 		bool click_on_window = false;
 		for (int i = gui.sub_windows.size() - 1; i >= 0; i--) {
 			SubWindow &sw = gui.sub_windows.write[i];
@@ -3067,6 +3076,7 @@ void Viewport::input(const Ref<InputEvent> &p_event, bool p_local_coords) {
 }
 
 void Viewport::unhandled_input(const Ref<InputEvent> &p_event, bool p_local_coords) {
+	ERR_FAIL_COND(p_event.is_null());
 	ERR_FAIL_COND(!is_inside_tree());
 
 	if (disable_input || !_can_consume_input_events()) {
@@ -3176,20 +3186,17 @@ Variant Viewport::gui_get_drag_data() const {
 	return gui.drag_data;
 }
 
-String Viewport::get_configuration_warning() const {
+TypedArray<String> Viewport::get_configuration_warnings() const {
 	/*if (get_parent() && !Object::cast_to<Control>(get_parent()) && !render_target) {
 		return TTR("This viewport is not set as render target. If you intend for it to display its contents directly to the screen, make it a child of a Control so it can obtain a size. Otherwise, make it a RenderTarget and assign its internal texture to some node for display.");
 	}*/
 
-	String warning = Node::get_configuration_warning();
+	TypedArray<String> warnings = Node::get_configuration_warnings();
 
 	if (size.x == 0 || size.y == 0) {
-		if (!warning.is_empty()) {
-			warning += "\n\n";
-		}
-		warning += TTR("Viewport size must be greater than 0 to render anything.");
+		warnings.push_back(TTR("Viewport size must be greater than 0 to render anything."));
 	}
-	return warning;
+	return warnings;
 }
 
 void Viewport::gui_reset_canvas_sort_index() {
@@ -3227,8 +3234,9 @@ Viewport::ScreenSpaceAA Viewport::get_screen_space_aa() const {
 }
 
 void Viewport::set_use_debanding(bool p_use_debanding) {
-	if (use_debanding == p_use_debanding)
+	if (use_debanding == p_use_debanding) {
 		return;
+	}
 	use_debanding = p_use_debanding;
 	RS::get_singleton()->viewport_set_use_debanding(viewport, p_use_debanding);
 }
@@ -3243,6 +3251,21 @@ void Viewport::set_lod_threshold(float p_pixels) {
 }
 float Viewport::get_lod_threshold() const {
 	return lod_threshold;
+}
+
+void Viewport::set_use_occlusion_culling(bool p_use_occlusion_culling) {
+	if (use_occlusion_culling == p_use_occlusion_culling) {
+		return;
+	}
+
+	use_occlusion_culling = p_use_occlusion_culling;
+	RS::get_singleton()->viewport_set_use_occlusion_culling(viewport, p_use_occlusion_culling);
+
+	notify_property_list_changed();
+}
+
+bool Viewport::is_using_occlusion_culling() const {
+	return use_occlusion_culling;
 }
 
 void Viewport::set_debug_draw(DebugDraw p_debug_draw) {
@@ -3332,9 +3355,6 @@ void Viewport::set_handle_input_locally(bool p_enable) {
 
 bool Viewport::is_handling_input_locally() const {
 	return handle_input_locally;
-}
-
-void Viewport::_validate_property(PropertyInfo &property) const {
 }
 
 void Viewport::set_default_canvas_item_texture_filter(DefaultCanvasItemTextureFilter p_filter) {
@@ -3481,10 +3501,16 @@ void Viewport::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_use_debanding", "enable"), &Viewport::set_use_debanding);
 	ClassDB::bind_method(D_METHOD("is_using_debanding"), &Viewport::is_using_debanding);
 
+	ClassDB::bind_method(D_METHOD("set_use_occlusion_culling", "enable"), &Viewport::set_use_occlusion_culling);
+	ClassDB::bind_method(D_METHOD("is_using_occlusion_culling"), &Viewport::is_using_occlusion_culling);
+
 	ClassDB::bind_method(D_METHOD("set_debug_draw", "debug_draw"), &Viewport::set_debug_draw);
 	ClassDB::bind_method(D_METHOD("get_debug_draw"), &Viewport::get_debug_draw);
 
 	ClassDB::bind_method(D_METHOD("get_render_info", "info"), &Viewport::get_render_info);
+
+	ClassDB::bind_method(D_METHOD("set_use_xr", "use"), &Viewport::set_use_xr);
+	ClassDB::bind_method(D_METHOD("is_using_xr"), &Viewport::is_using_xr);
 
 	ClassDB::bind_method(D_METHOD("get_texture"), &Viewport::get_texture);
 
@@ -3566,6 +3592,7 @@ void Viewport::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("_process_picking"), &Viewport::_process_picking);
 
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_xr"), "set_use_xr", "is_using_xr");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "own_world_3d"), "set_use_own_world_3d", "is_using_own_world_3d");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "world_3d", PROPERTY_HINT_RESOURCE_TYPE, "World3D"), "set_world_3d", "get_world_3d");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "world_2d", PROPERTY_HINT_RESOURCE_TYPE, "World2D", 0), "set_world_2d", "get_world_2d");
@@ -3577,10 +3604,11 @@ void Viewport::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "msaa", PROPERTY_HINT_ENUM, "Disabled,2x,4x,8x,16x,AndroidVR 2x,AndroidVR 4x"), "set_msaa", "get_msaa");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "screen_space_aa", PROPERTY_HINT_ENUM, "Disabled,FXAA"), "set_screen_space_aa", "get_screen_space_aa");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_debanding"), "set_use_debanding", "is_using_debanding");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_occlusion_culling"), "set_use_occlusion_culling", "is_using_occlusion_culling");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "lod_threshold", PROPERTY_HINT_RANGE, "0,1024,0.1"), "set_lod_threshold", "get_lod_threshold");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "debug_draw", PROPERTY_HINT_ENUM, "Disabled,Unshaded,Overdraw,Wireframe"), "set_debug_draw", "get_debug_draw");
 	ADD_GROUP("Canvas Items", "canvas_item_");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "canvas_item_default_texture_filter", PROPERTY_HINT_ENUM, "Nearest,Linear,MipmapLinear,MipmapNearest"), "set_default_canvas_item_texture_filter", "get_default_canvas_item_texture_filter");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "canvas_item_default_texture_filter", PROPERTY_HINT_ENUM, "Nearest,Linear,Linear Mipmap,Nearest Mipmap"), "set_default_canvas_item_texture_filter", "get_default_canvas_item_texture_filter");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "canvas_item_default_texture_repeat", PROPERTY_HINT_ENUM, "Disabled,Enabled,Mirror"), "set_default_canvas_item_texture_repeat", "get_default_canvas_item_texture_repeat");
 	ADD_GROUP("Audio Listener", "audio_listener_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "audio_listener_enable_2d"), "set_as_audio_listener_2d", "is_audio_listener_2d");
@@ -3658,6 +3686,7 @@ void Viewport::_bind_methods() {
 	BIND_ENUM_CONSTANT(DEBUG_DRAW_CLUSTER_SPOT_LIGHTS);
 	BIND_ENUM_CONSTANT(DEBUG_DRAW_CLUSTER_DECALS);
 	BIND_ENUM_CONSTANT(DEBUG_DRAW_CLUSTER_REFLECTION_PROBES);
+	BIND_ENUM_CONSTANT(DEBUG_DRAW_OCCLUDERS)
 
 	BIND_ENUM_CONSTANT(DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST);
 	BIND_ENUM_CONSTANT(DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_LINEAR);
@@ -3732,16 +3761,6 @@ Viewport::~Viewport() {
 
 /////////////////////////////////
 
-void SubViewport::set_use_xr(bool p_use_xr) {
-	xr = p_use_xr;
-
-	RS::get_singleton()->viewport_set_use_xr(get_viewport_rid(), xr);
-}
-
-bool SubViewport::is_using_xr() {
-	return xr;
-}
-
 void SubViewport::set_size(const Size2i &p_size) {
 	_set_size(p_size, _get_size_2d_override(), Rect2i(), _stretch_transform(), true);
 }
@@ -3814,9 +3833,6 @@ void SubViewport::_notification(int p_what) {
 }
 
 void SubViewport::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_use_xr", "use"), &SubViewport::set_use_xr);
-	ClassDB::bind_method(D_METHOD("is_using_xr"), &SubViewport::is_using_xr);
-
 	ClassDB::bind_method(D_METHOD("set_size", "size"), &SubViewport::set_size);
 	ClassDB::bind_method(D_METHOD("get_size"), &SubViewport::get_size);
 
@@ -3832,7 +3848,6 @@ void SubViewport::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_clear_mode", "mode"), &SubViewport::set_clear_mode);
 	ClassDB::bind_method(D_METHOD("get_clear_mode"), &SubViewport::get_clear_mode);
 
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "xr"), "set_use_xr", "is_using_xr");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "size"), "set_size", "get_size");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "size_2d_override"), "set_size_2d_override", "get_size_2d_override");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "size_2d_override_stretch"), "set_size_2d_override_stretch", "is_size_2d_override_stretch_enabled");

@@ -231,7 +231,7 @@ Dictionary DynamicFontDataAdvanced::get_feature_list() const {
 
 	Dictionary out;
 	// Read feature flags.
-	unsigned int count = hb_ot_layout_table_get_feature_tags(hb_font_get_face(fds->hb_handle), HB_OT_TAG_GSUB, 0, NULL, NULL);
+	unsigned int count = hb_ot_layout_table_get_feature_tags(hb_font_get_face(fds->hb_handle), HB_OT_TAG_GSUB, 0, nullptr, nullptr);
 	if (count != 0) {
 		hb_tag_t *feature_tags = (hb_tag_t *)memalloc(count * sizeof(hb_tag_t));
 		hb_ot_layout_table_get_feature_tags(hb_font_get_face(fds->hb_handle), HB_OT_TAG_GSUB, 0, &count, feature_tags);
@@ -240,7 +240,7 @@ Dictionary DynamicFontDataAdvanced::get_feature_list() const {
 		}
 		memfree(feature_tags);
 	}
-	count = hb_ot_layout_table_get_feature_tags(hb_font_get_face(fds->hb_handle), HB_OT_TAG_GPOS, 0, NULL, NULL);
+	count = hb_ot_layout_table_get_feature_tags(hb_font_get_face(fds->hb_handle), HB_OT_TAG_GPOS, 0, nullptr, nullptr);
 	if (count != 0) {
 		hb_tag_t *feature_tags = (hb_tag_t *)memalloc(count * sizeof(hb_tag_t));
 		hb_ot_layout_table_get_feature_tags(hb_font_get_face(fds->hb_handle), HB_OT_TAG_GPOS, 0, &count, feature_tags);
@@ -639,7 +639,7 @@ bool DynamicFontDataAdvanced::is_script_supported(uint32_t p_script) const {
 	DataAtSize *fds = const_cast<DynamicFontDataAdvanced *>(this)->get_data_for_size(base_size);
 	ERR_FAIL_COND_V(fds == nullptr, false);
 
-	unsigned int count = hb_ot_layout_table_get_script_tags(hb_font_get_face(fds->hb_handle), HB_OT_TAG_GSUB, 0, NULL, NULL);
+	unsigned int count = hb_ot_layout_table_get_script_tags(hb_font_get_face(fds->hb_handle), HB_OT_TAG_GSUB, 0, nullptr, nullptr);
 	if (count != 0) {
 		hb_tag_t *script_tags = (hb_tag_t *)memalloc(count * sizeof(hb_tag_t));
 		hb_ot_layout_table_get_script_tags(hb_font_get_face(fds->hb_handle), HB_OT_TAG_GSUB, 0, &count, script_tags);
@@ -651,7 +651,7 @@ bool DynamicFontDataAdvanced::is_script_supported(uint32_t p_script) const {
 		}
 		memfree(script_tags);
 	}
-	count = hb_ot_layout_table_get_script_tags(hb_font_get_face(fds->hb_handle), HB_OT_TAG_GPOS, 0, NULL, NULL);
+	count = hb_ot_layout_table_get_script_tags(hb_font_get_face(fds->hb_handle), HB_OT_TAG_GPOS, 0, nullptr, nullptr);
 	if (count != 0) {
 		hb_tag_t *script_tags = (hb_tag_t *)memalloc(count * sizeof(hb_tag_t));
 		hb_ot_layout_table_get_script_tags(hb_font_get_face(fds->hb_handle), HB_OT_TAG_GPOS, 0, &count, script_tags);
@@ -995,6 +995,29 @@ Vector2 DynamicFontDataAdvanced::draw_glyph_outline(RID p_canvas, int p_size, in
 	}
 
 	return advance;
+}
+
+bool DynamicFontDataAdvanced::get_glyph_contours(int p_size, uint32_t p_index, Vector<Vector3> &r_points, Vector<int32_t> &r_contours, bool &r_orientation) const {
+	_THREAD_SAFE_METHOD_
+	DataAtSize *fds = const_cast<DynamicFontDataAdvanced *>(this)->get_data_for_size(p_size);
+	ERR_FAIL_COND_V(fds == nullptr, false);
+
+	int error = FT_Load_Glyph(fds->face, p_index, FT_LOAD_NO_BITMAP | (force_autohinter ? FT_LOAD_FORCE_AUTOHINT : 0));
+	ERR_FAIL_COND_V(error, false);
+
+	r_points.clear();
+	r_contours.clear();
+
+	float h = fds->ascent;
+	float scale = (1.0 / 64.0) / oversampling * fds->scale_color_font;
+	for (short i = 0; i < fds->face->glyph->outline.n_points; i++) {
+		r_points.push_back(Vector3(fds->face->glyph->outline.points[i].x * scale, h - fds->face->glyph->outline.points[i].y * scale, FT_CURVE_TAG(fds->face->glyph->outline.tags[i])));
+	}
+	for (short i = 0; i < fds->face->glyph->outline.n_contours; i++) {
+		r_contours.push_back(fds->face->glyph->outline.contours[i]);
+	}
+	r_orientation = (FT_Outline_Get_Orientation(&fds->face->glyph->outline) == FT_ORIENTATION_FILL_RIGHT);
+	return true;
 }
 
 DynamicFontDataAdvanced::~DynamicFontDataAdvanced() {

@@ -784,8 +784,9 @@ ScriptInstance *VisualScript::instance_create(Object *p_this) {
 		variables.get_key_list(&keys);
 
 		for (const List<StringName>::Element *E = keys.front(); E; E = E->next()) {
-			if (!variables[E->get()]._export)
+			if (!variables[E->get()]._export) {
 				continue;
+			}
 
 			PropertyInfo p = variables[E->get()].info;
 			p.name = String(E->get());
@@ -1536,7 +1537,7 @@ Variant VisualScriptInstance::_call_internal(const StringName &p_method, void *p
 				state->flow_stack_pos = flow_stack_pos;
 				state->stack.resize(p_stack_size);
 				state->pass = p_pass;
-				copymem(state->stack.ptrw(), p_stack, p_stack_size);
+				memcpy(state->stack.ptrw(), p_stack, p_stack_size);
 				// Step 2, run away, return directly.
 				r_error.error = Callable::CallError::CALL_OK;
 
@@ -1606,7 +1607,7 @@ Variant VisualScriptInstance::_call_internal(const StringName &p_method, void *p
 			}
 
 			next = node->sequence_outputs[output];
-			VSDEBUG("GOT NEXT NODE - " + (next ? itos(next->get_id()) : "NULL"));
+			VSDEBUG("GOT NEXT NODE - " + (next ? itos(next->get_id()) : "Null"));
 		}
 
 		if (flow_stack) {
@@ -1801,7 +1802,7 @@ Variant VisualScriptInstance::call(const StringName &p_method, const Variant **p
 		sequence_bits[i] = false; // All starts as false.
 	}
 
-	zeromem(pass_stack, f->pass_stack_size * sizeof(int));
+	memset(pass_stack, 0, f->pass_stack_size * sizeof(int));
 
 	Map<int, VisualScriptNodeInstance *>::Element *E = instances.find(f->node);
 	if (!E) {
@@ -2050,12 +2051,12 @@ void VisualScriptInstance::create(const Ref<VisualScript> &p_script, Object *p_o
 
 				instance->id = F->get();
 				instance->input_port_count = node->get_input_value_port_count();
-				instance->input_ports = NULL;
+				instance->input_ports = nullptr;
 				instance->output_port_count = node->get_output_value_port_count();
-				instance->output_ports = NULL;
+				instance->output_ports = nullptr;
 				instance->sequence_output_count = node->get_output_sequence_port_count();
 				instance->sequence_index = function.node_count++;
-				instance->sequence_outputs = NULL;
+				instance->sequence_outputs = nullptr;
 				instance->pass_idx = -1;
 
 				if (instance->input_port_count) {
@@ -2075,7 +2076,7 @@ void VisualScriptInstance::create(const Ref<VisualScript> &p_script, Object *p_o
 				if (instance->sequence_output_count) {
 					instance->sequence_outputs = memnew_arr(VisualScriptNodeInstance *, instance->sequence_output_count);
 					for (int i = 0; i < instance->sequence_output_count; i++) {
-						instance->sequence_outputs[i] = NULL; // If it remains null, flow ends here.
+						instance->sequence_outputs[i] = nullptr; // If it remains null, flow ends here.
 					}
 				}
 
@@ -2085,10 +2086,11 @@ void VisualScriptInstance::create(const Ref<VisualScript> &p_script, Object *p_o
 
 					StringName var_name;
 
-					if (Object::cast_to<VisualScriptLocalVar>(*node))
+					if (Object::cast_to<VisualScriptLocalVar>(*node)) {
 						var_name = String(Object::cast_to<VisualScriptLocalVar>(*node)->get_var_name()).strip_edges();
-					else
+					} else {
 						var_name = String(Object::cast_to<VisualScriptLocalVarSet>(*node)->get_var_name()).strip_edges();
+					}
 
 					if (!local_var_indices.has(var_name)) {
 						local_var_indices[var_name] = function.max_stack;
@@ -2252,6 +2254,7 @@ Variant VisualScriptFunctionState::_signal_callback(const Variant **p_args, int 
 }
 
 void VisualScriptFunctionState::connect_to_signal(Object *p_obj, const String &p_signal, Array p_binds) {
+	ERR_FAIL_NULL(p_obj);
 	Vector<Variant> binds;
 	for (int i = 0; i < p_binds.size(); i++) {
 		binds.push_back(p_binds[i]);
@@ -2331,6 +2334,10 @@ void VisualScriptLanguage::finish() {
 
 /* EDITOR FUNCTIONS */
 void VisualScriptLanguage::get_reserved_words(List<String> *p_words) const {
+}
+
+bool VisualScriptLanguage::is_control_flow_keyword(String p_keyword) const {
+	return false;
 }
 
 void VisualScriptLanguage::get_comment_delimiters(List<String> *p_delimiters) const {

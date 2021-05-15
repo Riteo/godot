@@ -3,7 +3,7 @@
 
 #define MAX_GI_PROBES 8
 
-#if defined(GL_KHR_shader_subgroup_ballot) && defined(GL_KHR_shader_subgroup_arithmetic)
+#if defined(has_GL_KHR_shader_subgroup_ballot) && defined(has_GL_KHR_shader_subgroup_arithmetic)
 
 #extension GL_KHR_shader_subgroup_ballot : enable
 #extension GL_KHR_shader_subgroup_arithmetic : enable
@@ -13,6 +13,7 @@
 #endif
 
 #include "cluster_data_inc.glsl"
+#include "decal_data_inc.glsl"
 
 #if !defined(MODE_RENDER_DEPTH) || defined(MODE_RENDER_MATERIAL) || defined(MODE_RENDER_SDF) || defined(MODE_RENDER_NORMAL_ROUGHNESS) || defined(MODE_RENDER_GIPROBE) || defined(TANGENT_USED) || defined(NORMAL_MAP_USED)
 #ifndef NORMAL_USED
@@ -28,7 +29,11 @@ layout(push_constant, binding = 0, std430) uniform DrawCall {
 }
 draw_call;
 
-/* Set 0 Scene data that never changes, ever */
+#define SDFGI_MAX_CASCADES 8
+
+/* Set 0: Base Pass (never changes) */
+
+#include "light_data_inc.glsl"
 
 #define SAMPLER_NEAREST_CLAMP 0
 #define SAMPLER_LINEAR_CLAMP 1
@@ -42,10 +47,6 @@ draw_call;
 #define SAMPLER_LINEAR_WITH_MIPMAPS_REPEAT 9
 #define SAMPLER_NEAREST_WITH_MIPMAPS_ANISOTROPIC_REPEAT 10
 #define SAMPLER_LINEAR_WITH_MIPMAPS_ANISOTROPIC_REPEAT 11
-
-#define SDFGI_MAX_CASCADES 8
-
-/* Set 1: Base Pass (never changes) */
 
 layout(set = 0, binding = 1) uniform sampler material_samplers[12];
 
@@ -61,12 +62,11 @@ layout(set = 0, binding = 2) uniform sampler shadow_sampler;
 #define INSTANCE_FLAGS_MULTIMESH_FORMAT_2D (1 << 13)
 #define INSTANCE_FLAGS_MULTIMESH_HAS_COLOR (1 << 14)
 #define INSTANCE_FLAGS_MULTIMESH_HAS_CUSTOM_DATA (1 << 15)
-#define INSTANCE_FLAGS_MULTIMESH_STRIDE_SHIFT 16
+#define INSTANCE_FLAGS_PARTICLE_TRAIL_SHIFT 16
 //3 bits of stride
-#define INSTANCE_FLAGS_MULTIMESH_STRIDE_MASK 0x7
+#define INSTANCE_FLAGS_PARTICLE_TRAIL_MASK 0xFF
 
-#define INSTANCE_FLAGS_SKELETON (1 << 19)
-#define INSTANCE_FLAGS_NON_UNIFORM_SCALE (1 << 20)
+#define INSTANCE_FLAGS_NON_UNIFORM_SCALE (1 << 24)
 
 layout(set = 0, binding = 3, std430) restrict readonly buffer OmniLights {
 	LightData data[];
@@ -78,7 +78,7 @@ layout(set = 0, binding = 4, std430) restrict readonly buffer SpotLights {
 }
 spot_lights;
 
-layout(set = 0, binding = 5) buffer restrict readonly ReflectionProbeData {
+layout(set = 0, binding = 5, std430) restrict readonly buffer ReflectionProbeData {
 	ReflectionData data[];
 }
 reflections;
@@ -122,8 +122,6 @@ layout(set = 0, binding = 12, std430) restrict readonly buffer GlobalVariableDat
 }
 global_variables;
 
-#ifndef LOW_END_MODE
-
 struct SDFGIProbeCascadeData {
 	vec3 position;
 	float to_probe;
@@ -159,9 +157,7 @@ layout(set = 0, binding = 13, std140) uniform SDFGI {
 }
 sdfgi;
 
-#endif //LOW_END_MODE
-
-/* Set 2: Render Pass (changes per render pass) */
+/* Set 1: Render Pass (changes per render pass) */
 
 layout(set = 1, binding = 0, std140) uniform SceneData {
 	mat4 projection_matrix;
@@ -245,7 +241,6 @@ layout(set = 1, binding = 0, std140) uniform SceneData {
 
 	bool pancake_shadows;
 }
-
 scene_data;
 
 struct InstanceData {
@@ -280,9 +275,7 @@ layout(set = 1, binding = 5) uniform texture2D directional_shadow_atlas;
 
 layout(set = 1, binding = 6) uniform texture2DArray lightmap_textures[MAX_LIGHTMAP_TEXTURES];
 
-#ifndef LOW_END_MOD
 layout(set = 1, binding = 7) uniform texture3D gi_probe_textures[MAX_GI_PROBES];
-#endif
 
 layout(set = 1, binding = 8, std430) buffer restrict readonly ClusterBuffer {
 	uint data[];
@@ -305,8 +298,6 @@ layout(r32ui, set = 1, binding = 12) uniform restrict uimage3D geom_facing_grid;
 
 layout(set = 1, binding = 9) uniform texture2D depth_buffer;
 layout(set = 1, binding = 10) uniform texture2D color_buffer;
-
-#ifndef LOW_END_MODE
 
 layout(set = 1, binding = 11) uniform texture2D normal_roughness_buffer;
 layout(set = 1, binding = 12) uniform texture2D ao_buffer;
@@ -337,8 +328,6 @@ layout(set = 1, binding = 17, std140) uniform GIProbes {
 gi_probes;
 
 layout(set = 1, binding = 18) uniform texture3D volumetric_fog_texture;
-
-#endif // LOW_END_MODE
 
 #endif
 

@@ -1,4 +1,4 @@
-import os
+import os, json
 
 from SCons.Util import WhereIs
 
@@ -21,7 +21,11 @@ def get_build_version():
     name = "custom_build"
     if os.getenv("BUILD_NAME") != None:
         name = os.getenv("BUILD_NAME")
-    return "%d.%d.%d.%s.%s" % (version.major, version.minor, version.patch, version.status, name)
+    v = "%d.%d" % (version.major, version.minor)
+    if version.patch > 0:
+        v += ".%d" % version.patch
+    v += ".%s.%s" % (version.status, name)
+    return v
 
 
 def create_engine_file(env, target, source, externs):
@@ -55,7 +59,23 @@ def create_template_zip(env, js, wasm, extra):
     if env["tools"]:
         # HTML
         html = "#misc/dist/html/editor.html"
-        subst_dict = {"@GODOT_VERSION@": get_build_version(), "@GODOT_NAME@": "GodotEngine"}
+        cache = [
+            "godot.tools.html",
+            "offline.html",
+            "godot.tools.js",
+            "godot.tools.worker.js",
+            "godot.tools.audio.worklet.js",
+            "logo.svg",
+            "favicon.png",
+        ]
+        opt_cache = ["godot.tools.wasm"]
+        subst_dict = {
+            "@GODOT_VERSION@": get_build_version(),
+            "@GODOT_NAME@": "GodotEngine",
+            "@GODOT_CACHE@": json.dumps(cache),
+            "@GODOT_OPT_CACHE@": json.dumps(opt_cache),
+            "@GODOT_OFFLINE_PAGE@": "offline.html",
+        }
         html = env.Substfile(target="#bin/godot${PROGSUFFIX}.html", source=html, SUBST_DICT=subst_dict)
         in_files.append(html)
         out_files.append(zip_dir.File(binary_name + ".html"))
@@ -78,6 +98,10 @@ def create_template_zip(env, js, wasm, extra):
         # HTML
         in_files.append("#misc/dist/html/full-size.html")
         out_files.append(zip_dir.File(binary_name + ".html"))
+        in_files.append(service_worker)
+        out_files.append(zip_dir.File(binary_name + ".service.worker.js"))
+        in_files.append("#misc/dist/html/offline-export.html")
+        out_files.append(zip_dir.File("godot.offline.html"))
 
     zip_files = env.InstallAs(out_files, in_files)
     env.Zip(

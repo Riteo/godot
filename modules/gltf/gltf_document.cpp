@@ -554,10 +554,10 @@ Error GLTFDocument::_parse_scenes(Ref<GLTFState> state) {
 			state->root_nodes.push_back(nodes[j]);
 		}
 
-		if (s.has("name") && s["name"] != "") {
+		if (s.has("name") && !String(s["name"]).is_empty() && !((String)s["name"]).begins_with("Scene")) {
 			state->scene_name = _gen_unique_name(state, s["name"]);
 		} else {
-			state->scene_name = _gen_unique_name(state, "Scene");
+			state->scene_name = _gen_unique_name(state, state->filename);
 		}
 	}
 
@@ -940,22 +940,29 @@ String GLTFDocument::_get_accessor_type_name(const GLTFDocument::GLTFType p_type
 }
 
 GLTFDocument::GLTFType GLTFDocument::_get_type_from_str(const String &p_string) {
-	if (p_string == "SCALAR")
+	if (p_string == "SCALAR") {
 		return GLTFDocument::TYPE_SCALAR;
+	}
 
-	if (p_string == "VEC2")
+	if (p_string == "VEC2") {
 		return GLTFDocument::TYPE_VEC2;
-	if (p_string == "VEC3")
+	}
+	if (p_string == "VEC3") {
 		return GLTFDocument::TYPE_VEC3;
-	if (p_string == "VEC4")
+	}
+	if (p_string == "VEC4") {
 		return GLTFDocument::TYPE_VEC4;
+	}
 
-	if (p_string == "MAT2")
+	if (p_string == "MAT2") {
 		return GLTFDocument::TYPE_MAT2;
-	if (p_string == "MAT3")
+	}
+	if (p_string == "MAT3") {
 		return GLTFDocument::TYPE_MAT3;
-	if (p_string == "MAT4")
+	}
+	if (p_string == "MAT4") {
 		return GLTFDocument::TYPE_MAT4;
+	}
 
 	ERR_FAIL_V(GLTFDocument::TYPE_SCALAR);
 }
@@ -1150,7 +1157,7 @@ Error GLTFDocument::_encode_buffer_view(Ref<GLTFState> state, const double *src,
 			}
 			int64_t old_size = gltf_buffer.size();
 			gltf_buffer.resize(old_size + (buffer.size() * sizeof(int8_t)));
-			copymem(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(int8_t));
+			memcpy(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(int8_t));
 			bv->byte_length = buffer.size() * sizeof(int8_t);
 		} break;
 		case COMPONENT_TYPE_UNSIGNED_BYTE: {
@@ -1196,7 +1203,7 @@ Error GLTFDocument::_encode_buffer_view(Ref<GLTFState> state, const double *src,
 			}
 			int64_t old_size = gltf_buffer.size();
 			gltf_buffer.resize(old_size + (buffer.size() * sizeof(int16_t)));
-			copymem(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(int16_t));
+			memcpy(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(int16_t));
 			bv->byte_length = buffer.size() * sizeof(int16_t);
 		} break;
 		case COMPONENT_TYPE_UNSIGNED_SHORT: {
@@ -1220,7 +1227,7 @@ Error GLTFDocument::_encode_buffer_view(Ref<GLTFState> state, const double *src,
 			}
 			int64_t old_size = gltf_buffer.size();
 			gltf_buffer.resize(old_size + (buffer.size() * sizeof(uint16_t)));
-			copymem(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(uint16_t));
+			memcpy(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(uint16_t));
 			bv->byte_length = buffer.size() * sizeof(uint16_t);
 		} break;
 		case COMPONENT_TYPE_INT: {
@@ -1240,7 +1247,7 @@ Error GLTFDocument::_encode_buffer_view(Ref<GLTFState> state, const double *src,
 			}
 			int64_t old_size = gltf_buffer.size();
 			gltf_buffer.resize(old_size + (buffer.size() * sizeof(int32_t)));
-			copymem(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(int32_t));
+			memcpy(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(int32_t));
 			bv->byte_length = buffer.size() * sizeof(int32_t);
 		} break;
 		case COMPONENT_TYPE_FLOAT: {
@@ -1260,7 +1267,7 @@ Error GLTFDocument::_encode_buffer_view(Ref<GLTFState> state, const double *src,
 			}
 			int64_t old_size = gltf_buffer.size();
 			gltf_buffer.resize(old_size + (buffer.size() * sizeof(float)));
-			copymem(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(float));
+			memcpy(gltf_buffer.ptrw() + old_size, buffer.ptrw(), buffer.size() * sizeof(float));
 			bv->byte_length = buffer.size() * sizeof(float);
 		} break;
 	}
@@ -1434,8 +1441,9 @@ Vector<double> GLTFDocument::_decode_accessor(Ref<GLTFState> state, const GLTFAc
 		ERR_FAIL_INDEX_V(a->buffer_view, state->buffer_views.size(), Vector<double>());
 
 		const Error err = _decode_buffer_view(state, dst, a->buffer_view, skip_every, skip_bytes, element_size, a->count, a->type, component_count, a->component_type, component_size, a->normalized, a->byte_offset, p_for_vertex);
-		if (err != OK)
+		if (err != OK) {
 			return Vector<double>();
+		}
 	} else {
 		//fill with zeros, as bufferview is not defined.
 		for (int i = 0; i < (a->count * component_count); i++) {
@@ -1450,14 +1458,16 @@ Vector<double> GLTFDocument::_decode_accessor(Ref<GLTFState> state, const GLTFAc
 		const int indices_component_size = _get_component_type_size(a->sparse_indices_component_type);
 
 		Error err = _decode_buffer_view(state, indices.ptrw(), a->sparse_indices_buffer_view, 0, 0, indices_component_size, a->sparse_count, TYPE_SCALAR, 1, a->sparse_indices_component_type, indices_component_size, false, a->sparse_indices_byte_offset, false);
-		if (err != OK)
+		if (err != OK) {
 			return Vector<double>();
+		}
 
 		Vector<double> data;
 		data.resize(component_count * a->sparse_count);
 		err = _decode_buffer_view(state, data.ptrw(), a->sparse_values_buffer_view, skip_every, skip_bytes, element_size, a->sparse_count, a->type, component_count, a->component_type, component_size, a->normalized, a->sparse_values_byte_offset, p_for_vertex);
-		if (err != OK)
+		if (err != OK) {
 			return Vector<double>();
+		}
 
 		for (int i = 0; i < indices.size(); i++) {
 			const int write_offset = int(indices[i]) * component_count;
@@ -1528,8 +1538,9 @@ Vector<int> GLTFDocument::_decode_accessor_as_ints(Ref<GLTFState> state, const G
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
 	Vector<int> ret;
 
-	if (attribs.size() == 0)
+	if (attribs.size() == 0) {
 		return ret;
+	}
 
 	const double *attribs_ptr = attribs.ptr();
 	const int ret_size = attribs.size();
@@ -1546,8 +1557,9 @@ Vector<float> GLTFDocument::_decode_accessor_as_floats(Ref<GLTFState> state, con
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
 	Vector<float> ret;
 
-	if (attribs.size() == 0)
+	if (attribs.size() == 0) {
 		return ret;
+	}
 
 	const double *attribs_ptr = attribs.ptr();
 	const int ret_size = attribs.size();
@@ -1820,8 +1832,9 @@ Vector<Vector2> GLTFDocument::_decode_accessor_as_vec2(Ref<GLTFState> state, con
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
 	Vector<Vector2> ret;
 
-	if (attribs.size() == 0)
+	if (attribs.size() == 0) {
 		return ret;
+	}
 
 	ERR_FAIL_COND_V(attribs.size() % 2 != 0, ret);
 	const double *attribs_ptr = attribs.ptr();
@@ -1998,8 +2011,9 @@ Vector<Vector3> GLTFDocument::_decode_accessor_as_vec3(Ref<GLTFState> state, con
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
 	Vector<Vector3> ret;
 
-	if (attribs.size() == 0)
+	if (attribs.size() == 0) {
 		return ret;
+	}
 
 	ERR_FAIL_COND_V(attribs.size() % 3 != 0, ret);
 	const double *attribs_ptr = attribs.ptr();
@@ -2017,8 +2031,9 @@ Vector<Color> GLTFDocument::_decode_accessor_as_color(Ref<GLTFState> state, cons
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
 	Vector<Color> ret;
 
-	if (attribs.size() == 0)
+	if (attribs.size() == 0) {
 		return ret;
+	}
 
 	const int type = state->accessors[p_accessor]->type;
 	ERR_FAIL_COND_V(!(type == TYPE_VEC3 || type == TYPE_VEC4), ret);
@@ -2042,8 +2057,9 @@ Vector<Quat> GLTFDocument::_decode_accessor_as_quat(Ref<GLTFState> state, const 
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
 	Vector<Quat> ret;
 
-	if (attribs.size() == 0)
+	if (attribs.size() == 0) {
 		return ret;
+	}
 
 	ERR_FAIL_COND_V(attribs.size() % 4 != 0, ret);
 	const double *attribs_ptr = attribs.ptr();
@@ -2060,8 +2076,9 @@ Vector<Transform2D> GLTFDocument::_decode_accessor_as_xform2d(Ref<GLTFState> sta
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
 	Vector<Transform2D> ret;
 
-	if (attribs.size() == 0)
+	if (attribs.size() == 0) {
 		return ret;
+	}
 
 	ERR_FAIL_COND_V(attribs.size() % 4 != 0, ret);
 	ret.resize(attribs.size() / 4);
@@ -2076,8 +2093,9 @@ Vector<Basis> GLTFDocument::_decode_accessor_as_basis(Ref<GLTFState> state, cons
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
 	Vector<Basis> ret;
 
-	if (attribs.size() == 0)
+	if (attribs.size() == 0) {
 		return ret;
+	}
 
 	ERR_FAIL_COND_V(attribs.size() % 9 != 0, ret);
 	ret.resize(attribs.size() / 9);
@@ -2093,8 +2111,9 @@ Vector<Transform> GLTFDocument::_decode_accessor_as_xform(Ref<GLTFState> state, 
 	const Vector<double> attribs = _decode_accessor(state, p_accessor, p_for_vertex);
 	Vector<Transform> ret;
 
-	if (attribs.size() == 0)
+	if (attribs.size() == 0) {
 		return ret;
+	}
 
 	ERR_FAIL_COND_V(attribs.size() % 16 != 0, ret);
 	ret.resize(attribs.size() / 16);
@@ -2370,9 +2389,9 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> state) {
 						for (int i = 0; i < ret_size; i++) {
 							Color tangent;
 							tangent.r = tarr[(i * 4) + 0];
-							tangent.r = tarr[(i * 4) + 1];
-							tangent.r = tarr[(i * 4) + 2];
-							tangent.r = tarr[(i * 4) + 3];
+							tangent.g = tarr[(i * 4) + 1];
+							tangent.b = tarr[(i * 4) + 2];
+							tangent.a = tarr[(i * 4) + 3];
 						}
 						t["TANGENT"] = _encode_accessor_as_color(state, attribs, true);
 					}
@@ -2449,6 +2468,12 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 		const Dictionary &extras = d.has("extras") ? (Dictionary)d["extras"] : Dictionary();
 		Ref<EditorSceneImporterMesh> import_mesh;
 		import_mesh.instance();
+		String mesh_name = "mesh";
+		if (d.has("name") && !String(d["name"]).is_empty()) {
+			mesh_name = d["name"];
+		}
+		import_mesh->set_name(_gen_unique_name(state, vformat("%s_%s", state->scene_name, mesh_name)));
+
 		for (int j = 0; j < primitives.size(); j++) {
 			Dictionary p = primitives[j];
 
@@ -2815,7 +2840,7 @@ Error GLTFDocument::_serialize_images(Ref<GLTFState> state, const String &p_path
 
 		ERR_CONTINUE(state->images[i].is_null());
 
-		Ref<Image> image = state->images[i]->get_data();
+		Ref<Image> image = state->images[i]->get_image();
 		ERR_CONTINUE(image.is_null());
 
 		if (p_path.to_lower().ends_with("glb")) {
@@ -2832,14 +2857,14 @@ Error GLTFDocument::_serialize_images(Ref<GLTFState> state, const String &p_path
 			Vector<uint8_t> buffer;
 			Ref<ImageTexture> img_tex = image;
 			if (img_tex.is_valid()) {
-				image = img_tex->get_data();
+				image = img_tex->get_image();
 			}
 			Error err = PNGDriverCommon::image_to_png(image, buffer);
 			ERR_FAIL_COND_V_MSG(err, err, "Can't convert image to PNG.");
 
 			bv->byte_length = buffer.size();
 			state->buffers.write[bi].resize(state->buffers[bi].size() + bv->byte_length);
-			copymem(&state->buffers.write[bi].write[bv->byte_offset], buffer.ptr(), buffer.size());
+			memcpy(&state->buffers.write[bi].write[bv->byte_offset], buffer.ptr(), buffer.size());
 			ERR_FAIL_COND_V(bv->byte_offset + bv->byte_length > state->buffers[bi].size(), ERR_FILE_CORRUPT);
 
 			state->buffer_views.push_back(bv);
@@ -3040,8 +3065,9 @@ Error GLTFDocument::_serialize_textures(Ref<GLTFState> state) {
 }
 
 Error GLTFDocument::_parse_textures(Ref<GLTFState> state) {
-	if (!state->json.has("textures"))
+	if (!state->json.has("textures")) {
 		return OK;
+	}
 
 	const Array &textures = state->json["textures"];
 	for (GLTFTextureIndex i = 0; i < textures.size(); i++) {
@@ -3062,7 +3088,7 @@ GLTFTextureIndex GLTFDocument::_set_texture(Ref<GLTFState> state, Ref<Texture2D>
 	ERR_FAIL_COND_V(p_texture.is_null(), -1);
 	Ref<GLTFTexture> gltf_texture;
 	gltf_texture.instance();
-	ERR_FAIL_COND_V(p_texture->get_data().is_null(), -1);
+	ERR_FAIL_COND_V(p_texture->get_image().is_null(), -1);
 	GLTFImageIndex gltf_src_image_i = state->images.size();
 	state->images.push_back(p_texture);
 	gltf_texture->set_src_image(gltf_src_image_i);
@@ -3109,7 +3135,7 @@ Error GLTFDocument::_serialize_materials(Ref<GLTFState> state) {
 				Ref<Texture2D> albedo_texture = material->get_texture(BaseMaterial3D::TEXTURE_ALBEDO);
 				GLTFTextureIndex gltf_texture_index = -1;
 
-				if (albedo_texture.is_valid() && albedo_texture->get_data().is_valid()) {
+				if (albedo_texture.is_valid() && albedo_texture->get_image().is_valid()) {
 					albedo_texture->set_name(material->get_name() + "_albedo");
 					gltf_texture_index = _set_texture(state, albedo_texture);
 				}
@@ -3122,9 +3148,9 @@ Error GLTFDocument::_serialize_materials(Ref<GLTFState> state) {
 
 			mr["metallicFactor"] = material->get_metallic();
 			mr["roughnessFactor"] = material->get_roughness();
-			bool has_roughness = material->get_texture(BaseMaterial3D::TEXTURE_ROUGHNESS).is_valid() && material->get_texture(BaseMaterial3D::TEXTURE_ROUGHNESS)->get_data().is_valid();
+			bool has_roughness = material->get_texture(BaseMaterial3D::TEXTURE_ROUGHNESS).is_valid() && material->get_texture(BaseMaterial3D::TEXTURE_ROUGHNESS)->get_image().is_valid();
 			bool has_ao = material->get_feature(BaseMaterial3D::FEATURE_AMBIENT_OCCLUSION) && material->get_texture(BaseMaterial3D::TEXTURE_AMBIENT_OCCLUSION).is_valid();
-			bool has_metalness = material->get_texture(BaseMaterial3D::TEXTURE_METALLIC).is_valid() && material->get_texture(BaseMaterial3D::TEXTURE_METALLIC)->get_data().is_valid();
+			bool has_metalness = material->get_texture(BaseMaterial3D::TEXTURE_METALLIC).is_valid() && material->get_texture(BaseMaterial3D::TEXTURE_METALLIC)->get_image().is_valid();
 			if (has_ao || has_roughness || has_metalness) {
 				Dictionary mrt;
 				Ref<Texture2D> roughness_texture = material->get_texture(BaseMaterial3D::TEXTURE_ROUGHNESS);
@@ -3143,10 +3169,10 @@ Error GLTFDocument::_serialize_materials(Ref<GLTFState> state) {
 				if (has_ao) {
 					height = ao_texture->get_height();
 					width = ao_texture->get_width();
-					ao_image = ao_texture->get_data();
+					ao_image = ao_texture->get_image();
 					Ref<ImageTexture> img_tex = ao_image;
 					if (img_tex.is_valid()) {
-						ao_image = img_tex->get_data();
+						ao_image = img_tex->get_image();
 					}
 					if (ao_image->is_compressed()) {
 						ao_image->decompress();
@@ -3156,10 +3182,10 @@ Error GLTFDocument::_serialize_materials(Ref<GLTFState> state) {
 				if (has_roughness) {
 					height = roughness_texture->get_height();
 					width = roughness_texture->get_width();
-					roughness_image = roughness_texture->get_data();
+					roughness_image = roughness_texture->get_image();
 					Ref<ImageTexture> img_tex = roughness_image;
 					if (img_tex.is_valid()) {
-						roughness_image = img_tex->get_data();
+						roughness_image = img_tex->get_image();
 					}
 					if (roughness_image->is_compressed()) {
 						roughness_image->decompress();
@@ -3169,17 +3195,17 @@ Error GLTFDocument::_serialize_materials(Ref<GLTFState> state) {
 				if (has_metalness) {
 					height = metallic_texture->get_height();
 					width = metallic_texture->get_width();
-					metallness_image = metallic_texture->get_data();
+					metallness_image = metallic_texture->get_image();
 					Ref<ImageTexture> img_tex = metallness_image;
 					if (img_tex.is_valid()) {
-						metallness_image = img_tex->get_data();
+						metallness_image = img_tex->get_image();
 					}
 					if (metallness_image->is_compressed()) {
 						metallness_image->decompress();
 					}
 				}
 				Ref<Texture2D> albedo_texture = material->get_texture(BaseMaterial3D::TEXTURE_ALBEDO);
-				if (albedo_texture.is_valid() && albedo_texture->get_data().is_valid()) {
+				if (albedo_texture.is_valid() && albedo_texture->get_image().is_valid()) {
 					height = albedo_texture->get_height();
 					width = albedo_texture->get_width();
 				}
@@ -3260,13 +3286,14 @@ Error GLTFDocument::_serialize_materials(Ref<GLTFState> state) {
 			{
 				Ref<Texture2D> normal_texture = material->get_texture(BaseMaterial3D::TEXTURE_NORMAL);
 				// Code for uncompressing RG normal maps
-				Ref<Image> img = normal_texture->get_data();
+				Ref<Image> img = normal_texture->get_image();
 				Ref<ImageTexture> img_tex = img;
 				if (img_tex.is_valid()) {
-					img = img_tex->get_data();
+					img = img_tex->get_image();
 				}
 				img->decompress();
 				img->convert(Image::FORMAT_RGBA8);
+				img->convert_ra_rgba8_to_rg();
 				for (int32_t y = 0; y < img->get_height(); y++) {
 					for (int32_t x = 0; x < img->get_width(); x++) {
 						Color c = img->get_pixel(x, y);
@@ -3282,7 +3309,7 @@ Error GLTFDocument::_serialize_materials(Ref<GLTFState> state) {
 			}
 			Ref<Texture2D> normal_texture = material->get_texture(BaseMaterial3D::TEXTURE_NORMAL);
 			GLTFTextureIndex gltf_texture_index = -1;
-			if (tex.is_valid() && tex->get_data().is_valid()) {
+			if (tex.is_valid() && tex->get_image().is_valid()) {
 				tex->set_name(material->get_name() + "_normal");
 				gltf_texture_index = _set_texture(state, tex);
 			}
@@ -3305,7 +3332,7 @@ Error GLTFDocument::_serialize_materials(Ref<GLTFState> state) {
 			Dictionary et;
 			Ref<Texture2D> emission_texture = material->get_texture(BaseMaterial3D::TEXTURE_EMISSION);
 			GLTFTextureIndex gltf_texture_index = -1;
-			if (emission_texture.is_valid() && emission_texture->get_data().is_valid()) {
+			if (emission_texture.is_valid() && emission_texture->get_image().is_valid()) {
 				emission_texture->set_name(material->get_name() + "_emission");
 				gltf_texture_index = _set_texture(state, emission_texture);
 			}
@@ -3334,8 +3361,9 @@ Error GLTFDocument::_serialize_materials(Ref<GLTFState> state) {
 }
 
 Error GLTFDocument::_parse_materials(Ref<GLTFState> state) {
-	if (!state->json.has("materials"))
+	if (!state->json.has("materials")) {
 		return OK;
+	}
 
 	const Array &materials = state->json["materials"];
 	for (GLTFMaterialIndex i = 0; i < materials.size(); i++) {
@@ -3343,8 +3371,10 @@ Error GLTFDocument::_parse_materials(Ref<GLTFState> state) {
 
 		Ref<StandardMaterial3D> material;
 		material.instance();
-		if (d.has("name")) {
+		if (d.has("name") && !String(d["name"]).is_empty()) {
 			material->set_name(d["name"]);
+		} else {
+			material->set_name(vformat("material_%s", itos(i)));
 		}
 		material->set_flag(BaseMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR, true);
 		Dictionary pbr_spec_gloss_extensions;
@@ -3362,7 +3392,7 @@ Error GLTFDocument::_parse_materials(Ref<GLTFState> state) {
 				if (diffuse_texture_dict.has("index")) {
 					Ref<Texture2D> diffuse_texture = _get_texture(state, diffuse_texture_dict["index"]);
 					if (diffuse_texture.is_valid()) {
-						spec_gloss->diffuse_img = diffuse_texture->get_data();
+						spec_gloss->diffuse_img = diffuse_texture->get_image();
 						material->set_texture(BaseMaterial3D::TEXTURE_ALBEDO, diffuse_texture);
 					}
 				}
@@ -3390,7 +3420,7 @@ Error GLTFDocument::_parse_materials(Ref<GLTFState> state) {
 				if (spec_gloss_texture.has("index")) {
 					const Ref<Texture2D> orig_texture = _get_texture(state, spec_gloss_texture["index"]);
 					if (orig_texture.is_valid()) {
-						spec_gloss->spec_gloss_img = orig_texture->get_data();
+						spec_gloss->spec_gloss_img = orig_texture->get_image();
 					}
 				}
 			}
@@ -3850,8 +3880,9 @@ Error GLTFDocument::_verify_skin(Ref<GLTFState> state, Ref<GLTFSkin> skin) {
 }
 
 Error GLTFDocument::_parse_skins(Ref<GLTFState> state) {
-	if (!state->json.has("skins"))
+	if (!state->json.has("skins")) {
 		return OK;
+	}
 
 	const Array &skins = state->json["skins"];
 
@@ -3881,8 +3912,10 @@ Error GLTFDocument::_parse_skins(Ref<GLTFState> state) {
 			state->nodes.write[node]->joint = true;
 		}
 
-		if (d.has("name")) {
+		if (d.has("name") && !String(d["name"]).is_empty()) {
 			skin->set_name(d["name"]);
+		} else {
+			skin->set_name(vformat("skin_%s", itos(i)));
 		}
 
 		if (d.has("skeleton")) {
@@ -4098,8 +4131,9 @@ Error GLTFDocument::_reparent_to_fake_joint(Ref<GLTFState> state, Ref<GLTFSkelet
 	state->nodes.push_back(fake_joint);
 
 	// We better not be a joint, or we messed up in our logic
-	if (node->joint)
+	if (node->joint) {
 		return FAILED;
+	}
 
 	fake_joint->translation = node->translation;
 	fake_joint->rotation = node->rotation;
@@ -4518,8 +4552,9 @@ Error GLTFDocument::_parse_lights(Ref<GLTFState> state) {
 }
 
 Error GLTFDocument::_parse_cameras(Ref<GLTFState> state) {
-	if (!state->json.has("cameras"))
+	if (!state->json.has("cameras")) {
 		return OK;
+	}
 
 	const Array cameras = state->json["cameras"];
 
@@ -4720,8 +4755,9 @@ Error GLTFDocument::_serialize_animations(Ref<GLTFState> state) {
 }
 
 Error GLTFDocument::_parse_animations(Ref<GLTFState> state) {
-	if (!state->json.has("animations"))
+	if (!state->json.has("animations")) {
 		return OK;
+	}
 
 	const Array &animations = state->json["animations"];
 
@@ -4731,8 +4767,9 @@ Error GLTFDocument::_parse_animations(Ref<GLTFState> state) {
 		Ref<GLTFAnimation> animation;
 		animation.instance();
 
-		if (!d.has("channels") || !d.has("samplers"))
+		if (!d.has("channels") || !d.has("samplers")) {
 			continue;
+		}
 
 		Array channels = d["channels"];
 		Array samplers = d["samplers"];
@@ -4747,8 +4784,9 @@ Error GLTFDocument::_parse_animations(Ref<GLTFState> state) {
 
 		for (int j = 0; j < channels.size(); j++) {
 			const Dictionary &c = channels[j];
-			if (!c.has("target"))
+			if (!c.has("target")) {
 				continue;
+			}
 
 			const Dictionary &t = c["target"];
 			if (!t.has("node") || !t.has("path")) {
@@ -4858,8 +4896,9 @@ void GLTFDocument::_assign_scene_names(Ref<GLTFState> state) {
 		Ref<GLTFNode> n = state->nodes[i];
 
 		// Any joints get unique names generated when the skeleton is made, unique to the skeleton
-		if (n->skeleton >= 0)
+		if (n->skeleton >= 0) {
 			continue;
+		}
 
 		if (n->get_name().is_empty()) {
 			if (n->mesh >= 0) {
@@ -4920,8 +4959,8 @@ GLTFMeshIndex GLTFDocument::_convert_mesh_instance(Ref<GLTFState> state, MeshIns
 		if (godot_array_mesh.is_valid()) {
 			surface_name = godot_array_mesh->surface_get_name(surface_i);
 		}
-		if (p_mesh_instance->get_surface_material(surface_i).is_valid()) {
-			mat = p_mesh_instance->get_surface_material(surface_i);
+		if (p_mesh_instance->get_surface_override_material(surface_i).is_valid()) {
+			mat = p_mesh_instance->get_surface_override_material(surface_i);
 		}
 		if (p_mesh_instance->get_material_override().is_valid()) {
 			mat = p_mesh_instance->get_material_override();
@@ -5505,8 +5544,9 @@ T GLTFDocument::_interpolate_track(const Vector<float> &p_times, const Vector<T>
 	//could use binary search, worth it?
 	int idx = -1;
 	for (int i = 0; i < p_times.size(); i++) {
-		if (p_times[i] > p_time)
+		if (p_times[i] > p_time) {
 			break;
+		}
 		idx++;
 	}
 
@@ -5633,8 +5673,8 @@ void GLTFDocument::_import_animation(Ref<GLTFState> state, AnimationPlayer *ap, 
 			animation->track_set_path(track_idx, node_path);
 			//first determine animation length
 
-			const float increment = 1.0 / float(bake_fps);
-			float time = 0.0;
+			const double increment = 1.0 / bake_fps;
+			double time = 0.0;
 
 			Vector3 base_pos;
 			Quat base_rot;
@@ -5724,8 +5764,8 @@ void GLTFDocument::_import_animation(Ref<GLTFState> state, AnimationPlayer *ap, 
 				}
 			} else {
 				// CATMULLROMSPLINE or CUBIC_SPLINE have to be baked, apologies.
-				const float increment = 1.0 / float(bake_fps);
-				float time = 0.0;
+				const double increment = 1.0 / bake_fps;
+				double time = 0.0;
 				bool last = false;
 				while (true) {
 					_interpolate_track<float>(track.weight_tracks[i].times, track.weight_tracks[i].values, time, gltf_interp);
@@ -6346,15 +6386,20 @@ Error GLTFDocument::parse(Ref<GLTFState> state, String p_path, bool p_read_binar
 		//binary file
 		//text file
 		err = _parse_glb(p_path, state);
-		if (err)
+		if (err) {
 			return FAILED;
+		}
 	} else {
 		//text file
 		err = _parse_json(p_path, state);
-		if (err)
+		if (err) {
 			return FAILED;
+		}
 	}
 	f->close();
+
+	// get file's name, use for scene name if none
+	state->filename = p_path.get_file().get_slice(".", 0);
 
 	ERR_FAIL_COND_V(!state->json.has("asset"), Error::FAILED);
 
@@ -6369,68 +6414,81 @@ Error GLTFDocument::parse(Ref<GLTFState> state, String p_path, bool p_read_binar
 
 	/* STEP 0 PARSE SCENE */
 	err = _parse_scenes(state);
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 1 PARSE NODES */
 	err = _parse_nodes(state);
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 2 PARSE BUFFERS */
 	err = _parse_buffers(state, p_path.get_base_dir());
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 3 PARSE BUFFER VIEWS */
 	err = _parse_buffer_views(state);
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 4 PARSE ACCESSORS */
 	err = _parse_accessors(state);
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 5 PARSE IMAGES */
 	err = _parse_images(state, p_path.get_base_dir());
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 6 PARSE TEXTURES */
 	err = _parse_textures(state);
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 7 PARSE TEXTURES */
 	err = _parse_materials(state);
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 9 PARSE SKINS */
 	err = _parse_skins(state);
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 10 DETERMINE SKELETONS */
 	err = _determine_skeletons(state);
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 11 CREATE SKELETONS */
 	err = _create_skeletons(state);
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 12 CREATE SKINS */
 	err = _create_skins(state);
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 13 PARSE MESHES (we have enough info now) */
 	err = _parse_meshes(state);
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 14 PARSE LIGHTS */
 	err = _parse_lights(state);
@@ -6440,13 +6498,15 @@ Error GLTFDocument::parse(Ref<GLTFState> state, String p_path, bool p_read_binar
 
 	/* STEP 15 PARSE CAMERAS */
 	err = _parse_cameras(state);
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 16 PARSE ANIMATIONS */
 	err = _parse_animations(state);
-	if (err != OK)
+	if (err != OK) {
 		return Error::FAILED;
+	}
 
 	/* STEP 17 ASSIGN SCENE NAMES */
 	_assign_scene_names(state);

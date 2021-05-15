@@ -321,7 +321,7 @@ void World3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_environment"), &World3D::get_environment);
 	ClassDB::bind_method(D_METHOD("set_fallback_environment", "env"), &World3D::set_fallback_environment);
 	ClassDB::bind_method(D_METHOD("get_fallback_environment"), &World3D::get_fallback_environment);
-	ClassDB::bind_method(D_METHOD("set_camera_effects", "env"), &World3D::set_camera_effects);
+	ClassDB::bind_method(D_METHOD("set_camera_effects", "effects"), &World3D::set_camera_effects);
 	ClassDB::bind_method(D_METHOD("get_camera_effects"), &World3D::get_camera_effects);
 	ClassDB::bind_method(D_METHOD("get_direct_space_state"), &World3D::get_direct_space_state);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "environment", PROPERTY_HINT_RESOURCE_TYPE, "Environment"), "set_environment", "get_environment");
@@ -348,7 +348,7 @@ World3D::World3D() {
 	navigation_map = NavigationServer3D::get_singleton()->map_create();
 	NavigationServer3D::get_singleton()->map_set_active(navigation_map, true);
 	NavigationServer3D::get_singleton()->map_set_cell_size(navigation_map, GLOBAL_DEF("navigation/3d/default_cell_size", 0.3));
-	NavigationServer3D::get_singleton()->map_set_edge_connection_margin(navigation_map, GLOBAL_DEF("navigation/3d/default_edge_connection_margin", 5.0)); // Five meters, depends a lot on the agent's radius
+	NavigationServer3D::get_singleton()->map_set_edge_connection_margin(navigation_map, GLOBAL_DEF("navigation/3d/default_edge_connection_margin", 0.3));
 
 #ifdef _3D_DISABLED
 	indexer = nullptr;

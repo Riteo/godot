@@ -331,6 +331,17 @@ public:
 		MAX_INSTANCE_UNIFORM_INDICES = 16
 	};
 
+	struct VaryingFunctionNames {
+		StringName fragment;
+		StringName vertex;
+		StringName light;
+		VaryingFunctionNames() {
+			fragment = "fragment";
+			vertex = "vertex";
+			light = "light";
+		}
+	};
+
 	struct Node {
 		Node *next = nullptr;
 
@@ -737,6 +748,7 @@ public:
 	static uint32_t get_type_size(DataType p_type);
 
 	static void get_keyword_list(List<String> *r_keywords);
+	static bool is_control_flow_keyword(String p_keyword);
 	static void get_builtin_funcs(List<String> *r_keywords);
 
 	struct BuiltInInfo {
@@ -769,7 +781,8 @@ public:
 		Map<StringName, BuiltInInfo> built_ins;
 		Map<StringName, StageFunctionInfo> stage_functions;
 
-		bool can_discard;
+		bool can_discard = false;
+		bool main_function = false;
 	};
 	static bool has_builtin(const Map<StringName, ShaderLanguage::FunctionInfo> &p_functions, const StringName &p_name);
 
@@ -795,6 +808,8 @@ private:
 
 	StringName current_function;
 	bool last_const = false;
+
+	VaryingFunctionNames varying_function_names;
 
 	TkPos _get_tkpos() {
 		TkPos tkp;
@@ -877,6 +892,7 @@ private:
 	bool _propagate_function_call_sampler_builtin_reference(StringName p_name, int p_argument, const StringName &p_builtin);
 	bool _validate_varying_assign(ShaderNode::Varying &p_varying, String *r_message);
 	bool _validate_varying_using(ShaderNode::Varying &p_varying, String *r_message);
+	bool _check_node_constness(const Node *p_node) const;
 
 	Node *_parse_expression(BlockNode *p_block, const FunctionInfo &p_function_info);
 	Node *_parse_array_constructor(BlockNode *p_block, const FunctionInfo &p_function_info, DataType p_type, const StringName &p_struct_name, int p_array_size);
@@ -898,8 +914,8 @@ public:
 	void clear();
 
 	static String get_shader_type(const String &p_code);
-	Error compile(const String &p_code, const Map<StringName, FunctionInfo> &p_functions, const Vector<StringName> &p_render_modes, const Set<String> &p_shader_types, GlobalVariableGetTypeFunc p_global_variable_type_func);
-	Error complete(const String &p_code, const Map<StringName, FunctionInfo> &p_functions, const Vector<StringName> &p_render_modes, const Set<String> &p_shader_types, GlobalVariableGetTypeFunc p_global_variable_type_func, List<ScriptCodeCompletionOption> *r_options, String &r_call_hint);
+	Error compile(const String &p_code, const Map<StringName, FunctionInfo> &p_functions, const Vector<StringName> &p_render_modes, const VaryingFunctionNames &p_varying_function_names, const Set<String> &p_shader_types, GlobalVariableGetTypeFunc p_global_variable_type_func);
+	Error complete(const String &p_code, const Map<StringName, FunctionInfo> &p_functions, const Vector<StringName> &p_render_modes, const VaryingFunctionNames &p_varying_function_names, const Set<String> &p_shader_types, GlobalVariableGetTypeFunc p_global_variable_type_func, List<ScriptCodeCompletionOption> *r_options, String &r_call_hint);
 
 	String get_error_text();
 	int get_error_line();
