@@ -68,13 +68,13 @@ long zipio_tell(voidpf opaque, voidpf stream) {
 long zipio_seek(voidpf opaque, voidpf stream, uLong offset, int origin) {
 	FileAccess *f = *(FileAccess **)opaque;
 
-	int pos = offset;
+	uint64_t pos = offset;
 	switch (origin) {
 		case ZLIB_FILEFUNC_SEEK_CUR:
 			pos = f->get_position() + offset;
 			break;
 		case ZLIB_FILEFUNC_SEEK_END:
-			pos = f->get_len() + offset;
+			pos = f->get_length() + offset;
 			break;
 		default:
 			break;

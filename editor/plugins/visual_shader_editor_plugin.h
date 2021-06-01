@@ -83,6 +83,8 @@ private:
 	List<VisualShader::Connection> connections;
 	bool dirty = false;
 
+	Color vector_expanded_color[3];
+
 protected:
 	static void _bind_methods();
 
@@ -119,6 +121,7 @@ public:
 	void set_expression(VisualShader::Type p_type, int p_node_id, const String &p_expression);
 	int get_constant_index(float p_constant) const;
 	void update_node_size(int p_node_id);
+	void update_theme();
 	VisualShader::Type get_shader_type() const;
 
 	VisualShaderGraphPlugin();
@@ -290,15 +293,8 @@ class VisualShaderEditor : public VBoxContainer {
 
 	void _draw_color_over_button(Object *obj, Color p_color);
 
-	void _add_custom_node(const String &p_path);
-	void _add_cubemap_node(const String &p_path);
-	void _add_texture2d_node(const String &p_path);
-	void _add_texture2d_array_node(const String &p_path);
-	void _add_texture3d_node(const String &p_path);
-	void _add_curve_node(const String &p_path);
-
 	void _setup_node(VisualShaderNode *p_node, int p_op_idx);
-	VisualShaderNode *_add_node(int p_idx, int p_op_idx = -1);
+	void _add_node(int p_idx, int p_op_idx = -1, String p_resource_path = "", int p_node_idx = -1);
 	void _update_options_menu();
 	void _set_mode(int p_which);
 
@@ -408,6 +404,7 @@ class VisualShaderEditor : public VBoxContainer {
 	void _remove_output_port(int p_node, int p_port);
 	void _change_output_port_type(int p_type, int p_node, int p_port);
 	void _change_output_port_name(const String &p_text, Object *p_line_edit, int p_node, int p_port);
+	void _expand_output_port(int p_node, int p_port, bool p_expand);
 
 	void _expression_focus_out(Object *code_edit, int p_node);
 

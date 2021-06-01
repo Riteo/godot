@@ -1659,7 +1659,7 @@ void AnimationTimelineEdit::_gui_input(const Ref<InputEvent> &p_event) {
 			int x = mb->get_position().x - get_name_limit();
 
 			float ofs = x / get_zoom_scale() + get_value();
-			emit_signal("timeline_changed", ofs, false);
+			emit_signal("timeline_changed", ofs, false, Input::get_singleton()->is_key_pressed(KEY_ALT));
 			dragging_timeline = true;
 		}
 		if (!dragging_timeline && mb->get_button_index() == MOUSE_BUTTON_MIDDLE) {
@@ -1698,7 +1698,7 @@ void AnimationTimelineEdit::_gui_input(const Ref<InputEvent> &p_event) {
 		if (dragging_timeline) {
 			int x = mm->get_position().x - get_name_limit();
 			float ofs = x / get_zoom_scale() + get_value();
-			emit_signal("timeline_changed", ofs, false);
+			emit_signal("timeline_changed", ofs, false, Input::get_singleton()->is_key_pressed(KEY_ALT));
 		}
 		if (panning_timeline) {
 			int x = mm->get_position().x - get_name_limit();
@@ -2662,7 +2662,7 @@ void AnimationTrackEdit::_gui_input(const Ref<InputEvent> &p_event) {
 			}
 
 			if (key_idx != -1) {
-				if (mb->get_command() || mb->get_shift()) {
+				if (mb->is_command_pressed() || mb->is_shift_pressed()) {
 					if (editor->is_key_selected(track, key_idx)) {
 						emit_signal("deselect_key", key_idx);
 					} else {
@@ -3254,8 +3254,8 @@ void AnimationTrackEditor::_name_limit_changed() {
 	}
 }
 
-void AnimationTrackEditor::_timeline_changed(float p_new_pos, bool p_drag) {
-	emit_signal("timeline_changed", p_new_pos, p_drag);
+void AnimationTrackEditor::_timeline_changed(float p_new_pos, bool p_drag, bool p_timeline_only) {
+	emit_signal("timeline_changed", p_new_pos, p_drag, p_timeline_only);
 }
 
 void AnimationTrackEditor::_track_remove_request(int p_track) {
@@ -4028,7 +4028,7 @@ bool AnimationTrackEditor::is_selection_active() const {
 }
 
 bool AnimationTrackEditor::is_snap_enabled() const {
-	return snap->is_pressed() ^ Input::get_singleton()->is_key_pressed(KEY_CONTROL);
+	return snap->is_pressed() ^ Input::get_singleton()->is_key_pressed(KEY_CTRL);
 }
 
 void AnimationTrackEditor::_update_tracks() {
@@ -4959,12 +4959,12 @@ void AnimationTrackEditor::_box_selection_draw() {
 void AnimationTrackEditor::_scroll_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventMouseButton> mb = p_event;
 
-	if (mb.is_valid() && mb->is_pressed() && mb->get_command() && mb->get_button_index() == MOUSE_BUTTON_WHEEL_UP) {
+	if (mb.is_valid() && mb->is_pressed() && mb->is_command_pressed() && mb->get_button_index() == MOUSE_BUTTON_WHEEL_UP) {
 		timeline->get_zoom()->set_value(timeline->get_zoom()->get_value() * 1.05);
 		scroll->accept_event();
 	}
 
-	if (mb.is_valid() && mb->is_pressed() && mb->get_command() && mb->get_button_index() == MOUSE_BUTTON_WHEEL_DOWN) {
+	if (mb.is_valid() && mb->is_pressed() && mb->is_command_pressed() && mb->get_button_index() == MOUSE_BUTTON_WHEEL_DOWN) {
 		timeline->get_zoom()->set_value(timeline->get_zoom()->get_value() / 1.05);
 		scroll->accept_event();
 	}
@@ -4980,7 +4980,7 @@ void AnimationTrackEditor::_scroll_input(const Ref<InputEvent> &p_event) {
 				for (int i = 0; i < track_edits.size(); i++) {
 					Rect2 local_rect = box_select_rect;
 					local_rect.position -= track_edits[i]->get_global_position();
-					track_edits[i]->append_to_selection(local_rect, mb->get_command());
+					track_edits[i]->append_to_selection(local_rect, mb->is_command_pressed());
 				}
 
 				if (_get_track_selected() == -1 && track_edits.size() > 0) { //minimal hack to make shortcuts work
@@ -5010,7 +5010,7 @@ void AnimationTrackEditor::_scroll_input(const Ref<InputEvent> &p_event) {
 		}
 
 		if (!box_selection->is_visible_in_tree()) {
-			if (!mm->get_command() && !mm->get_shift()) {
+			if (!mm->is_command_pressed() && !mm->is_shift_pressed()) {
 				_clear_selection();
 			}
 			box_selection->show();
@@ -5216,7 +5216,7 @@ void AnimationTrackEditor::_edit_menu_pressed(int p_option) {
 			track_clipboard.clear();
 			TreeItem *root = track_copy_select->get_root();
 			if (root) {
-				TreeItem *it = root->get_children();
+				TreeItem *it = root->get_first_child();
 				while (it) {
 					Dictionary md = it->get_metadata(0);
 					int idx = md["track_idx"];
@@ -5602,7 +5602,7 @@ void AnimationTrackEditor::_show_imported_anim_warning() {
 }
 
 void AnimationTrackEditor::_select_all_tracks_for_copy() {
-	TreeItem *track = track_copy_select->get_root()->get_children();
+	TreeItem *track = track_copy_select->get_root()->get_first_child();
 	if (!track) {
 		return;
 	}
@@ -5616,7 +5616,7 @@ void AnimationTrackEditor::_select_all_tracks_for_copy() {
 		track = track->get_next();
 	}
 
-	track = track_copy_select->get_root()->get_children();
+	track = track_copy_select->get_root()->get_first_child();
 	while (track) {
 		track->set_checked(0, !all_selected);
 		track = track->get_next();
@@ -5681,7 +5681,7 @@ void AnimationTrackEditor::_pick_track_select_recursive(TreeItem *p_item, const 
 		p_select_candidates.push_back(node);
 	}
 
-	TreeItem *c = p_item->get_children();
+	TreeItem *c = p_item->get_first_child();
 
 	while (c) {
 		_pick_track_select_recursive(c, p_filter, p_select_candidates);

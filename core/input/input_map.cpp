@@ -166,7 +166,7 @@ void InputMap::action_add_event(const StringName &p_action, const Ref<InputEvent
 	ERR_FAIL_COND_MSG(p_event.is_null(), "It's not a reference to a valid InputEvent object.");
 	ERR_FAIL_COND_MSG(!input_map.has(p_action), _suggest_actions(p_action));
 	if (_find_event(input_map[p_action], p_event, true)) {
-		return; // Already addded.
+		return; // Already added.
 	}
 
 	input_map[p_action].inputs.push_back(p_event);
@@ -353,6 +353,7 @@ static const _BuiltinActionDisplayName _builtin_action_display_names[] = {
     { "ui_text_scroll_down",                           TTRC("Scroll Down") },
     { "ui_text_scroll_down.OSX",                       TTRC("Scroll Down") },
     { "ui_text_select_all",                            TTRC("Select All") },
+    { "ui_text_select_word_under_caret",              TTRC("Select Word Under Caret") },
     { "ui_text_toggle_insert_mode",                    TTRC("Toggle Insert Mode") },
     { "ui_graph_duplicate",                            TTRC("Duplicate Nodes") },
     { "ui_graph_delete",                               TTRC("Delete Nodes") },
@@ -473,9 +474,13 @@ const OrderedHashMap<String, List<Ref<InputEvent>>> &InputMap::get_builtins() {
 	default_builtin_cache.insert("ui_text_completion_query", inputs);
 
 	inputs = List<Ref<InputEvent>>();
-	inputs.push_back(InputEventKey::create_reference(KEY_TAB));
 	inputs.push_back(InputEventKey::create_reference(KEY_ENTER));
+	inputs.push_back(InputEventKey::create_reference(KEY_KP_ENTER));
 	default_builtin_cache.insert("ui_text_completion_accept", inputs);
+
+	inputs = List<Ref<InputEvent>>();
+	inputs.push_back(InputEventKey::create_reference(KEY_TAB));
+	default_builtin_cache.insert("ui_text_completion_replace", inputs);
 
 	// Newlines
 	inputs = List<Ref<InputEvent>>();
@@ -649,6 +654,10 @@ const OrderedHashMap<String, List<Ref<InputEvent>>> &InputMap::get_builtins() {
 	inputs = List<Ref<InputEvent>>();
 	inputs.push_back(InputEventKey::create_reference(KEY_A | KEY_MASK_CMD));
 	default_builtin_cache.insert("ui_text_select_all", inputs);
+
+	inputs = List<Ref<InputEvent>>();
+	inputs.push_back(InputEventKey::create_reference(KEY_D | KEY_MASK_CMD));
+	default_builtin_cache.insert("ui_text_select_word_under_caret", inputs);
 
 	inputs = List<Ref<InputEvent>>();
 	inputs.push_back(InputEventKey::create_reference(KEY_INSERT));

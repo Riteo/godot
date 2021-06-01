@@ -102,7 +102,7 @@ Node3D *EditorSceneImporterFBX::import_scene(const String &p_path, uint32_t p_fl
 		FBXDocParser::TokenList tokens;
 
 		bool is_binary = false;
-		data.resize(f->get_len());
+		data.resize(f->get_length());
 
 		ERR_FAIL_COND_V(data.size() < 64, nullptr);
 
@@ -1056,7 +1056,7 @@ Node3D *EditorSceneImporterFBX::_generate_scene(
 								//print_verbose("[doc] node animation path: " + node_path);
 							}
 						} else {
-							// note: this could actually be unsafe this means we should be careful about continuing here, if we see bizzare effects later we should disable this.
+							// note: this could actually be unsafe this means we should be careful about continuing here, if we see bizarre effects later we should disable this.
 							// I am not sure if this is unsafe or not, testing will tell us this.
 							print_error("[doc] invalid fbx target detected for this track");
 							continue;

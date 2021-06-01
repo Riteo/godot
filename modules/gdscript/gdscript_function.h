@@ -263,6 +263,7 @@ public:
 		OPCODE_CALL_SELF_BASE,
 		OPCODE_CALL_METHOD_BIND,
 		OPCODE_CALL_METHOD_BIND_RET,
+		OPCODE_CALL_BUILTIN_STATIC,
 		// ptrcall have one instruction per return type.
 		OPCODE_CALL_PTRCALL_NO_RETURN,
 		OPCODE_CALL_PTRCALL_BOOL,
@@ -495,6 +496,8 @@ private:
 	Vector<int> code;
 	Vector<GDScriptDataType> argument_types;
 	GDScriptDataType return_type;
+
+	Map<int, Variant::Type> temporary_slots;
 
 #ifdef TOOLS_ENABLED
 	Vector<StringName> arg_names;

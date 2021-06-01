@@ -70,6 +70,28 @@ private:
 
 	int buttons_state;
 
+	// https://developer.android.com/reference/android/view/PointerIcon
+	// mapping between Godot's cursor shape to Android's'
+	int android_cursors[CURSOR_MAX] = {
+		1000, //CURSOR_ARROW
+		1008, //CURSOR_IBEAM
+		1002, //CURSOR_POINTIN
+		1007, //CURSOR_CROSS
+		1004, //CURSOR_WAIT
+		1004, //CURSOR_BUSY
+		1021, //CURSOR_DRAG
+		1021, //CURSOR_CAN_DRO
+		1000, //CURSOR_FORBIDD (no corresponding icon in Android's icon  so fallback to default)
+		1015, //CURSOR_VSIZE
+		1014, //CURSOR_HSIZE
+		1017, //CURSOR_BDIAGSI
+		1016, //CURSOR_FDIAGSI
+		1020, //CURSOR_MOVE
+		1015, //CURSOR_VSPLIT
+		1014, //CURSOR_HSPLIT
+		1003, //CURSOR_HELP
+	};
+	const int CURSOR_TYPE_NULL = 0;
 	MouseMode mouse_mode;
 
 	bool keep_screen_on;
@@ -77,6 +99,8 @@ private:
 	Vector<TouchPos> touch;
 	Point2 hover_prev_pos; // needed to calculate the relative position on hover events
 	Point2 scroll_prev_pos; // needed to calculate the relative position on scroll events
+
+	CursorShape cursor_shape = CursorShape::CURSOR_ARROW;
 
 #if defined(VULKAN_ENABLED)
 	VulkanContextAndroid *context_vulkan;
@@ -88,6 +112,7 @@ private:
 	Callable window_event_callback;
 	Callable input_event_callback;
 	Callable input_text_callback;
+	Callable rect_changed_callback;
 
 	void _window_callback(const Callable &p_callable, const Variant &p_arg) const;
 
@@ -180,6 +205,9 @@ public:
 	void process_joy_event(JoypadEvent p_event);
 	void process_key_event(int p_keycode, int p_scancode, int p_unicode_char, bool p_pressed);
 
+	virtual void cursor_set_shape(CursorShape p_shape);
+	virtual CursorShape cursor_get_shape() const;
+
 	void mouse_set_mode(MouseMode p_mode);
 	MouseMode mouse_get_mode() const;
 
@@ -188,6 +216,7 @@ public:
 	static void register_android_driver();
 
 	void reset_window();
+	void notify_surface_changed(int p_width, int p_height);
 
 	virtual Point2i mouse_get_position() const;
 	virtual int mouse_get_button_state() const;

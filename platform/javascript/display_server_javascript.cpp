@@ -30,8 +30,8 @@
 
 #include "platform/javascript/display_server_javascript.h"
 
-#include "drivers/dummy/rasterizer_dummy.h"
 #include "platform/javascript/os_javascript.h"
+#include "servers/rendering/rasterizer_dummy.h"
 
 #include <emscripten.h>
 #include <png.h>
@@ -120,10 +120,10 @@ void DisplayServerJavaScript::request_quit_callback() {
 
 template <typename T>
 void DisplayServerJavaScript::dom2godot_mod(T *emscripten_event_ptr, Ref<InputEventWithModifiers> godot_event) {
-	godot_event->set_shift(emscripten_event_ptr->shiftKey);
-	godot_event->set_alt(emscripten_event_ptr->altKey);
-	godot_event->set_control(emscripten_event_ptr->ctrlKey);
-	godot_event->set_metakey(emscripten_event_ptr->metaKey);
+	godot_event->set_shift_pressed(emscripten_event_ptr->shiftKey);
+	godot_event->set_alt_pressed(emscripten_event_ptr->altKey);
+	godot_event->set_ctrl_pressed(emscripten_event_ptr->ctrlKey);
+	godot_event->set_meta_pressed(emscripten_event_ptr->metaKey);
 }
 
 Ref<InputEventKey> DisplayServerJavaScript::setup_key_event(const EmscriptenKeyboardEvent *emscripten_event) {
@@ -455,10 +455,10 @@ EM_BOOL DisplayServerJavaScript::wheel_callback(int p_event_type, const Emscript
 	ev->set_position(input->get_mouse_position());
 	ev->set_global_position(ev->get_position());
 
-	ev->set_shift(input->is_key_pressed(KEY_SHIFT));
-	ev->set_alt(input->is_key_pressed(KEY_ALT));
-	ev->set_control(input->is_key_pressed(KEY_CONTROL));
-	ev->set_metakey(input->is_key_pressed(KEY_META));
+	ev->set_shift_pressed(input->is_key_pressed(KEY_SHIFT));
+	ev->set_alt_pressed(input->is_key_pressed(KEY_ALT));
+	ev->set_ctrl_pressed(input->is_key_pressed(KEY_CTRL));
+	ev->set_meta_pressed(input->is_key_pressed(KEY_META));
 
 	if (p_event->deltaY < 0)
 		ev->set_button_index(MOUSE_BUTTON_WHEEL_UP);
@@ -536,7 +536,7 @@ bool DisplayServerJavaScript::screen_is_touchscreen(int p_screen) const {
 	return godot_js_display_touchscreen_is_available();
 }
 
-// Virtual Keybaord
+// Virtual Keyboard
 void DisplayServerJavaScript::vk_input_text_callback(const char *p_text, int p_cursor) {
 	DisplayServerJavaScript *ds = DisplayServerJavaScript::get_singleton();
 	if (!ds || ds->input_text_callback.is_null()) {

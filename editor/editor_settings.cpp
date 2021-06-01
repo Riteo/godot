@@ -419,7 +419,6 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	hints["interface/editor/main_font_bold"] = PropertyInfo(Variant::STRING, "interface/editor/main_font_bold", PROPERTY_HINT_GLOBAL_FILE, "*.ttf,*.otf", PROPERTY_USAGE_DEFAULT);
 	_initial_set("interface/editor/code_font", "");
 	hints["interface/editor/code_font"] = PropertyInfo(Variant::STRING, "interface/editor/code_font", PROPERTY_HINT_GLOBAL_FILE, "*.ttf,*.otf", PROPERTY_USAGE_DEFAULT);
-	_initial_set("interface/editor/dim_editor_on_dialog_popup", true);
 	_initial_set("interface/editor/low_processor_mode_sleep_usec", 6900); // ~144 FPS
 	hints["interface/editor/low_processor_mode_sleep_usec"] = PropertyInfo(Variant::FLOAT, "interface/editor/low_processor_mode_sleep_usec", PROPERTY_HINT_RANGE, "1,100000,1", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED);
 	_initial_set("interface/editor/unfocused_low_processor_mode_sleep_usec", 50000); // 20 FPS
@@ -503,12 +502,12 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	/* Text editor */
 
 	// Theme
-	_initial_set("text_editor/theme/color_theme", "Adaptive");
-	hints["text_editor/theme/color_theme"] = PropertyInfo(Variant::STRING, "text_editor/theme/color_theme", PROPERTY_HINT_ENUM, "Adaptive,Default,Custom");
+	_initial_set("text_editor/theme/color_theme", "Default");
+	hints["text_editor/theme/color_theme"] = PropertyInfo(Variant::STRING, "text_editor/theme/color_theme", PROPERTY_HINT_ENUM, "Default,Godot 2,Custom");
 	_initial_set("text_editor/theme/line_spacing", 6);
 	hints["text_editor/theme/line_spacing"] = PropertyInfo(Variant::INT, "text_editor/theme/line_spacing", PROPERTY_HINT_RANGE, "0,50,1");
 
-	_load_default_text_editor_theme();
+	_load_godot2_text_editor_theme();
 
 	// Highlighting
 	_initial_set("text_editor/highlighting/highlight_all_occurrences", true);
@@ -572,7 +571,6 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set("text_editor/completion/code_complete_delay", 0.3);
 	hints["text_editor/completion/code_complete_delay"] = PropertyInfo(Variant::FLOAT, "text_editor/completion/code_complete_delay", PROPERTY_HINT_RANGE, "0.01, 5, 0.01");
 	_initial_set("text_editor/completion/put_callhint_tooltip_below_current_line", true);
-	_initial_set("text_editor/completion/callhint_tooltip_offset", Vector2());
 	_initial_set("text_editor/completion/complete_file_paths", true);
 	_initial_set("text_editor/completion/add_type_hints", false);
 	_initial_set("text_editor/completion/use_single_quotes", false);
@@ -704,6 +702,10 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set("editors/2d/scroll_to_pan", false);
 	_initial_set("editors/2d/pan_speed", 20);
 
+	// Tiles editor
+	_initial_set("editors/tiles_editor/display_grid", true);
+	_initial_set("editors/tiles_editor/grid_color", Color(1.0, 0.5, 0.2, 0.5));
+
 	// Polygon editor
 	_initial_set("editors/poly_editor/point_grab_radius", 8);
 	_initial_set("editors/poly_editor/show_previous_outline", true);
@@ -782,9 +784,8 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	};
 }
 
-void EditorSettings::_load_default_text_editor_theme() {
-	bool dark_theme = is_dark_theme();
-
+void EditorSettings::_load_godot2_text_editor_theme() {
+	// Godot 2 is only a dark theme; it doesn't have a light theme counterpart.
 	_initial_set("text_editor/highlighting/symbol_color", Color(0.73, 0.87, 1.0));
 	_initial_set("text_editor/highlighting/keyword_color", Color(1.0, 1.0, 0.7));
 	_initial_set("text_editor/highlighting/control_flow_keyword_color", Color(1.0, 0.85, 0.7));
@@ -793,7 +794,7 @@ void EditorSettings::_load_default_text_editor_theme() {
 	_initial_set("text_editor/highlighting/user_type_color", Color(0.42, 0.67, 0.93));
 	_initial_set("text_editor/highlighting/comment_color", Color(0.4, 0.4, 0.4));
 	_initial_set("text_editor/highlighting/string_color", Color(0.94, 0.43, 0.75));
-	_initial_set("text_editor/highlighting/background_color", dark_theme ? Color(0.0, 0.0, 0.0, 0.23) : Color(0.2, 0.23, 0.31));
+	_initial_set("text_editor/highlighting/background_color", Color(0.13, 0.12, 0.15));
 	_initial_set("text_editor/highlighting/completion_background_color", Color(0.17, 0.16, 0.2));
 	_initial_set("text_editor/highlighting/completion_selected_color", Color(0.26, 0.26, 0.27));
 	_initial_set("text_editor/highlighting/completion_existing_color", Color(0.13, 0.87, 0.87, 0.87));
@@ -843,7 +844,7 @@ bool EditorSettings::_save_text_editor_theme(String p_file) {
 }
 
 bool EditorSettings::_is_default_text_editor_theme(String p_theme_name) {
-	return p_theme_name == "default" || p_theme_name == "adaptive" || p_theme_name == "custom";
+	return p_theme_name == "default" || p_theme_name == "godot 2" || p_theme_name == "custom";
 }
 
 static Dictionary _get_builtin_script_templates() {
@@ -898,66 +899,25 @@ void EditorSettings::create() {
 		return; //pointless
 	}
 
-	DirAccess *dir = nullptr;
-
-	String data_path;
-	String data_dir;
-	String config_path;
-	String config_dir;
-	String cache_path;
-	String cache_dir;
-
 	Ref<ConfigFile> extra_config = memnew(ConfigFile);
 
-	String exe_path = OS::get_singleton()->get_executable_path().get_base_dir();
-	DirAccess *d = DirAccess::create_for_path(exe_path);
-	bool self_contained = false;
-
-	if (d->file_exists(exe_path + "/._sc_")) {
-		self_contained = true;
-		Error err = extra_config->load(exe_path + "/._sc_");
+	if (EditorPaths::get_singleton()->is_self_contained()) {
+		Error err = extra_config->load(EditorPaths::get_singleton()->get_self_contained_file());
 		if (err != OK) {
-			ERR_PRINT("Can't load config from path '" + exe_path + "/._sc_'.");
-		}
-	} else if (d->file_exists(exe_path + "/_sc_")) {
-		self_contained = true;
-		Error err = extra_config->load(exe_path + "/_sc_");
-		if (err != OK) {
-			ERR_PRINT("Can't load config from path '" + exe_path + "/_sc_'.");
+			ERR_PRINT("Can't load extra config from path :" + EditorPaths::get_singleton()->get_self_contained_file());
 		}
 	}
-	memdelete(d);
 
-	if (self_contained) {
-		// editor is self contained, all in same folder
-		data_path = exe_path;
-		data_dir = data_path.plus_file("editor_data");
-		config_path = exe_path;
-		config_dir = data_dir;
-		cache_path = exe_path;
-		cache_dir = data_dir.plus_file("cache");
-	} else {
-		// Typically XDG_DATA_HOME or %APPDATA%
-		data_path = OS::get_singleton()->get_data_path();
-		data_dir = data_path.plus_file(OS::get_singleton()->get_godot_dir_name());
-		// Can be different from data_path e.g. on Linux or macOS
-		config_path = OS::get_singleton()->get_config_path();
-		config_dir = config_path.plus_file(OS::get_singleton()->get_godot_dir_name());
-		// Can be different from above paths, otherwise a subfolder of data_dir
-		cache_path = OS::get_singleton()->get_cache_path();
-		if (cache_path == data_path) {
-			cache_dir = data_dir.plus_file("cache");
-		} else {
-			cache_dir = cache_path.plus_file(OS::get_singleton()->get_godot_dir_name());
-		}
-	}
+	DirAccess *dir = nullptr;
 
 	ClassDB::register_class<EditorSettings>(); //otherwise it can't be unserialized
 
 	String config_file_path;
 
-	if (data_path != "" && config_path != "" && cache_path != "") {
+	if (EditorPaths::get_singleton()->are_paths_valid()) {
 		// Validate/create data dir and subdirectories
+
+		String data_dir = EditorPaths::get_singleton()->get_data_dir();
 
 		dir = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
 		if (dir->change_dir(data_dir) != OK) {
@@ -975,22 +935,11 @@ void EditorSettings::create() {
 			dir->change_dir("..");
 		}
 
-		// Validate/create cache dir
-
-		if (dir->change_dir(cache_dir) != OK) {
-			dir->make_dir_recursive(cache_dir);
-			if (dir->change_dir(cache_dir) != OK) {
-				ERR_PRINT("Cannot create cache directory!");
-				memdelete(dir);
-				goto fail;
-			}
-		}
-
 		// Validate/create config dir and subdirectories
 
-		if (dir->change_dir(config_dir) != OK) {
-			dir->make_dir_recursive(config_dir);
-			if (dir->change_dir(config_dir) != OK) {
+		if (dir->change_dir(EditorPaths::get_singleton()->get_config_dir()) != OK) {
+			dir->make_dir_recursive(EditorPaths::get_singleton()->get_config_dir());
+			if (dir->change_dir(EditorPaths::get_singleton()->get_config_dir()) != OK) {
 				ERR_PRINT("Cannot create config directory!");
 				memdelete(dir);
 				goto fail;
@@ -1031,7 +980,7 @@ void EditorSettings::create() {
 		// Validate editor config file
 
 		String config_file_name = "editor_settings-" + itos(VERSION_MAJOR) + ".tres";
-		config_file_path = config_dir.plus_file(config_file_name);
+		config_file_path = EditorPaths::get_singleton()->get_config_dir().plus_file(config_file_name);
 		if (!dir->file_exists(config_file_name)) {
 			memdelete(dir);
 			goto fail;
@@ -1048,9 +997,6 @@ void EditorSettings::create() {
 
 		singleton->save_changed_setting = true;
 		singleton->config_file_path = config_file_path;
-		singleton->settings_dir = config_dir;
-		singleton->data_dir = data_dir;
-		singleton->cache_dir = cache_dir;
 
 		print_verbose("EditorSettings: Load OK!");
 
@@ -1065,6 +1011,8 @@ void EditorSettings::create() {
 fail:
 
 	// patch init projects
+	String exe_path = OS::get_singleton()->get_executable_path().get_base_dir();
+
 	if (extra_config->has_section("init_projects")) {
 		Vector<String> list = extra_config->get_value("init_projects", "list");
 		for (int i = 0; i < list.size(); i++) {
@@ -1076,9 +1024,6 @@ fail:
 	singleton = Ref<EditorSettings>(memnew(EditorSettings));
 	singleton->save_changed_setting = true;
 	singleton->config_file_path = config_file_path;
-	singleton->settings_dir = config_dir;
-	singleton->data_dir = data_dir;
-	singleton->cache_dir = cache_dir;
 	singleton->_load_defaults(extra_config);
 	singleton->setup_language();
 	singleton->setup_network();
@@ -1308,30 +1253,22 @@ void EditorSettings::add_property_hint(const PropertyInfo &p_hint) {
 
 // Data directories
 
-String EditorSettings::get_data_dir() const {
-	return data_dir;
-}
-
 String EditorSettings::get_templates_dir() const {
-	return get_data_dir().plus_file("templates");
+	return EditorPaths::get_singleton()->get_data_dir().plus_file("templates");
 }
 
 // Config directories
-
-String EditorSettings::get_settings_dir() const {
-	return settings_dir;
-}
 
 String EditorSettings::get_project_settings_dir() const {
 	return EditorSettings::PROJECT_EDITOR_SETTINGS_PATH;
 }
 
 String EditorSettings::get_text_editor_themes_dir() const {
-	return get_settings_dir().plus_file("text_editor_themes");
+	return EditorPaths::get_singleton()->get_settings_dir().plus_file("text_editor_themes");
 }
 
 String EditorSettings::get_script_templates_dir() const {
-	return get_settings_dir().plus_file("script_templates");
+	return EditorPaths::get_singleton()->get_settings_dir().plus_file("script_templates");
 }
 
 String EditorSettings::get_project_script_templates_dir() const {
@@ -1340,12 +1277,8 @@ String EditorSettings::get_project_script_templates_dir() const {
 
 // Cache directory
 
-String EditorSettings::get_cache_dir() const {
-	return cache_dir;
-}
-
 String EditorSettings::get_feature_profiles_dir() const {
-	return get_settings_dir().plus_file("feature_profiles");
+	return EditorPaths::get_singleton()->get_settings_dir().plus_file("feature_profiles");
 }
 
 // Metadata
@@ -1432,7 +1365,7 @@ bool EditorSettings::is_dark_theme() {
 }
 
 void EditorSettings::list_text_editor_themes() {
-	String themes = "Adaptive,Default,Custom";
+	String themes = "Default,Godot 2,Custom";
 
 	DirAccess *d = DirAccess::open(get_text_editor_themes_dir());
 	if (d) {
@@ -1460,8 +1393,8 @@ void EditorSettings::load_text_editor_theme() {
 	String p_file = get("text_editor/theme/color_theme");
 
 	if (_is_default_text_editor_theme(p_file.get_file().to_lower())) {
-		if (p_file == "Default") {
-			_load_default_text_editor_theme();
+		if (p_file == "Godot 2") {
+			_load_godot2_text_editor_theme();
 		}
 		return; // sorry for "Settings changed" console spam
 	}
@@ -1572,7 +1505,7 @@ Vector<String> EditorSettings::get_script_templates(const String &p_extension, c
 }
 
 String EditorSettings::get_editor_layouts_config() const {
-	return get_settings_dir().plus_file("editor_layouts.cfg");
+	return EditorPaths::get_singleton()->get_settings_dir().plus_file("editor_layouts.cfg");
 }
 
 // Shortcuts
@@ -1656,10 +1589,10 @@ Ref<Shortcut> ED_SHORTCUT(const String &p_path, const String &p_name, uint32_t p
 
 		ie->set_unicode(p_keycode & KEY_CODE_MASK);
 		ie->set_keycode(p_keycode & KEY_CODE_MASK);
-		ie->set_shift(bool(p_keycode & KEY_MASK_SHIFT));
-		ie->set_alt(bool(p_keycode & KEY_MASK_ALT));
-		ie->set_control(bool(p_keycode & KEY_MASK_CTRL));
-		ie->set_metakey(bool(p_keycode & KEY_MASK_META));
+		ie->set_shift_pressed(bool(p_keycode & KEY_MASK_SHIFT));
+		ie->set_alt_pressed(bool(p_keycode & KEY_MASK_ALT));
+		ie->set_ctrl_pressed(bool(p_keycode & KEY_MASK_CTRL));
+		ie->set_meta_pressed(bool(p_keycode & KEY_MASK_META));
 	}
 
 	if (!EditorSettings::get_singleton()) {
@@ -1774,7 +1707,6 @@ void EditorSettings::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("property_get_revert", "name"), &EditorSettings::property_get_revert);
 	ClassDB::bind_method(D_METHOD("add_property_info", "info"), &EditorSettings::_add_property_info_bind);
 
-	ClassDB::bind_method(D_METHOD("get_settings_dir"), &EditorSettings::get_settings_dir);
 	ClassDB::bind_method(D_METHOD("get_project_settings_dir"), &EditorSettings::get_project_settings_dir);
 
 	ClassDB::bind_method(D_METHOD("set_project_metadata", "section", "key", "data"), &EditorSettings::set_project_metadata);

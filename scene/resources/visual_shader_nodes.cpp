@@ -242,6 +242,13 @@ String VisualShaderNodeColorConstant::get_output_port_name(int p_port) const {
 	return p_port == 0 ? "" : "alpha"; //no output port means the editor will be used as port
 }
 
+bool VisualShaderNodeColorConstant::is_output_port_expandable(int p_port) const {
+	if (p_port == 0) {
+		return true;
+	}
+	return false;
+}
+
 String VisualShaderNodeColorConstant::generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview) const {
 	String code;
 	code += "\t" + p_output_vars[0] + " = " + vformat("vec3(%.6f, %.6f, %.6f)", constant.r, constant.g, constant.b) + ";\n";
@@ -453,6 +460,13 @@ String VisualShaderNodeTexture::get_output_port_name(int p_port) const {
 		return "depth";
 	}
 	return p_port == 0 ? "rgb" : "alpha";
+}
+
+bool VisualShaderNodeTexture::is_output_port_expandable(int p_port) const {
+	if (p_port == 0) {
+		return true;
+	}
+	return false;
 }
 
 String VisualShaderNodeTexture::get_input_port_default_hint(int p_port) const {
@@ -775,7 +789,7 @@ void VisualShaderNodeTexture::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "source", PROPERTY_HINT_ENUM, "Texture,Screen,Texture2D,NormalMap2D,Depth,SamplerPort"), "set_source", "get_source");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "texture", PROPERTY_HINT_RESOURCE_TYPE, "Texture2D"), "set_texture", "get_texture");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "texture_type", PROPERTY_HINT_ENUM, "Data,Color,Normalmap"), "set_texture_type", "get_texture_type");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "texture_type", PROPERTY_HINT_ENUM, "Data,Color,Normal Map"), "set_texture_type", "get_texture_type");
 
 	BIND_ENUM_CONSTANT(SOURCE_TEXTURE);
 	BIND_ENUM_CONSTANT(SOURCE_SCREEN);
@@ -915,6 +929,13 @@ VisualShaderNodeSample3D::PortType VisualShaderNodeSample3D::get_output_port_typ
 
 String VisualShaderNodeSample3D::get_output_port_name(int p_port) const {
 	return p_port == 0 ? "rgb" : "alpha";
+}
+
+bool VisualShaderNodeSample3D::is_output_port_expandable(int p_port) const {
+	if (p_port == 0) {
+		return true;
+	}
+	return false;
 }
 
 String VisualShaderNodeSample3D::get_input_port_default_hint(int p_port) const {
@@ -1168,6 +1189,13 @@ String VisualShaderNodeCubemap::get_output_port_name(int p_port) const {
 	return p_port == 0 ? "rgb" : "alpha";
 }
 
+bool VisualShaderNodeCubemap::is_output_port_expandable(int p_port) const {
+	if (p_port == 0) {
+		return true;
+	}
+	return false;
+}
+
 Vector<VisualShader::DefaultTextureParam> VisualShaderNodeCubemap::get_default_texture_parameters(VisualShader::Type p_type, int p_id) const {
 	VisualShader::DefaultTextureParam dtp;
 	dtp.name = make_unique_id(p_type, p_id, "cube");
@@ -1308,7 +1336,7 @@ void VisualShaderNodeCubemap::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "source", PROPERTY_HINT_ENUM, "Texture,SamplerPort"), "set_source", "get_source");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "cube_map", PROPERTY_HINT_RESOURCE_TYPE, "Cubemap"), "set_cube_map", "get_cube_map");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "texture_type", PROPERTY_HINT_ENUM, "Data,Color,Normalmap"), "set_texture_type", "get_texture_type");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "texture_type", PROPERTY_HINT_ENUM, "Data,Color,Normal Map"), "set_texture_type", "get_texture_type");
 
 	BIND_ENUM_CONSTANT(SOURCE_TEXTURE);
 	BIND_ENUM_CONSTANT(SOURCE_PORT);
@@ -1409,7 +1437,7 @@ void VisualShaderNodeFloatOp::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_operator", "op"), &VisualShaderNodeFloatOp::set_operator);
 	ClassDB::bind_method(D_METHOD("get_operator"), &VisualShaderNodeFloatOp::get_operator);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "operator", PROPERTY_HINT_ENUM, "Add,Sub,Multiply,Divide,Remainder,Power,Max,Min,Atan2,Step"), "set_operator", "get_operator");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "operator", PROPERTY_HINT_ENUM, "Add,Subtract,Multiply,Divide,Remainder,Power,Max,Min,ATan2,Step"), "set_operator", "get_operator");
 
 	BIND_ENUM_CONSTANT(OP_ADD);
 	BIND_ENUM_CONSTANT(OP_SUB);
@@ -1506,7 +1534,7 @@ void VisualShaderNodeIntOp::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_operator", "op"), &VisualShaderNodeIntOp::set_operator);
 	ClassDB::bind_method(D_METHOD("get_operator"), &VisualShaderNodeIntOp::get_operator);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "operator", PROPERTY_HINT_ENUM, "Add,Sub,Multiply,Divide,Remainder,Max,Min"), "set_operator", "get_operator");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "operator", PROPERTY_HINT_ENUM, "Add,Subtract,Multiply,Divide,Remainder,Max,Min"), "set_operator", "get_operator");
 
 	BIND_ENUM_CONSTANT(OP_ADD);
 	BIND_ENUM_CONSTANT(OP_SUB);
@@ -1615,7 +1643,7 @@ void VisualShaderNodeVectorOp::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_operator", "op"), &VisualShaderNodeVectorOp::set_operator);
 	ClassDB::bind_method(D_METHOD("get_operator"), &VisualShaderNodeVectorOp::get_operator);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "operator", PROPERTY_HINT_ENUM, "Add,Sub,Multiply,Divide,Remainder,Power,Max,Min,Cross,Atan2,Reflect,Step"), "set_operator", "get_operator");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "operator", PROPERTY_HINT_ENUM, "Add,Subtract,Multiply,Divide,Remainder,Power,Max,Min,Cross,ATan2,Reflect,Step"), "set_operator", "get_operator");
 
 	BIND_ENUM_CONSTANT(OP_ADD);
 	BIND_ENUM_CONSTANT(OP_SUB);
@@ -1785,7 +1813,7 @@ void VisualShaderNodeColorOp::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_operator", "op"), &VisualShaderNodeColorOp::set_operator);
 	ClassDB::bind_method(D_METHOD("get_operator"), &VisualShaderNodeColorOp::get_operator);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "operator", PROPERTY_HINT_ENUM, "Screen,Difference,Darken,Lighten,Overlay,Dodge,Burn,SoftLight,HardLight"), "set_operator", "get_operator");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "operator", PROPERTY_HINT_ENUM, "Screen,Difference,Darken,Lighten,Overlay,Dodge,Burn,Soft Light,Hard Light"), "set_operator", "get_operator");
 
 	BIND_ENUM_CONSTANT(OP_SCREEN);
 	BIND_ENUM_CONSTANT(OP_DIFFERENCE);
@@ -3899,7 +3927,7 @@ void VisualShaderNodeIntUniform::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_default_value", "value"), &VisualShaderNodeIntUniform::set_default_value);
 	ClassDB::bind_method(D_METHOD("get_default_value"), &VisualShaderNodeIntUniform::get_default_value);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "hint", PROPERTY_HINT_ENUM, "None,Range,Range+Step"), "set_hint", "get_hint");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "hint", PROPERTY_HINT_ENUM, "None,Range,Range + Step"), "set_hint", "get_hint");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "min"), "set_min", "get_min");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "max"), "set_max", "get_max");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "step"), "set_step", "get_step");
@@ -4487,7 +4515,7 @@ void VisualShaderNodeTextureUniform::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_color_default", "type"), &VisualShaderNodeTextureUniform::set_color_default);
 	ClassDB::bind_method(D_METHOD("get_color_default"), &VisualShaderNodeTextureUniform::get_color_default);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "texture_type", PROPERTY_HINT_ENUM, "Data,Color,Normalmap,Aniso"), "set_texture_type", "get_texture_type");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "texture_type", PROPERTY_HINT_ENUM, "Data,Color,Normal Map,Anisotropic"), "set_texture_type", "get_texture_type");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "color_default", PROPERTY_HINT_ENUM, "White Default,Black Default"), "set_color_default", "get_color_default");
 
 	BIND_ENUM_CONSTANT(TYPE_DATA);
@@ -5550,4 +5578,128 @@ VisualShaderNodeMultiplyAdd::VisualShaderNodeMultiplyAdd() {
 	set_input_port_default_value(0, 0.0);
 	set_input_port_default_value(1, 0.0);
 	set_input_port_default_value(2, 0.0);
+}
+
+////////////// Billboard
+
+String VisualShaderNodeBillboard::get_caption() const {
+	return "GetBillboardMatrix";
+}
+
+int VisualShaderNodeBillboard::get_input_port_count() const {
+	return 0;
+}
+
+VisualShaderNodeBillboard::PortType VisualShaderNodeBillboard::get_input_port_type(int p_port) const {
+	return PORT_TYPE_SCALAR;
+}
+
+String VisualShaderNodeBillboard::get_input_port_name(int p_port) const {
+	return "";
+}
+
+int VisualShaderNodeBillboard::get_output_port_count() const {
+	return 1;
+}
+
+VisualShaderNodeBillboard::PortType VisualShaderNodeBillboard::get_output_port_type(int p_port) const {
+	return PORT_TYPE_TRANSFORM;
+}
+
+String VisualShaderNodeBillboard::get_output_port_name(int p_port) const {
+	return "model_view_matrix";
+}
+
+String VisualShaderNodeBillboard::generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview) const {
+	String code;
+
+	switch (billboard_type) {
+		case BILLBOARD_TYPE_ENABLED:
+			code += "\t{\n";
+			code += "\t\tmat4 __mvm = INV_CAMERA_MATRIX * mat4(CAMERA_MATRIX[0], CAMERA_MATRIX[1], CAMERA_MATRIX[2], WORLD_MATRIX[3]);\n";
+			if (keep_scale) {
+				code += "\t\t__mvm = __mvm * mat4(vec4(length(WORLD_MATRIX[0].xyz), 0.0, 0.0, 0.0), vec4(0.0, length(WORLD_MATRIX[1].xyz), 0.0, 0.0), vec4(0.0, 0.0, length(WORLD_MATRIX[2].xyz), 0.0), vec4(0.0, 0.0, 0.0, 1.0));\n";
+			}
+			code += "\t\t" + p_output_vars[0] + " = __mvm;\n";
+			code += "\t}\n";
+			break;
+		case BILLBOARD_TYPE_FIXED_Y:
+			code += "\t{\n";
+			code += "\t\tmat4 __mvm = INV_CAMERA_MATRIX * mat4(CAMERA_MATRIX[0], WORLD_MATRIX[1], vec4(normalize(cross(CAMERA_MATRIX[0].xyz, WORLD_MATRIX[1].xyz)), 0.0), WORLD_MATRIX[3]);\n";
+			if (keep_scale) {
+				code += "\t\t__mvm = __mvm * mat4(vec4(length(WORLD_MATRIX[0].xyz), 0.0, 0.0, 0.0), vec4(0.0, 1.0, 0.0, 0.0), vec4(0.0, 0.0, length(WORLD_MATRIX[2].xyz), 0.0), vec4(0.0, 0.0, 0.0, 1.0));\n";
+			} else {
+				code += "\t\t__mvm = __mvm * mat4(vec4(1.0, 0.0, 0.0, 0.0), vec4(0.0, 1.0 / length(WORLD_MATRIX[1].xyz), 0.0, 0.0), vec4(0.0, 0.0, 1.0, 0.0), vec4(0.0, 0.0, 0.0, 1.0));\n";
+			}
+			code += "\t\t" + p_output_vars[0] + " = __mvm;\n";
+			code += "\t}\n";
+			break;
+		case BILLBOARD_TYPE_PARTICLES:
+			code += "\t{\n";
+			code += "\t\tmat4 __wm = mat4(normalize(CAMERA_MATRIX[0]) * length(WORLD_MATRIX[0]), normalize(CAMERA_MATRIX[1]) * length(WORLD_MATRIX[0]), normalize(CAMERA_MATRIX[2]) * length(WORLD_MATRIX[2]), WORLD_MATRIX[3]);\n";
+			code += "\t\t__wm = __wm * mat4(vec4(cos(INSTANCE_CUSTOM.x), -sin(INSTANCE_CUSTOM.x), 0.0, 0.0), vec4(sin(INSTANCE_CUSTOM.x), cos(INSTANCE_CUSTOM.x), 0.0, 0.0), vec4(0.0, 0.0, 1.0, 0.0), vec4(0.0, 0.0, 0.0, 1.0));\n";
+			code += "\t\t" + p_output_vars[0] + " = INV_CAMERA_MATRIX * __wm;\n";
+			code += "\t}\n";
+			break;
+		default:
+			code += "\t" + p_output_vars[0] + " = mat4(1.0);\n";
+			break;
+	}
+
+	return code;
+}
+
+bool VisualShaderNodeBillboard::is_show_prop_names() const {
+	return true;
+}
+
+void VisualShaderNodeBillboard::set_billboard_type(BillboardType p_billboard_type) {
+	ERR_FAIL_INDEX((int)p_billboard_type, BILLBOARD_TYPE_MAX);
+	billboard_type = p_billboard_type;
+	simple_decl = bool(billboard_type == BILLBOARD_TYPE_DISABLED);
+	set_disabled(simple_decl);
+	emit_changed();
+}
+
+VisualShaderNodeBillboard::BillboardType VisualShaderNodeBillboard::get_billboard_type() const {
+	return billboard_type;
+}
+
+void VisualShaderNodeBillboard::set_keep_scale_enabled(bool p_enabled) {
+	keep_scale = p_enabled;
+	emit_changed();
+}
+
+bool VisualShaderNodeBillboard::is_keep_scale_enabled() const {
+	return keep_scale;
+}
+
+Vector<StringName> VisualShaderNodeBillboard::get_editable_properties() const {
+	Vector<StringName> props;
+	props.push_back("billboard_type");
+	if (billboard_type == BILLBOARD_TYPE_ENABLED || billboard_type == BILLBOARD_TYPE_FIXED_Y) {
+		props.push_back("keep_scale");
+	}
+	return props;
+}
+
+void VisualShaderNodeBillboard::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_billboard_type", "billboard_type"), &VisualShaderNodeBillboard::set_billboard_type);
+	ClassDB::bind_method(D_METHOD("get_billboard_type"), &VisualShaderNodeBillboard::get_billboard_type);
+
+	ClassDB::bind_method(D_METHOD("set_keep_scale_enabled", "enabled"), &VisualShaderNodeBillboard::set_keep_scale_enabled);
+	ClassDB::bind_method(D_METHOD("is_keep_scale_enabled"), &VisualShaderNodeBillboard::is_keep_scale_enabled);
+
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "billboard_type", PROPERTY_HINT_ENUM, "Disabled,Enabled,Y-Billboard,Particles"), "set_billboard_type", "get_billboard_type");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "keep_scale"), "set_keep_scale_enabled", "is_keep_scale_enabled");
+
+	BIND_ENUM_CONSTANT(BILLBOARD_TYPE_DISABLED);
+	BIND_ENUM_CONSTANT(BILLBOARD_TYPE_ENABLED);
+	BIND_ENUM_CONSTANT(BILLBOARD_TYPE_FIXED_Y);
+	BIND_ENUM_CONSTANT(BILLBOARD_TYPE_PARTICLES);
+	BIND_ENUM_CONSTANT(BILLBOARD_TYPE_MAX);
+}
+
+VisualShaderNodeBillboard::VisualShaderNodeBillboard() {
+	simple_decl = false;
 }

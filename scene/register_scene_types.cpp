@@ -597,6 +597,7 @@ void register_scene_types() {
 	ClassDB::register_class<VisualShaderNodeIs>();
 	ClassDB::register_class<VisualShaderNodeCompare>();
 	ClassDB::register_class<VisualShaderNodeMultiplyAdd>();
+	ClassDB::register_class<VisualShaderNodeBillboard>();
 
 	ClassDB::register_class<VisualShaderNodeSDFToScreenUV>();
 	ClassDB::register_class<VisualShaderNodeScreenUVToSDF>();
@@ -657,6 +658,7 @@ void register_scene_types() {
 	ClassDB::register_class<TileSet>();
 	ClassDB::register_virtual_class<TileSetSource>();
 	ClassDB::register_class<TileSetAtlasSource>();
+	ClassDB::register_class<TileSetScenesCollectionSource>();
 	ClassDB::register_class<TileData>();
 	ClassDB::register_class<TileMap>();
 	ClassDB::register_class<ParallaxBackground>();
@@ -979,6 +981,7 @@ void register_scene_types() {
 	// Always make the default theme to avoid invalid default font/icon/style in the given theme.
 	if (RenderingServer::get_singleton()) {
 		make_default_theme(default_theme_hidpi, font);
+		ColorPicker::init_shaders(); // RenderingServer needs to exist for this to succeed.
 	}
 
 	if (theme_path != String()) {
@@ -1035,5 +1038,6 @@ void unregister_scene_types() {
 
 	ParticlesMaterial::finish_shaders();
 	CanvasItemMaterial::finish_shaders();
+	ColorPicker::finish_shaders();
 	SceneStringNames::free();
 }

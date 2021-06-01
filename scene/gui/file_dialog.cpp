@@ -105,7 +105,7 @@ void FileDialog::_unhandled_input(const Ref<InputEvent> &p_event) {
 
 			switch (k->get_keycode()) {
 				case KEY_H: {
-					if (k->get_command()) {
+					if (k->is_command_pressed()) {
 						set_show_hidden_files(!show_hidden_files);
 					} else {
 						handled = false;
@@ -589,8 +589,8 @@ void FileDialog::update_file_list() {
 		files.pop_front();
 	}
 
-	if (tree->get_root() && tree->get_root()->get_children() && tree->get_selected() == nullptr) {
-		tree->get_root()->get_children()->select(0);
+	if (tree->get_root() && tree->get_root()->get_first_child() && tree->get_selected() == nullptr) {
+		tree->get_root()->get_first_child()->select(0);
 	}
 }
 

@@ -70,6 +70,7 @@ void EditorSpinSlider::_gui_input(const Ref<InputEvent> &p_event) {
 					grabbing_spinner_dist_cache = 0;
 					pre_grab_value = get_value();
 					grabbing_spinner = false;
+					grabbing_spinner_mouse_pos = get_global_mouse_position();
 				}
 			} else {
 				if (grabbing_spinner_attempt) {
@@ -96,7 +97,7 @@ void EditorSpinSlider::_gui_input(const Ref<InputEvent> &p_event) {
 	if (mm.is_valid()) {
 		if (grabbing_spinner_attempt) {
 			double diff_x = mm->get_relative().x;
-			if (mm->get_shift() && grabbing_spinner) {
+			if (mm->is_shift_pressed() && grabbing_spinner) {
 				diff_x *= 0.1;
 			}
 			grabbing_spinner_dist_cache += diff_x;
@@ -115,7 +116,7 @@ void EditorSpinSlider::_gui_input(const Ref<InputEvent> &p_event) {
 					pre_grab_value = get_max();
 				}
 
-				if (mm->get_control()) {
+				if (mm->is_ctrl_pressed()) {
 					// If control was just pressed, don't make the value do a huge jump in magnitude.
 					if (grabbing_spinner_dist_cache != 0) {
 						pre_grab_value += grabbing_spinner_dist_cache * get_step();

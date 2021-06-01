@@ -36,8 +36,6 @@
 #include "java_godot_wrapper.h"
 #include "os_android.h"
 
-#include <android/input.h>
-
 #if defined(VULKAN_ENABLED)
 #include "drivers/vulkan/rendering_device_vulkan.h"
 #include "platform/android/vulkan/vulkan_context_android.h"
@@ -51,7 +49,7 @@ DisplayServerAndroid *DisplayServerAndroid::get_singleton() {
 bool DisplayServerAndroid::has_feature(Feature p_feature) const {
 	switch (p_feature) {
 		//case FEATURE_CONSOLE_WINDOW:
-		//case FEATURE_CURSOR_SHAPE:
+		case FEATURE_CURSOR_SHAPE:
 		//case FEATURE_CUSTOM_CURSOR_SHAPE:
 		//case FEATURE_GLOBAL_MENU:
 		//case FEATURE_HIDPI:
@@ -198,7 +196,7 @@ void DisplayServerAndroid::window_set_input_text_callback(const Callable &p_call
 }
 
 void DisplayServerAndroid::window_set_rect_changed_callback(const Callable &p_callable, DisplayServer::WindowID p_window) {
-	// Not supported on Android.
+	rect_changed_callback = p_callable;
 }
 
 void DisplayServerAndroid::window_set_drop_files_callback(const Callable &p_callable, DisplayServer::WindowID p_window) {
@@ -391,6 +389,19 @@ void DisplayServerAndroid::reset_window() {
 #endif
 }
 
+void DisplayServerAndroid::notify_surface_changed(int p_width, int p_height) {
+	if (rect_changed_callback.is_null()) {
+		return;
+	}
+
+	const Variant size = Rect2i(0, 0, p_width, p_height);
+	const Variant *sizep = &size;
+	Variant ret;
+	Callable::CallError ce;
+
+	rect_changed_callback.call(reinterpret_cast<const Variant **>(&sizep), 1, ret, ce);
+}
+
 DisplayServerAndroid::DisplayServerAndroid(const String &p_rendering_driver, DisplayServer::WindowMode p_mode, uint32_t p_flags, const Vector2i &p_resolution, Error &r_error) {
 	rendering_driver = p_rendering_driver;
 
@@ -490,10 +501,10 @@ void DisplayServerAndroid::process_joy_event(DisplayServerAndroid::JoypadEvent p
 }
 
 void DisplayServerAndroid::_set_key_modifier_state(Ref<InputEventWithModifiers> ev) {
-	ev->set_shift(shift_mem);
-	ev->set_alt(alt_mem);
-	ev->set_metakey(meta_mem);
-	ev->set_control(control_mem);
+	ev->set_shift_pressed(shift_mem);
+	ev->set_alt_pressed(alt_mem);
+	ev->set_meta_pressed(meta_mem);
+	ev->set_ctrl_pressed(control_mem);
 }
 
 void DisplayServerAndroid::process_key_event(int p_keycode, int p_scancode, int p_unicode_char, bool p_pressed) {
@@ -528,7 +539,7 @@ void DisplayServerAndroid::process_key_event(int p_keycode, int p_scancode, int 
 	if (keycode == KEY_ALT) {
 		alt_mem = p_pressed;
 	}
-	if (keycode == KEY_CONTROL) {
+	if (keycode == KEY_CTRL) {
 		control_mem = p_pressed;
 	}
 	if (keycode == KEY_META) {
@@ -829,6 +840,12 @@ void DisplayServerAndroid::mouse_set_mode(MouseMode p_mode) {
 		return;
 	}
 
+	if (p_mode == MouseMode::MOUSE_MODE_HIDDEN) {
+		OS_Android::get_singleton()->get_godot_java()->get_godot_view()->set_pointer_icon(CURSOR_TYPE_NULL);
+	} else {
+		cursor_set_shape(cursor_shape);
+	}
+
 	if (p_mode == MouseMode::MOUSE_MODE_CAPTURED) {
 		OS_Android::get_singleton()->get_godot_java()->get_godot_view()->request_pointer_capture();
 	} else {
@@ -869,4 +886,20 @@ int DisplayServerAndroid::_android_button_mask_to_godot_button_mask(int android_
 	}
 
 	return godot_button_mask;
+}
+
+void DisplayServerAndroid::cursor_set_shape(DisplayServer::CursorShape p_shape) {
+	if (cursor_shape == p_shape) {
+		return;
+	}
+
+	cursor_shape = p_shape;
+
+	if (mouse_mode == MouseMode::MOUSE_MODE_VISIBLE || mouse_mode == MouseMode::MOUSE_MODE_CONFINED) {
+		OS_Android::get_singleton()->get_godot_java()->get_godot_view()->set_pointer_icon(android_cursors[cursor_shape]);
+	}
+}
+
+DisplayServer::CursorShape DisplayServerAndroid::cursor_get_shape() const {
+	return cursor_shape;
 }

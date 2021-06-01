@@ -30,6 +30,7 @@
 
 #include "scene_shader_forward_clustered.h"
 #include "core/config/project_settings.h"
+#include "core/math/math_defs.h"
 #include "render_forward_clustered.h"
 
 using namespace RendererSceneRenderImplementation;
@@ -608,6 +609,9 @@ void SceneShaderForwardClustered::init(RendererStorageRD *p_storage, const Strin
 		//builtins
 
 		actions.renames["TIME"] = "scene_data.time";
+		actions.renames["PI"] = _MKSTR(Math_PI);
+		actions.renames["TAU"] = _MKSTR(Math_TAU);
+		actions.renames["E"] = _MKSTR(Math_E);
 		actions.renames["VIEWPORT_SIZE"] = "scene_data.viewport_size";
 
 		actions.renames["FRAGCOORD"] = "gl_FragCoord";
@@ -749,7 +753,7 @@ void SceneShaderForwardClustered::init(RendererStorageRD *p_storage, const Strin
 		actions.default_filter = ShaderLanguage::FILTER_LINEAR_MIPMAP;
 		actions.default_repeat = ShaderLanguage::REPEAT_ENABLE;
 		actions.global_buffer_array_variable = "global_variables.data";
-		actions.instance_uniform_index_variable = "draw_call.instance_uniforms_ofs";
+		actions.instance_uniform_index_variable = "instances.data[instance_index].instance_uniforms_ofs";
 
 		compiler.initialize(actions);
 	}

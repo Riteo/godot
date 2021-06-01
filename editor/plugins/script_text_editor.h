@@ -89,6 +89,8 @@ class ScriptTextEditor : public ScriptEditorBase {
 	Color default_line_number_color = Color(1, 1, 1);
 	Color safe_line_number_color = Color(1, 1, 1);
 
+	Color marked_line_color = Color(1, 1, 1);
+
 	PopupPanel *color_panel = nullptr;
 	ColorPicker *color_picker = nullptr;
 	Vector2 color_position;
@@ -232,6 +234,8 @@ public:
 	Control *get_edit_menu() override;
 	virtual void clear_edit_menu() override;
 	static void register_editor();
+
+	virtual Control *get_base_editor() const override;
 
 	virtual void validate() override;
 

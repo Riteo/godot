@@ -103,7 +103,7 @@
 				[b]Note:[/b] The result of this test is not immediate after moving objects. For performance, list of collisions is updated once per frame and before the physics step. Consider using signals instead.
 			</description>
 		</method>
-		<method name="get_inverse_inertia_tensor">
+		<method name="get_inverse_inertia_tensor" qualifiers="const">
 			<return type="Basis">
 			</return>
 			<description>
@@ -217,7 +217,7 @@
 			</description>
 		</signal>
 		<signal name="body_shape_entered">
-			<argument index="0" name="body_id" type="int">
+			<argument index="0" name="body_rid" type="RID">
 			</argument>
 			<argument index="1" name="body" type="Node">
 			</argument>
@@ -235,7 +235,7 @@
 			</description>
 		</signal>
 		<signal name="body_shape_exited">
-			<argument index="0" name="body_id" type="int">
+			<argument index="0" name="body_rid" type="RID">
 			</argument>
 			<argument index="1" name="body" type="Node">
 			</argument>

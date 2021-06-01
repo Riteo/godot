@@ -152,6 +152,44 @@ String GDScriptFunction::_get_call_error(const Callable::CallError &p_err, const
 	return err_text;
 }
 
+void (*type_init_function_table[])(Variant *) = {
+	nullptr, // NIL (shouldn't be called).
+	&VariantInitializer<bool>::init, // BOOL.
+	&VariantInitializer<int64_t>::init, // INT.
+	&VariantInitializer<double>::init, // FLOAT.
+	&VariantInitializer<String>::init, // STRING.
+	&VariantInitializer<Vector2>::init, // VECTOR2.
+	&VariantInitializer<Vector2i>::init, // VECTOR2I.
+	&VariantInitializer<Rect2>::init, // RECT2.
+	&VariantInitializer<Rect2i>::init, // RECT2I.
+	&VariantInitializer<Vector3>::init, // VECTOR3.
+	&VariantInitializer<Vector3i>::init, // VECTOR3I.
+	&VariantInitializer<Transform2D>::init, // TRANSFORM2D.
+	&VariantInitializer<Plane>::init, // PLANE.
+	&VariantInitializer<Quat>::init, // QUAT.
+	&VariantInitializer<AABB>::init, // AABB.
+	&VariantInitializer<Basis>::init, // BASIS.
+	&VariantInitializer<Transform>::init, // TRANSFORM.
+	&VariantInitializer<Color>::init, // COLOR.
+	&VariantInitializer<StringName>::init, // STRING_NAME.
+	&VariantInitializer<NodePath>::init, // NODE_PATH.
+	&VariantInitializer<RID>::init, // RID.
+	&VariantTypeAdjust<Object *>::adjust, // OBJECT.
+	&VariantInitializer<Callable>::init, // CALLABLE.
+	&VariantInitializer<Signal>::init, // SIGNAL.
+	&VariantInitializer<Dictionary>::init, // DICTIONARY.
+	&VariantInitializer<Array>::init, // ARRAY.
+	&VariantInitializer<PackedByteArray>::init, // PACKED_BYTE_ARRAY.
+	&VariantInitializer<PackedInt32Array>::init, // PACKED_INT32_ARRAY.
+	&VariantInitializer<PackedInt64Array>::init, // PACKED_INT64_ARRAY.
+	&VariantInitializer<PackedFloat32Array>::init, // PACKED_FLOAT32_ARRAY.
+	&VariantInitializer<PackedFloat64Array>::init, // PACKED_FLOAT64_ARRAY.
+	&VariantInitializer<PackedStringArray>::init, // PACKED_STRING_ARRAY.
+	&VariantInitializer<PackedVector2Array>::init, // PACKED_VECTOR2_ARRAY.
+	&VariantInitializer<PackedVector3Array>::init, // PACKED_VECTOR3_ARRAY.
+	&VariantInitializer<PackedColorArray>::init, // PACKED_COLOR_ARRAY.
+};
+
 #if defined(__GNUC__)
 #define OPCODES_TABLE                                \
 	static const void *switch_table_ops[] = {        \
@@ -196,6 +234,7 @@ String GDScriptFunction::_get_call_error(const Callable::CallError &p_err, const
 		&&OPCODE_CALL_SELF_BASE,                     \
 		&&OPCODE_CALL_METHOD_BIND,                   \
 		&&OPCODE_CALL_METHOD_BIND_RET,               \
+		&&OPCODE_CALL_BUILTIN_STATIC,                \
 		&&OPCODE_CALL_PTRCALL_NO_RETURN,             \
 		&&OPCODE_CALL_PTRCALL_BOOL,                  \
 		&&OPCODE_CALL_PTRCALL_INT,                   \
@@ -490,6 +529,10 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 	}
 
 	memnew_placement(&stack[ADDR_STACK_CLASS], Variant(script));
+
+	for (const Map<int, Variant::Type>::Element *E = temporary_slots.front(); E; E = E->next()) {
+		type_init_function_table[E->get()](&stack[E->key()]);
+	}
 
 	String err_text;
 
@@ -1573,6 +1616,51 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 			}
 			DISPATCH_OPCODE;
 
+			OPCODE(OPCODE_CALL_BUILTIN_STATIC) {
+				CHECK_SPACE(4 + instr_arg_count);
+
+				ip += instr_arg_count;
+
+				GD_ERR_BREAK(_code_ptr[ip + 1] < 0 || _code_ptr[ip + 1] >= Variant::VARIANT_MAX);
+				Variant::Type builtin_type = (Variant::Type)_code_ptr[ip + 1];
+
+				int methodname_idx = _code_ptr[ip + 2];
+				GD_ERR_BREAK(methodname_idx < 0 || methodname_idx >= _global_names_count);
+				const StringName *methodname = &_global_names_ptr[methodname_idx];
+
+				int argc = _code_ptr[ip + 3];
+				GD_ERR_BREAK(argc < 0);
+
+				GET_INSTRUCTION_ARG(ret, argc);
+
+				const Variant **argptrs = const_cast<const Variant **>(instruction_args);
+
+#ifdef DEBUG_ENABLED
+				uint64_t call_time = 0;
+
+				if (GDScriptLanguage::get_singleton()->profiling) {
+					call_time = OS::get_singleton()->get_ticks_usec();
+				}
+#endif
+
+				Callable::CallError err;
+				Variant::call_static(builtin_type, *methodname, argptrs, argc, *ret, err);
+
+#ifdef DEBUG_ENABLED
+				if (GDScriptLanguage::get_singleton()->profiling) {
+					function_call_time += OS::get_singleton()->get_ticks_usec() - call_time;
+				}
+
+				if (err.error != Callable::CallError::CALL_OK) {
+					err_text = _get_call_error(err, "static function '" + methodname->operator String() + "' in type '" + Variant::get_type_name(builtin_type) + "'", argptrs);
+					OPCODE_BREAK;
+				}
+#endif
+
+				ip += 4;
+			}
+			DISPATCH_OPCODE;
+
 #ifdef DEBUG_ENABLED
 #define OPCODE_CALL_PTR(m_type)                                                      \
 	OPCODE(OPCODE_CALL_PTRCALL_##m_type) {                                           \
@@ -1882,7 +1970,7 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 #ifdef DEBUG_ENABLED
 				if (err.error != Callable::CallError::CALL_OK) {
 					// TODO: Add this information in debug.
-					String methodstr = "<unkown function>";
+					String methodstr = "<unknown function>";
 					if (dst->get_type() == Variant::STRING) {
 						// Call provided error string.
 						err_text = "Error calling GDScript utility function '" + methodstr + "': " + String(*dst);

@@ -5,6 +5,7 @@
 	</brief_description>
 	<description>
 		TextEdit is meant for editing large, multiline text. It also has facilities for editing code, such as syntax highlighting support and multiple levels of undo/redo.
+		[b]Note:[/b] When holding down [kbd]Alt[/kbd], the vertical scroll wheel will scroll 5 times as fast as it would normally do. This also works in the Godot script editor.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -127,6 +128,13 @@
 				Folds the given line, if possible (see [method can_fold]).
 			</description>
 		</method>
+		<method name="get_caret_draw_pos" qualifiers="const">
+			<return type="Vector2">
+			</return>
+			<description>
+				Gets the caret pixel draw poistion.
+			</description>
+		</method>
 		<method name="get_gutter_count" qualifiers="const">
 			<return type="int">
 			</return>
@@ -164,6 +172,15 @@
 			</argument>
 			<description>
 				Returns the text of a specific line.
+			</description>
+		</method>
+		<method name="get_line_background_color">
+			<return type="Color">
+			</return>
+			<argument index="0" name="line" type="int">
+			</argument>
+			<description>
+				Returns the current background color of the line. [code]Color(0, 0, 0, 0)[/code] is returned if no color is set.
 			</description>
 		</method>
 		<method name="get_line_count" qualifiers="const">
@@ -282,6 +299,13 @@
 				Returns the selection end line.
 			</description>
 		</method>
+		<method name="get_visible_line_count" qualifiers="const">
+			<return type="int">
+			</return>
+			<description>
+				Returns the number of visible lines, including wrapped text.
+			</description>
+		</method>
 		<method name="get_word_under_cursor" qualifiers="const">
 			<return type="String">
 			</return>
@@ -296,6 +320,13 @@
 			</argument>
 			<description>
 				Insert the specified text at the cursor position.
+			</description>
+		</method>
+		<method name="is_caret_visible" qualifiers="const">
+			<return type="bool">
+			</return>
+			<description>
+				Returns [code]true[/code] if the caret is visible on the screen.
 			</description>
 		</method>
 		<method name="is_folded" qualifiers="const">
@@ -540,6 +571,17 @@
 				If [code]true[/code], hides the line of the specified index.
 			</description>
 		</method>
+		<method name="set_line_background_color">
+			<return type="void">
+			</return>
+			<argument index="0" name="line" type="int">
+			</argument>
+			<argument index="1" name="color" type="Color">
+			</argument>
+			<description>
+				Sets the current background color of the line. Set to [code]Color(0, 0, 0, 0)[/code] for no color.
+			</description>
+		</method>
 		<method name="set_line_gutter_clickable">
 			<return type="void">
 			</return>
@@ -714,10 +756,10 @@
 			If [code]true[/code], read-only mode is enabled. Existing text cannot be modified and new text cannot be added.
 		</member>
 		<member name="scroll_horizontal" type="int" setter="set_h_scroll" getter="get_h_scroll" default="0">
-			If there is a horizontal scrollbar this determines the current horizontal scroll value in pixels.
+			If there is a horizontal scrollbar, this determines the current horizontal scroll value in pixels.
 		</member>
 		<member name="scroll_vertical" type="float" setter="set_v_scroll" getter="get_v_scroll" default="0.0">
-			If there is a vertical scrollbar this determines the current vertical scroll value in line numbers, starting at 0 for the top line.
+			If there is a vertical scrollbar, this determines the current vertical scroll value in line numbers, starting at 0 for the top line.
 		</member>
 		<member name="selecting_enabled" type="bool" setter="set_selecting_enabled" getter="is_selecting_enabled" default="true">
 			If [code]true[/code], text can be selected.
@@ -781,10 +823,6 @@
 			</argument>
 			<argument index="1" name="to_line" type="int">
 			</argument>
-			<description>
-			</description>
-		</signal>
-		<signal name="request_completion">
 			<description>
 			</description>
 		</signal>
@@ -936,24 +974,6 @@
 		</theme_item>
 		<theme_item name="code_folding_color" type="Color" default="Color( 0.8, 0.8, 0.8, 0.8 )">
 		</theme_item>
-		<theme_item name="completion" type="StyleBox">
-		</theme_item>
-		<theme_item name="completion_background_color" type="Color" default="Color( 0.17, 0.16, 0.2, 1 )">
-		</theme_item>
-		<theme_item name="completion_existing_color" type="Color" default="Color( 0.87, 0.87, 0.87, 0.13 )">
-		</theme_item>
-		<theme_item name="completion_font_color" type="Color" default="Color( 0.67, 0.67, 0.67, 1 )">
-		</theme_item>
-		<theme_item name="completion_lines" type="int" default="7">
-		</theme_item>
-		<theme_item name="completion_max_width" type="int" default="50">
-		</theme_item>
-		<theme_item name="completion_scroll_color" type="Color" default="Color( 1, 1, 1, 1 )">
-		</theme_item>
-		<theme_item name="completion_scroll_width" type="int" default="3">
-		</theme_item>
-		<theme_item name="completion_selected_color" type="Color" default="Color( 0.26, 0.26, 0.27, 1 )">
-		</theme_item>
 		<theme_item name="current_line_color" type="Color" default="Color( 0.25, 0.25, 0.26, 0.8 )">
 			Sets the [Color] of the breakpoints. [member breakpoint_gutter] has to be enabled.
 		</theme_item>
@@ -978,9 +998,6 @@
 		</theme_item>
 		<theme_item name="line_spacing" type="int" default="4">
 			Sets the spacing between the lines.
-		</theme_item>
-		<theme_item name="mark_color" type="Color" default="Color( 1, 0.4, 0.4, 0.4 )">
-			Sets the [Color] of marked text.
 		</theme_item>
 		<theme_item name="normal" type="StyleBox">
 			Sets the [StyleBox] of this [TextEdit].

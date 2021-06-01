@@ -798,6 +798,7 @@ public:
 
 	Error export_preset(const String &p_preset, const String &p_path, bool p_debug, bool p_pack_only);
 
+	static void register_editor_paths(bool p_for_project_manager);
 	static void register_editor_types();
 	static void unregister_editor_types();
 
@@ -855,7 +856,7 @@ public:
 
 	void notify_settings_changed();
 
-	void dim_editor(bool p_dimming, bool p_force_dim = false);
+	void dim_editor(bool p_dimming);
 	bool is_editor_dimmed() const;
 
 	void edit_current() { _edit_current(); };

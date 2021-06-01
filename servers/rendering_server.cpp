@@ -873,10 +873,10 @@ Error RenderingServer::mesh_create_surface_data_from_arrays(SurfaceData *r_surfa
 		} else if (i == RS::ARRAY_BONES) {
 			switch (p_arrays[i].get_type()) {
 				case Variant::PACKED_INT32_ARRAY: {
-					Vector<Vector3> vertexes = p_arrays[RS::ARRAY_VERTEX];
+					Vector<Vector3> vertices = p_arrays[RS::ARRAY_VERTEX];
 					Vector<int32_t> bones = p_arrays[i];
 					int32_t bone_8_group_count = bones.size() / (ARRAY_WEIGHTS_SIZE * 2);
-					int32_t vertex_count = vertexes.size();
+					int32_t vertex_count = vertices.size();
 					if (vertex_count == bone_8_group_count) {
 						format |= RS::ARRAY_FLAG_USE_8_BONE_WEIGHTS;
 					}
@@ -2305,6 +2305,12 @@ RenderingServer::RenderingServer() {
 			PropertyInfo(Variant::INT,
 					"rendering/vulkan/rendering/back_end",
 					PROPERTY_HINT_ENUM, "ForwardClustered,ForwardMobile"));
+
+	GLOBAL_DEF("rendering/shader_compiler/shader_cache/enabled", true);
+	GLOBAL_DEF("rendering/shader_compiler/shader_cache/compress", true);
+	GLOBAL_DEF("rendering/shader_compiler/shader_cache/use_zstd_compression", true);
+	GLOBAL_DEF("rendering/shader_compiler/shader_cache/strip_debug", false);
+	GLOBAL_DEF("rendering/shader_compiler/shader_cache/strip_debug.release", true);
 
 	GLOBAL_DEF("rendering/reflections/sky_reflections/roughness_layers", 8);
 	GLOBAL_DEF("rendering/reflections/sky_reflections/texture_array_reflections", true);

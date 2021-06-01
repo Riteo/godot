@@ -475,7 +475,7 @@ void EditorHelp::_update_doc() {
 			String linktxt = (cd.tutorials[i].title.is_empty()) ? link : DTR(cd.tutorials[i].title);
 			const int seppos = linktxt.find("//");
 			if (seppos != -1) {
-				linktxt = link.right(seppos + 2);
+				linktxt = link.substr(seppos + 2);
 			}
 
 			class_desc->push_color(symbol_color);
@@ -1593,7 +1593,7 @@ void EditorHelp::_notification(int p_what) {
 			_update_doc();
 		} break;
 		case NOTIFICATION_THEME_CHANGED: {
-			if (is_visible_in_tree()) {
+			if (is_inside_tree()) {
 				_class_desc_resized();
 			}
 		} break;

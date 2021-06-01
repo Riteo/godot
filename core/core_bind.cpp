@@ -390,7 +390,7 @@ int64_t _OS::get_unix_time_from_datetime(Dictionary datetime) const {
 	unsigned int hour = ((datetime.has(HOUR_KEY)) ? static_cast<unsigned int>(datetime[HOUR_KEY]) : 0);
 	unsigned int day = ((datetime.has(DAY_KEY)) ? static_cast<unsigned int>(datetime[DAY_KEY]) : 1);
 	unsigned int month = ((datetime.has(MONTH_KEY)) ? static_cast<unsigned int>(datetime[MONTH_KEY]) : 1);
-	unsigned int year = ((datetime.has(YEAR_KEY)) ? static_cast<unsigned int>(datetime[YEAR_KEY]) : 0);
+	unsigned int year = ((datetime.has(YEAR_KEY)) ? static_cast<unsigned int>(datetime[YEAR_KEY]) : 1970);
 
 	/// How many days come before each month (0-12)
 	static const unsigned short int DAYS_PAST_THIS_YEAR_TABLE[2][13] = {
@@ -401,15 +401,14 @@ int64_t _OS::get_unix_time_from_datetime(Dictionary datetime) const {
 	};
 
 	ERR_FAIL_COND_V_MSG(second > 59, 0, "Invalid second value of: " + itos(second) + ".");
-
 	ERR_FAIL_COND_V_MSG(minute > 59, 0, "Invalid minute value of: " + itos(minute) + ".");
-
 	ERR_FAIL_COND_V_MSG(hour > 23, 0, "Invalid hour value of: " + itos(hour) + ".");
-
+	ERR_FAIL_COND_V_MSG(year == 0, 0, "Years before 1 AD are not supported. Value passed: " + itos(year) + ".");
 	ERR_FAIL_COND_V_MSG(month > 12 || month == 0, 0, "Invalid month value of: " + itos(month) + ".");
-
 	// Do this check after month is tested as valid
-	ERR_FAIL_COND_V_MSG(day > MONTH_DAYS_TABLE[LEAPYEAR(year)][month - 1] || day == 0, 0, "Invalid day value of '" + itos(day) + "' which is larger than '" + itos(MONTH_DAYS_TABLE[LEAPYEAR(year)][month - 1]) + "' or 0.");
+	unsigned int days_in_month = MONTH_DAYS_TABLE[LEAPYEAR(year)][month - 1];
+	ERR_FAIL_COND_V_MSG(day == 0 || day > days_in_month, 0, "Invalid day value of: " + itos(day) + ". It should be comprised between 1 and " + itos(days_in_month) + " for month " + itos(month) + ".");
+
 	// Calculate all the seconds from months past in this year
 	uint64_t SECONDS_FROM_MONTHS_PAST_THIS_YEAR = DAYS_PAST_THIS_YEAR_TABLE[LEAPYEAR(year)][month - 1] * SECONDS_PER_DAY;
 
@@ -1259,6 +1258,7 @@ String _File::get_path_absolute() const {
 
 void _File::seek(int64_t p_position) {
 	ERR_FAIL_COND_MSG(!f, "File must be opened before use.");
+	ERR_FAIL_COND_MSG(p_position < 0, "Seek position must be a positive integer.");
 	f->seek(p_position);
 }
 
@@ -1267,14 +1267,14 @@ void _File::seek_end(int64_t p_position) {
 	f->seek_end(p_position);
 }
 
-int64_t _File::get_position() const {
+uint64_t _File::get_position() const {
 	ERR_FAIL_COND_V_MSG(!f, 0, "File must be opened before use.");
 	return f->get_position();
 }
 
-int64_t _File::get_len() const {
+uint64_t _File::get_length() const {
 	ERR_FAIL_COND_V_MSG(!f, 0, "File must be opened before use.");
-	return f->get_len();
+	return f->get_length();
 }
 
 bool _File::eof_reached() const {
@@ -1317,7 +1317,7 @@ real_t _File::get_real() const {
 	return f->get_real();
 }
 
-Vector<uint8_t> _File::get_buffer(int p_length) const {
+Vector<uint8_t> _File::get_buffer(int64_t p_length) const {
 	Vector<uint8_t> data;
 	ERR_FAIL_COND_V_MSG(!f, data, "File must be opened before use.");
 
@@ -1330,8 +1330,7 @@ Vector<uint8_t> _File::get_buffer(int p_length) const {
 	ERR_FAIL_COND_V_MSG(err != OK, data, "Can't resize data to " + itos(p_length) + " elements.");
 
 	uint8_t *w = data.ptrw();
-	int len = f->get_buffer(&w[0], p_length);
-	ERR_FAIL_COND_V(len < 0, Vector<uint8_t>());
+	int64_t len = f->get_buffer(&w[0], p_length);
 
 	if (len < p_length) {
 		data.resize(len);
@@ -1344,7 +1343,7 @@ String _File::get_as_text() const {
 	ERR_FAIL_COND_V_MSG(!f, String(), "File must be opened before use.");
 
 	String text;
-	size_t original_pos = f->get_position();
+	uint64_t original_pos = f->get_position();
 	f->seek(0);
 
 	String l = get_line();
@@ -1473,7 +1472,7 @@ void _File::store_csv_line(const Vector<String> &p_values, const String &p_delim
 void _File::store_buffer(const Vector<uint8_t> &p_buffer) {
 	ERR_FAIL_COND_MSG(!f, "File must be opened before use.");
 
-	int len = p_buffer.size();
+	uint64_t len = p_buffer.size();
 	if (len == 0) {
 		return;
 	}
@@ -1537,7 +1536,7 @@ void _File::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("seek", "position"), &_File::seek);
 	ClassDB::bind_method(D_METHOD("seek_end", "position"), &_File::seek_end, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("get_position"), &_File::get_position);
-	ClassDB::bind_method(D_METHOD("get_len"), &_File::get_len);
+	ClassDB::bind_method(D_METHOD("get_length"), &_File::get_length);
 	ClassDB::bind_method(D_METHOD("eof_reached"), &_File::eof_reached);
 	ClassDB::bind_method(D_METHOD("get_8"), &_File::get_8);
 	ClassDB::bind_method(D_METHOD("get_16"), &_File::get_16);
@@ -1546,7 +1545,7 @@ void _File::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_float"), &_File::get_float);
 	ClassDB::bind_method(D_METHOD("get_double"), &_File::get_double);
 	ClassDB::bind_method(D_METHOD("get_real"), &_File::get_real);
-	ClassDB::bind_method(D_METHOD("get_buffer", "len"), &_File::get_buffer);
+	ClassDB::bind_method(D_METHOD("get_buffer", "length"), &_File::get_buffer);
 	ClassDB::bind_method(D_METHOD("get_line"), &_File::get_line);
 	ClassDB::bind_method(D_METHOD("get_csv_line", "delim"), &_File::get_csv_line, DEFVAL(","));
 	ClassDB::bind_method(D_METHOD("get_as_text"), &_File::get_as_text);
@@ -1617,11 +1616,11 @@ bool _Directory::is_open() const {
 	return d && dir_open;
 }
 
-Error _Directory::list_dir_begin(bool p_skip_navigational, bool p_skip_hidden) {
+Error _Directory::list_dir_begin(bool p_show_navigational, bool p_show_hidden) {
 	ERR_FAIL_COND_V_MSG(!is_open(), ERR_UNCONFIGURED, "Directory must be opened before use.");
 
-	_list_skip_navigational = p_skip_navigational;
-	_list_skip_hidden = p_skip_hidden;
+	_list_skip_navigational = !p_show_navigational;
+	_list_skip_hidden = !p_show_hidden;
 
 	return d->list_dir_begin();
 }
@@ -1721,9 +1720,9 @@ bool _Directory::dir_exists(String p_dir) {
 	return d->dir_exists(p_dir);
 }
 
-int _Directory::get_space_left() {
-	ERR_FAIL_COND_V_MSG(!is_open(), 0, "Directory must be opened before use.");
-	return d->get_space_left() / 1024 * 1024; //return value in megabytes, given binding is int
+uint64_t _Directory::get_space_left() {
+	ERR_FAIL_COND_V_MSG(!d, 0, "Directory must be opened before use.");
+	return d->get_space_left() / 1024 * 1024; // Truncate to closest MiB.
 }
 
 Error _Directory::copy(String p_from, String p_to) {
@@ -1759,7 +1758,7 @@ Error _Directory::remove(String p_name) {
 
 void _Directory::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("open", "path"), &_Directory::open);
-	ClassDB::bind_method(D_METHOD("list_dir_begin", "skip_navigational", "skip_hidden"), &_Directory::list_dir_begin, DEFVAL(false), DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("list_dir_begin", "show_navigational", "show_hidden"), &_Directory::list_dir_begin, DEFVAL(false), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("get_next"), &_Directory::get_next);
 	ClassDB::bind_method(D_METHOD("current_is_dir"), &_Directory::current_is_dir);
 	ClassDB::bind_method(D_METHOD("list_dir_end"), &_Directory::list_dir_end);

@@ -302,7 +302,7 @@ void FindReplaceBar::_replace_all() {
 	matches_label->add_theme_color_override("font_color", rc > 0 ? get_theme_color("font_color", "Label") : get_theme_color("error_color", "Editor"));
 	matches_label->set_text(vformat(TTR("%d replaced."), rc));
 
-	text_editor->call_deferred("connect", "text_changed", Callable(this, "_editor_text_changed"));
+	text_editor->call_deferred("connect", "text_changed", callable_mp(this, &FindReplaceBar::_editor_text_changed));
 	results_count = -1;
 }
 
@@ -726,7 +726,7 @@ void CodeTextEditor::_text_editor_gui_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventMouseButton> mb = p_event;
 
 	if (mb.is_valid()) {
-		if (mb->is_pressed() && mb->get_command()) {
+		if (mb->is_pressed() && mb->is_command_pressed()) {
 			if (mb->get_button_index() == MOUSE_BUTTON_WHEEL_UP) {
 				_zoom_in();
 			} else if (mb->get_button_index() == MOUSE_BUTTON_WHEEL_DOWN) {
@@ -816,12 +816,12 @@ void CodeTextEditor::_code_complete_timer_timeout() {
 	if (!is_visible_in_tree()) {
 		return;
 	}
-	text_editor->query_code_comple();
+	text_editor->request_code_completion();
 }
 
 void CodeTextEditor::_complete_request() {
 	List<ScriptCodeCompletionOption> entries;
-	String ctext = text_editor->get_text_for_completion();
+	String ctext = text_editor->get_text_for_code_completion();
 	_code_complete_script(ctext, &entries);
 	bool forced = false;
 	if (code_complete_func) {
@@ -832,16 +832,17 @@ void CodeTextEditor::_complete_request() {
 	}
 
 	for (List<ScriptCodeCompletionOption>::Element *E = entries.front(); E; E = E->next()) {
-		ScriptCodeCompletionOption *e = &E->get();
-		e->icon = _get_completion_icon(*e);
-		e->font_color = completion_font_color;
-		if (e->insert_text.begins_with("\"") || e->insert_text.begins_with("\'")) {
-			e->font_color = completion_string_color;
-		} else if (e->insert_text.begins_with("#") || e->insert_text.begins_with("//")) {
-			e->font_color = completion_comment_color;
+		ScriptCodeCompletionOption &e = E->get();
+
+		Color font_color = completion_font_color;
+		if (e.insert_text.begins_with("\"") || e.insert_text.begins_with("\'")) {
+			font_color = completion_string_color;
+		} else if (e.insert_text.begins_with("#") || e.insert_text.begins_with("//")) {
+			font_color = completion_comment_color;
 		}
+		text_editor->add_code_completion_option((CodeEdit::CodeCompletionKind)e.kind, e.display, e.insert_text, font_color, _get_completion_icon(e), e.default_value);
 	}
-	text_editor->code_complete(entries, forced);
+	text_editor->update_code_completion_options(forced);
 }
 
 Ref<Texture2D> CodeTextEditor::_get_completion_icon(const ScriptCodeCompletionOption &p_option) {
@@ -1012,7 +1013,7 @@ void CodeTextEditor::convert_indent_to_spaces() {
 				if (cursor_line == i && cursor_column > j) {
 					cursor_column += indent_size - 1;
 				}
-				line = line.left(j) + indent + line.right(j + 1);
+				line = line.left(j) + indent + line.substr(j + 1);
 			}
 			j++;
 		}
@@ -1056,7 +1057,7 @@ void CodeTextEditor::convert_indent_to_tabs() {
 					if (cursor_line == i && cursor_column > j) {
 						cursor_column -= indent_size;
 					}
-					line = line.left(j - indent_size) + "\t" + line.right(j + 1);
+					line = line.left(j - indent_size) + "\t" + line.substr(j + 1);
 					j = 0;
 					space_count = -1;
 				}
@@ -1114,7 +1115,7 @@ void CodeTextEditor::convert_case(CaseStyle p_case) {
 			new_line = text_editor->get_line(i).left(begin_col) + new_line;
 		}
 		if (i == end) {
-			new_line = new_line + text_editor->get_line(i).right(end_col);
+			new_line = new_line + text_editor->get_line(i).substr(end_col);
 		}
 		text_editor->set_line(i, new_line);
 	}
@@ -1474,6 +1475,34 @@ void CodeTextEditor::goto_error() {
 	}
 }
 
+void CodeTextEditor::_update_text_editor_theme() {
+	text_editor->add_theme_color_override("background_color", EDITOR_GET("text_editor/highlighting/background_color"));
+	text_editor->add_theme_color_override("completion_background_color", EDITOR_GET("text_editor/highlighting/completion_background_color"));
+	text_editor->add_theme_color_override("completion_selected_color", EDITOR_GET("text_editor/highlighting/completion_selected_color"));
+	text_editor->add_theme_color_override("completion_existing_color", EDITOR_GET("text_editor/highlighting/completion_existing_color"));
+	text_editor->add_theme_color_override("completion_scroll_color", EDITOR_GET("text_editor/highlighting/completion_scroll_color"));
+	text_editor->add_theme_color_override("completion_font_color", EDITOR_GET("text_editor/highlighting/completion_font_color"));
+	text_editor->add_theme_color_override("font_color", EDITOR_GET("text_editor/highlighting/text_color"));
+	text_editor->add_theme_color_override("line_number_color", EDITOR_GET("text_editor/highlighting/line_number_color"));
+	text_editor->add_theme_color_override("caret_color", EDITOR_GET("text_editor/highlighting/caret_color"));
+	text_editor->add_theme_color_override("caret_background_color", EDITOR_GET("text_editor/highlighting/caret_background_color"));
+	text_editor->add_theme_color_override("font_selected_color", EDITOR_GET("text_editor/highlighting/text_selected_color"));
+	text_editor->add_theme_color_override("selection_color", EDITOR_GET("text_editor/highlighting/selection_color"));
+	text_editor->add_theme_color_override("brace_mismatch_color", EDITOR_GET("text_editor/highlighting/brace_mismatch_color"));
+	text_editor->add_theme_color_override("current_line_color", EDITOR_GET("text_editor/highlighting/current_line_color"));
+	text_editor->add_theme_color_override("line_length_guideline_color", EDITOR_GET("text_editor/highlighting/line_length_guideline_color"));
+	text_editor->add_theme_color_override("word_highlighted_color", EDITOR_GET("text_editor/highlighting/word_highlighted_color"));
+	text_editor->add_theme_color_override("bookmark_color", EDITOR_GET("text_editor/highlighting/bookmark_color"));
+	text_editor->add_theme_color_override("breakpoint_color", EDITOR_GET("text_editor/highlighting/breakpoint_color"));
+	text_editor->add_theme_color_override("executing_line_color", EDITOR_GET("text_editor/highlighting/executing_line_color"));
+	text_editor->add_theme_color_override("code_folding_color", EDITOR_GET("text_editor/highlighting/code_folding_color"));
+	text_editor->add_theme_color_override("search_result_color", EDITOR_GET("text_editor/highlighting/search_result_color"));
+	text_editor->add_theme_color_override("search_result_border_color", EDITOR_GET("text_editor/highlighting/search_result_border_color"));
+	text_editor->add_theme_constant_override("line_spacing", EDITOR_DEF("text_editor/theme/line_spacing", 6));
+	emit_signal("load_theme_settings");
+	_load_theme_settings();
+}
+
 void CodeTextEditor::_update_font() {
 	text_editor->add_theme_font_override("font", get_theme_font("source", "EditorFonts"));
 	text_editor->add_theme_font_size_override("font_size", get_theme_font_size("source_size", "EditorFonts"));
@@ -1497,6 +1526,7 @@ void CodeTextEditor::_update_font() {
 }
 
 void CodeTextEditor::_on_settings_change() {
+	_update_text_editor_theme();
 	_update_font();
 
 	font_size = EditorSettings::get_singleton()->get("interface/editor/code_font_size");
@@ -1534,9 +1564,7 @@ void CodeTextEditor::_on_settings_change() {
 			EDITOR_GET("text_editor/completion/code_complete_delay"));
 
 	// Call hint settings.
-	text_editor->set_callhint_settings(
-			EDITOR_GET("text_editor/completion/put_callhint_tooltip_below_current_line"),
-			EDITOR_GET("text_editor/completion/callhint_tooltip_offset"));
+	text_editor->set_code_hint_draw_below(EDITOR_GET("text_editor/completion/put_callhint_tooltip_below_current_line"));
 
 	idle->set_wait_time(EDITOR_GET("text_editor/completion/idle_parse_delay"));
 }
@@ -1583,14 +1611,11 @@ void CodeTextEditor::_error_pressed(const Ref<InputEvent> &p_event) {
 
 void CodeTextEditor::_notification(int p_what) {
 	switch (p_what) {
-		case EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {
-			_load_theme_settings();
-			emit_signal("load_theme_settings");
-		} break;
 		case NOTIFICATION_THEME_CHANGED: {
 			if (toggle_scripts_button->is_visible()) {
 				update_toggle_scripts_button();
 			}
+			_update_text_editor_theme();
 			_update_font();
 		} break;
 		case NOTIFICATION_ENTER_TREE: {
@@ -1821,15 +1846,17 @@ CodeTextEditor::CodeTextEditor() {
 	text_editor->connect("gui_input", callable_mp(this, &CodeTextEditor::_text_editor_gui_input));
 	text_editor->connect("cursor_changed", callable_mp(this, &CodeTextEditor::_line_col_changed));
 	text_editor->connect("text_changed", callable_mp(this, &CodeTextEditor::_text_changed));
-	text_editor->connect("request_completion", callable_mp(this, &CodeTextEditor::_complete_request));
-	Vector<String> cs;
+	text_editor->connect("request_code_completion", callable_mp(this, &CodeTextEditor::_complete_request));
+	TypedArray<String> cs;
 	cs.push_back(".");
 	cs.push_back(",");
 	cs.push_back("(");
 	cs.push_back("=");
 	cs.push_back("$");
 	cs.push_back("@");
-	text_editor->set_completion(true, cs);
+	cs.push_back("\"");
+	cs.push_back("\'");
+	text_editor->set_code_completion_prefixes(cs);
 	idle->connect("timeout", callable_mp(this, &CodeTextEditor::_text_changed_idle_timeout));
 
 	code_complete_timer->connect("timeout", callable_mp(this, &CodeTextEditor::_code_complete_timer_timeout));

@@ -537,39 +537,44 @@ GDScriptCodeGenerator::Address GDScriptCompiler::_parse_expression(CodeGen &code
 						const GDScriptParser::SubscriptNode *subscript = static_cast<const GDScriptParser::SubscriptNode *>(call->callee);
 
 						if (subscript->is_attribute) {
-							GDScriptCodeGenerator::Address base = _parse_expression(codegen, r_error, subscript->base);
-							if (r_error) {
-								return GDScriptCodeGenerator::Address();
-							}
-							if (within_await) {
-								gen->write_call_async(result, base, call->function_name, arguments);
-							} else if (base.type.has_type && base.type.kind != GDScriptDataType::BUILTIN) {
-								// Native method, use faster path.
-								StringName class_name;
-								if (base.type.kind == GDScriptDataType::NATIVE) {
-									class_name = base.type.native_type;
-								} else {
-									class_name = base.type.native_type == StringName() ? base.type.script_type->get_instance_base_type() : base.type.native_type;
+							// May be static built-in method call.
+							if (!call->is_super && subscript->base->type == GDScriptParser::Node::IDENTIFIER && GDScriptParser::get_builtin_type(static_cast<GDScriptParser::IdentifierNode *>(subscript->base)->name) < Variant::VARIANT_MAX) {
+								gen->write_call_builtin_type_static(result, GDScriptParser::get_builtin_type(static_cast<GDScriptParser::IdentifierNode *>(subscript->base)->name), subscript->attribute->name, arguments);
+							} else {
+								GDScriptCodeGenerator::Address base = _parse_expression(codegen, r_error, subscript->base);
+								if (r_error) {
+									return GDScriptCodeGenerator::Address();
 								}
-								if (ClassDB::class_exists(class_name) && ClassDB::has_method(class_name, call->function_name)) {
-									MethodBind *method = ClassDB::get_method(class_name, call->function_name);
-									if (_have_exact_arguments(method, arguments)) {
-										// Exact arguments, use ptrcall.
-										gen->write_call_ptrcall(result, base, method, arguments);
+								if (within_await) {
+									gen->write_call_async(result, base, call->function_name, arguments);
+								} else if (base.type.has_type && base.type.kind != GDScriptDataType::BUILTIN) {
+									// Native method, use faster path.
+									StringName class_name;
+									if (base.type.kind == GDScriptDataType::NATIVE) {
+										class_name = base.type.native_type;
 									} else {
-										// Not exact arguments, but still can use method bind call.
-										gen->write_call_method_bind(result, base, method, arguments);
+										class_name = base.type.native_type == StringName() ? base.type.script_type->get_instance_base_type() : base.type.native_type;
 									}
+									if (ClassDB::class_exists(class_name) && ClassDB::has_method(class_name, call->function_name)) {
+										MethodBind *method = ClassDB::get_method(class_name, call->function_name);
+										if (_have_exact_arguments(method, arguments)) {
+											// Exact arguments, use ptrcall.
+											gen->write_call_ptrcall(result, base, method, arguments);
+										} else {
+											// Not exact arguments, but still can use method bind call.
+											gen->write_call_method_bind(result, base, method, arguments);
+										}
+									} else {
+										gen->write_call(result, base, call->function_name, arguments);
+									}
+								} else if (base.type.has_type && base.type.kind == GDScriptDataType::BUILTIN) {
+									gen->write_call_builtin_type(result, base, base.type.builtin_type, call->function_name, arguments);
 								} else {
 									gen->write_call(result, base, call->function_name, arguments);
 								}
-							} else if (base.type.has_type && base.type.kind == GDScriptDataType::BUILTIN) {
-								gen->write_call_builtin_type(result, base, base.type.builtin_type, call->function_name, arguments);
-							} else {
-								gen->write_call(result, base, call->function_name, arguments);
-							}
-							if (base.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
-								gen->pop_temporary();
+								if (base.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
+									gen->pop_temporary();
+								}
 							}
 						} else {
 							_set_error("Cannot call something that isn't a function.", call->callee);
@@ -966,6 +971,9 @@ GDScriptCodeGenerator::Address GDScriptCompiler::_parse_expression(CodeGen &code
 				} else {
 					gen->write_set(prev_base, key, assigned);
 				}
+				if (key.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
+					gen->pop_temporary();
+				}
 				if (assigned.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
 					gen->pop_temporary();
 				}
@@ -1076,7 +1084,11 @@ GDScriptCodeGenerator::Address GDScriptCompiler::_parse_expression(CodeGen &code
 					gen->write_call(GDScriptCodeGenerator::Address(), GDScriptCodeGenerator::Address(GDScriptCodeGenerator::Address::SELF), setter_function, args);
 				} else {
 					// Just assign.
-					gen->write_assign(target, op_result);
+					if (assignment->use_conversion_assign) {
+						gen->write_assign_with_conversion(target, op_result);
+					} else {
+						gen->write_assign(target, op_result);
+					}
 				}
 
 				if (op_result.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
@@ -1784,7 +1796,11 @@ Error GDScriptCompiler::_parse_block(CodeGen &codegen, const GDScriptParser::Sui
 					if (error) {
 						return error;
 					}
-					gen->write_assign(local, src_address);
+					if (lv->use_conversion_assign) {
+						gen->write_assign_with_conversion(local, src_address);
+					} else {
+						gen->write_assign(local, src_address);
+					}
 					if (src_address.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
 						codegen.generator->pop_temporary();
 					}
@@ -1922,7 +1938,11 @@ GDScriptFunction *GDScriptCompiler::_parse_function(Error &r_error, GDScript *p_
 					return nullptr;
 				}
 
-				codegen.generator->write_assign(dst_address, src_address);
+				if (field->use_conversion_assign) {
+					codegen.generator->write_assign_with_conversion(dst_address, src_address);
+				} else {
+					codegen.generator->write_assign(dst_address, src_address);
+				}
 				if (src_address.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
 					codegen.generator->pop_temporary();
 				}
@@ -2203,7 +2223,7 @@ Error GDScriptCompiler::_parse_class_level(GDScript *p_script, const GDScriptPar
 					if (err) {
 						return err;
 					}
-					if (base.is_null() && !base->is_valid()) {
+					if (base.is_null() || !base->is_valid()) {
 						return ERR_COMPILATION_FAILED;
 					}
 				}

@@ -530,7 +530,7 @@ void FindInFilesDialog::_on_replace_text_entered(String text) {
 void FindInFilesDialog::_on_folder_selected(String path) {
 	int i = path.find("://");
 	if (i != -1) {
-		path = path.right(i + 3);
+		path = path.substr(i + 3);
 	}
 	_folder_line_edit->set_text(path);
 }
@@ -763,8 +763,10 @@ void FindInFilesPanel::draw_result_text(Object *item_obj, Rect2 rect) {
 	match_rect.position.y += 1 * EDSCALE;
 	match_rect.size.y -= 2 * EDSCALE;
 
-	_results_display->draw_rect(match_rect, Color(0, 0, 0, 0.5));
-	// Text is drawn by Tree already
+	// Use the inverted accent color to help match rectangles stand out even on the currently selected line.
+	_results_display->draw_rect(match_rect, get_theme_color("accent_color", "Editor").inverted() * Color(1, 1, 1, 0.5));
+
+	// Text is drawn by Tree already.
 }
 
 void FindInFilesPanel::_on_item_edited() {
@@ -838,7 +840,7 @@ void FindInFilesPanel::_on_replace_all_clicked() {
 		String fpath = file_item->get_metadata(0);
 
 		Vector<Result> locations;
-		for (TreeItem *item = file_item->get_children(); item; item = item->get_next()) {
+		for (TreeItem *item = file_item->get_first_child(); item; item = item->get_next()) {
 			if (!item->is_checked(0)) {
 				continue;
 			}
@@ -932,7 +934,7 @@ void FindInFilesPanel::apply_replaces_in_file(String fpath, const Vector<Result>
 			continue;
 		}
 
-		line = line.left(repl_begin) + new_text + line.right(repl_end);
+		line = line.left(repl_begin) + new_text + line.substr(repl_end);
 		// keep an offset in case there are successive replaces in the same line
 		offset += new_text.length() - (repl_end - repl_begin);
 	}

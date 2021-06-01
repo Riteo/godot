@@ -80,8 +80,10 @@
 #include "editor/editor_inspector.h"
 #include "editor/editor_layouts_dialog.h"
 #include "editor/editor_log.h"
+#include "editor/editor_paths.h"
 #include "editor/editor_plugin.h"
 #include "editor/editor_properties.h"
+#include "editor/editor_resource_picker.h"
 #include "editor/editor_resource_preview.h"
 #include "editor/editor_run_native.h"
 #include "editor/editor_run_script.h"
@@ -1456,7 +1458,7 @@ void EditorNode::_save_scene_with_preview(String p_file, int p_idx) {
 			img->convert(Image::FORMAT_RGB8);
 
 			//save thumbnail directly, as thumbnailer may not update due to actual scene not changing md5
-			String temp_path = EditorSettings::get_singleton()->get_cache_dir();
+			String temp_path = EditorPaths::get_singleton()->get_cache_dir();
 			String cache_base = ProjectSettings::get_singleton()->globalize_path(p_file).md5_text();
 			cache_base = temp_path.plus_file("resthumb-" + cache_base);
 
@@ -2744,10 +2746,10 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 			settings_config_dialog->popup_edit_settings();
 		} break;
 		case SETTINGS_EDITOR_DATA_FOLDER: {
-			OS::get_singleton()->shell_open(String("file://") + EditorSettings::get_singleton()->get_data_dir());
+			OS::get_singleton()->shell_open(String("file://") + EditorPaths::get_singleton()->get_data_dir());
 		} break;
 		case SETTINGS_EDITOR_CONFIG_FOLDER: {
-			OS::get_singleton()->shell_open(String("file://") + EditorSettings::get_singleton()->get_settings_dir());
+			OS::get_singleton()->shell_open(String("file://") + EditorPaths::get_singleton()->get_settings_dir());
 		} break;
 		case SETTINGS_MANAGE_EXPORT_TEMPLATES: {
 			export_template_manager->popup_manager();
@@ -2891,7 +2893,7 @@ void EditorNode::_exit_editor() {
 	_save_docks();
 
 	// Dim the editor window while it's quitting to make it clearer that it's busy
-	dim_editor(true, true);
+	dim_editor(true);
 
 	get_tree()->quit();
 }
@@ -3093,10 +3095,11 @@ void EditorNode::remove_editor_plugin(EditorPlugin *p_editor, bool p_config_chan
 	if (p_config_changed) {
 		p_editor->disable_plugin();
 	}
-	singleton->editor_plugins_over->get_plugins_list().erase(p_editor);
+	singleton->editor_plugins_over->remove_plugin(p_editor);
+	singleton->editor_plugins_force_over->remove_plugin(p_editor);
+	singleton->editor_plugins_force_input_forwarding->remove_plugin(p_editor);
 	singleton->remove_child(p_editor);
 	singleton->editor_data.remove_editor_plugin(p_editor);
-	singleton->get_editor_plugins_force_input_forwarding()->remove_plugin(p_editor);
 }
 
 void EditorNode::_update_addon_config() {
@@ -3165,7 +3168,7 @@ void EditorNode::set_addon_plugin_enabled(const String &p_addon, bool p_enabled,
 
 		// Errors in the script cause the base_type to be an empty string.
 		if (String(script->get_instance_base_type()) == "") {
-			show_warning(vformat(TTR("Unable to load addon script from path: '%s'. This might be due to a code error in that script. \nDisabling the addon at '%s' to prevent further errors."), script_path, p_addon));
+			show_warning(vformat(TTR("Unable to load addon script from path: '%s'. This might be due to a code error in that script.\nDisabling the addon at '%s' to prevent further errors."), script_path, p_addon));
 			_remove_plugin_from_enabled(p_addon);
 			return;
 		}
@@ -3725,10 +3728,15 @@ bool EditorNode::is_scene_in_use(const String &p_path) {
 	return false;
 }
 
+void EditorNode::register_editor_paths(bool p_for_project_manager) {
+	EditorPaths::create(p_for_project_manager);
+}
+
 void EditorNode::register_editor_types() {
 	ResourceLoader::set_timestamp_on_load(true);
 	ResourceSaver::set_timestamp_on_save(true);
 
+	ClassDB::register_class<EditorPaths>();
 	ClassDB::register_class<EditorPlugin>();
 	ClassDB::register_class<EditorTranslationParserPlugin>();
 	ClassDB::register_class<EditorImportPlugin>();
@@ -3757,6 +3765,8 @@ void EditorNode::register_editor_types() {
 	ClassDB::register_class<ScriptCreateDialog>();
 	ClassDB::register_class<EditorFeatureProfile>();
 	ClassDB::register_class<EditorSpinSlider>();
+	ClassDB::register_class<EditorResourcePicker>();
+	ClassDB::register_class<EditorScriptPicker>();
 	ClassDB::register_class<EditorSceneImporterMesh>();
 	ClassDB::register_class<EditorSceneImporterMeshNode3D>();
 
@@ -3770,6 +3780,9 @@ void EditorNode::register_editor_types() {
 
 void EditorNode::unregister_editor_types() {
 	_init_callbacks.clear();
+	if (EditorPaths::get_singleton()) {
+		EditorPaths::free();
+	}
 }
 
 void EditorNode::stop_child_process(OS::ProcessID p_pid) {
@@ -5288,7 +5301,7 @@ void EditorNode::_file_access_close_error_notify(const String &p_str) {
 
 void EditorNode::reload_scene(const String &p_path) {
 	/*
-	 * No longer necesary since scenes now reset and reload their internal resource if needed.
+	 * No longer necessary since scenes now reset and reload their internal resource if needed.
 	//first of all, reload internal textures, materials, meshes, etc. as they might have changed on disk
 
 	List<Ref<Resource>> cached;
@@ -5392,15 +5405,9 @@ void EditorNode::_open_imported() {
 	load_scene(open_import_request, true, false, true, true);
 }
 
-void EditorNode::dim_editor(bool p_dimming, bool p_force_dim) {
-	// Dimming can be forced regardless of the editor setting, which is useful when quitting the editor.
-	if ((p_force_dim || EditorSettings::get_singleton()->get("interface/editor/dim_editor_on_dialog_popup")) && p_dimming) {
-		dimmed = true;
-		gui_base->set_modulate(Color(0.5, 0.5, 0.5));
-	} else {
-		dimmed = false;
-		gui_base->set_modulate(Color(1, 1, 1));
-	}
+void EditorNode::dim_editor(bool p_dimming) {
+	dimmed = p_dimming;
+	gui_base->set_modulate(p_dimming ? Color(0.5, 0.5, 0.5) : Color(1, 1, 1));
 }
 
 bool EditorNode::is_editor_dimmed() const {
