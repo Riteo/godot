@@ -60,6 +60,20 @@ Variant VisualShaderNode::get_input_port_default_value(int p_port) const {
 	return Variant();
 }
 
+void VisualShaderNode::remove_input_port_default_value(int p_port) {
+	if (default_input_values.has(p_port)) {
+		default_input_values.erase(p_port);
+		emit_changed();
+	}
+}
+
+void VisualShaderNode::clear_default_input_values() {
+	if (!default_input_values.is_empty()) {
+		default_input_values.clear();
+		emit_changed();
+	}
+}
+
 bool VisualShaderNode::is_port_separator(int p_index) const {
 	return false;
 }
@@ -220,6 +234,9 @@ void VisualShaderNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_input_port_default_value", "port", "value"), &VisualShaderNode::set_input_port_default_value);
 	ClassDB::bind_method(D_METHOD("get_input_port_default_value", "port"), &VisualShaderNode::get_input_port_default_value);
 
+	ClassDB::bind_method(D_METHOD("remove_input_port_default_value", "port"), &VisualShaderNode::remove_input_port_default_value);
+	ClassDB::bind_method(D_METHOD("clear_default_input_values"), &VisualShaderNode::clear_default_input_values);
+
 	ClassDB::bind_method(D_METHOD("set_default_input_values", "values"), &VisualShaderNode::set_default_input_values);
 	ClassDB::bind_method(D_METHOD("get_default_input_values"), &VisualShaderNode::get_default_input_values);
 
@@ -370,6 +387,18 @@ void VisualShaderNodeCustom::set_input_port_default_value(int p_port, const Vari
 void VisualShaderNodeCustom::set_default_input_values(const Array &p_values) {
 	if (!is_initialized) {
 		VisualShaderNode::set_default_input_values(p_values);
+	}
+}
+
+void VisualShaderNodeCustom::remove_input_port_default_value(int p_port) {
+	if (!is_initialized) {
+		VisualShaderNode::remove_input_port_default_value(p_port);
+	}
+}
+
+void VisualShaderNodeCustom::clear_default_input_values() {
+	if (!is_initialized) {
+		VisualShaderNode::clear_default_input_values();
 	}
 }
 
@@ -1412,8 +1441,8 @@ Error VisualShader::_write_node(Type type, StringBuilder &global_code, StringBui
 				Vector3 val = defval;
 				inputs[i] = "n_in" + itos(node) + "p" + itos(i);
 				code += "\tvec3 " + inputs[i] + " = " + vformat("vec3(%.5f, %.5f, %.5f);\n", val.x, val.y, val.z);
-			} else if (defval.get_type() == Variant::TRANSFORM) {
-				Transform val = defval;
+			} else if (defval.get_type() == Variant::TRANSFORM3D) {
+				Transform3D val = defval;
 				val.basis.transpose();
 				inputs[i] = "n_in" + itos(node) + "p" + itos(i);
 				Array values;

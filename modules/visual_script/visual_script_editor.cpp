@@ -381,7 +381,7 @@ static Color _color_from_type(Variant::Type p_type, bool dark_theme = true) {
 			case Variant::PLANE:
 				color = Color(0.97, 0.44, 0.44);
 				break;
-			case Variant::QUAT:
+			case Variant::QUATERNION:
 				color = Color(0.93, 0.41, 0.64);
 				break;
 			case Variant::AABB:
@@ -390,7 +390,7 @@ static Color _color_from_type(Variant::Type p_type, bool dark_theme = true) {
 			case Variant::BASIS:
 				color = Color(0.89, 0.93, 0.41);
 				break;
-			case Variant::TRANSFORM:
+			case Variant::TRANSFORM3D:
 				color = Color(0.96, 0.66, 0.43);
 				break;
 
@@ -487,7 +487,7 @@ static Color _color_from_type(Variant::Type p_type, bool dark_theme = true) {
 			case Variant::PLANE:
 				color = Color(0.97, 0.44, 0.44);
 				break;
-			case Variant::QUAT:
+			case Variant::QUATERNION:
 				color = Color(0.93, 0.41, 0.64);
 				break;
 			case Variant::AABB:
@@ -496,7 +496,7 @@ static Color _color_from_type(Variant::Type p_type, bool dark_theme = true) {
 			case Variant::BASIS:
 				color = Color(0.7, 0.73, 0.1);
 				break;
-			case Variant::TRANSFORM:
+			case Variant::TRANSFORM3D:
 				color = Color(0.96, 0.56, 0.28);
 				break;
 
@@ -739,6 +739,7 @@ void VisualScriptEditor::_update_graph(int p_only_id) {
 			}
 
 			Color c = sbf->get_border_color();
+			c = ((c.r + c.g + c.b) / 3) < 0.7 ? Color(1.0, 1.0, 1.0, 0.85) : Color(0.0, 0.0, 0.0, 0.85);
 			Color ic = c;
 			gnode->add_theme_color_override("title_color", c);
 			c.a = 1;

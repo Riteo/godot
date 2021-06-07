@@ -185,8 +185,8 @@ void MobileVRInterface::set_position_from_sensors() {
 	// if you have a gyro + accelerometer that combo tends to be better than combining all three but without a gyro you need the magnetometer..
 	if (has_magneto && has_grav && !has_gyro) {
 		// convert to quaternions, easier to smooth those out
-		Quat transform_quat(orientation);
-		Quat acc_mag_quat(combine_acc_mag(grav, magneto));
+		Quaternion transform_quat(orientation);
+		Quaternion acc_mag_quat(combine_acc_mag(grav, magneto));
 		transform_quat = transform_quat.slerp(acc_mag_quat, 0.1);
 		orientation = Basis(transform_quat);
 
@@ -361,10 +361,10 @@ Size2 MobileVRInterface::get_render_targetsize() {
 	return target_size;
 };
 
-Transform MobileVRInterface::get_transform_for_eye(XRInterface::Eyes p_eye, const Transform &p_cam_transform) {
+Transform3D MobileVRInterface::get_transform_for_eye(XRInterface::Eyes p_eye, const Transform3D &p_cam_transform) {
 	_THREAD_SAFE_METHOD_
 
-	Transform transform_for_eye;
+	Transform3D transform_for_eye;
 
 	XRServer *xr_server = XRServer::get_singleton();
 	ERR_FAIL_NULL_V(xr_server, transform_for_eye);
@@ -383,7 +383,7 @@ Transform MobileVRInterface::get_transform_for_eye(XRInterface::Eyes p_eye, cons
 		};
 
 		// just scale our origin point of our transform
-		Transform hmd_transform;
+		Transform3D hmd_transform;
 		hmd_transform.basis = orientation;
 		hmd_transform.origin = Vector3(0.0, eye_height * world_scale, 0.0);
 

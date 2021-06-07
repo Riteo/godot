@@ -82,7 +82,7 @@ public:
 		RID env;
 		RID effects;
 
-		Transform transform;
+		Transform3D transform;
 
 		Camera() {
 			visible_layers = 0xFFFFFFFF;
@@ -104,7 +104,7 @@ public:
 	virtual void camera_set_perspective(RID p_camera, float p_fovy_degrees, float p_z_near, float p_z_far);
 	virtual void camera_set_orthogonal(RID p_camera, float p_size, float p_z_near, float p_z_far);
 	virtual void camera_set_frustum(RID p_camera, float p_size, Vector2 p_offset, float p_z_near, float p_z_far);
-	virtual void camera_set_transform(RID p_camera, const Transform &p_transform);
+	virtual void camera_set_transform(RID p_camera, const Transform3D &p_transform);
 	virtual void camera_set_cull_mask(RID p_camera, uint32_t p_layers);
 	virtual void camera_set_environment(RID p_camera, RID p_env);
 	virtual void camera_set_camera_effects(RID p_camera, RID p_fx);
@@ -253,7 +253,7 @@ public:
 			FLAG_GEOM_LIGHTING_DIRTY = (1 << 11),
 			FLAG_GEOM_REFLECTION_DIRTY = (1 << 12),
 			FLAG_GEOM_DECAL_DIRTY = (1 << 13),
-			FLAG_GEOM_GI_PROBE_DIRTY = (1 << 14),
+			FLAG_GEOM_VOXEL_GI_DIRTY = (1 << 14),
 			FLAG_LIGHTMAP_CAPTURE = (1 << 15),
 			FLAG_USES_BAKED_LIGHT = (1 << 16),
 			FLAG_USES_MESH_INSTANCE = (1 << 17),
@@ -353,7 +353,7 @@ public:
 
 		RID mesh_instance; //only used for meshes and when skeleton/blendshapes exist
 
-		Transform transform;
+		Transform3D transform;
 
 		float lod_bias;
 
@@ -535,7 +535,7 @@ public:
 
 		Set<Instance *> decals;
 		Set<Instance *> reflection_probes;
-		Set<Instance *> gi_probes;
+		Set<Instance *> voxel_gi_instances;
 		Set<Instance *> lightmap_captures;
 
 		InstanceGeometryData() {
@@ -599,7 +599,7 @@ public:
 		}
 	};
 
-	struct InstanceGIProbeData : public InstanceBaseData {
+	struct InstanceVoxelGIData : public InstanceBaseData {
 		Instance *owner;
 
 		Set<Instance *> geometries;
@@ -609,7 +609,7 @@ public:
 
 		struct LightCache {
 			RS::LightType type;
-			Transform transform;
+			Transform3D transform;
 			Color color;
 			float energy;
 			float bake_energy;
@@ -629,16 +629,16 @@ public:
 		bool invalid;
 		uint32_t base_version;
 
-		SelfList<InstanceGIProbeData> update_element;
+		SelfList<InstanceVoxelGIData> update_element;
 
-		InstanceGIProbeData() :
+		InstanceVoxelGIData() :
 				update_element(this) {
 			invalid = true;
 			base_version = 0;
 		}
 	};
 
-	SelfList<InstanceGIProbeData>::List gi_probe_update_list;
+	SelfList<InstanceVoxelGIData>::List voxel_gi_update_list;
 
 	struct InstanceLightmapData : public InstanceBaseData {
 		RID instance;
@@ -724,7 +724,7 @@ public:
 		PagedArray<RID> lightmaps;
 		PagedArray<RID> reflections;
 		PagedArray<RID> decals;
-		PagedArray<RID> gi_probes;
+		PagedArray<RID> voxel_gi_instances;
 		PagedArray<RID> mesh_instances;
 
 		struct DirectionalShadow {
@@ -741,7 +741,7 @@ public:
 			lightmaps.clear();
 			reflections.clear();
 			decals.clear();
-			gi_probes.clear();
+			voxel_gi_instances.clear();
 			mesh_instances.clear();
 			for (int i = 0; i < RendererSceneRender::MAX_DIRECTIONAL_LIGHTS; i++) {
 				for (int j = 0; j < RendererSceneRender::MAX_DIRECTIONAL_LIGHT_CASCADES; j++) {
@@ -765,7 +765,7 @@ public:
 			lightmaps.reset();
 			reflections.reset();
 			decals.reset();
-			gi_probes.reset();
+			voxel_gi_instances.reset();
 			mesh_instances.reset();
 			for (int i = 0; i < RendererSceneRender::MAX_DIRECTIONAL_LIGHTS; i++) {
 				for (int j = 0; j < RendererSceneRender::MAX_DIRECTIONAL_LIGHT_CASCADES; j++) {
@@ -789,7 +789,7 @@ public:
 			lightmaps.merge_unordered(p_cull_result.lightmaps);
 			reflections.merge_unordered(p_cull_result.reflections);
 			decals.merge_unordered(p_cull_result.decals);
-			gi_probes.merge_unordered(p_cull_result.gi_probes);
+			voxel_gi_instances.merge_unordered(p_cull_result.voxel_gi_instances);
 			mesh_instances.merge_unordered(p_cull_result.mesh_instances);
 
 			for (int i = 0; i < RendererSceneRender::MAX_DIRECTIONAL_LIGHTS; i++) {
@@ -814,7 +814,7 @@ public:
 			lightmaps.set_page_pool(p_rid_pool);
 			reflections.set_page_pool(p_rid_pool);
 			decals.set_page_pool(p_rid_pool);
-			gi_probes.set_page_pool(p_rid_pool);
+			voxel_gi_instances.set_page_pool(p_rid_pool);
 			mesh_instances.set_page_pool(p_rid_pool);
 			for (int i = 0; i < RendererSceneRender::MAX_DIRECTIONAL_LIGHTS; i++) {
 				for (int j = 0; j < RendererSceneRender::MAX_DIRECTIONAL_LIGHT_CASCADES; j++) {
@@ -853,7 +853,7 @@ public:
 	virtual void instance_set_base(RID p_instance, RID p_base);
 	virtual void instance_set_scenario(RID p_instance, RID p_scenario);
 	virtual void instance_set_layer_mask(RID p_instance, uint32_t p_mask);
-	virtual void instance_set_transform(RID p_instance, const Transform &p_transform);
+	virtual void instance_set_transform(RID p_instance, const Transform3D &p_transform);
 	virtual void instance_attach_object_instance_id(RID p_instance, ObjectID p_id);
 	virtual void instance_set_blend_shape_weight(RID p_instance, int p_shape, float p_weight);
 	virtual void instance_set_surface_override_material(RID p_instance, int p_surface, RID p_material);
@@ -893,9 +893,9 @@ public:
 	_FORCE_INLINE_ void _update_instance_lightmap_captures(Instance *p_instance);
 	void _unpair_instance(Instance *p_instance);
 
-	void _light_instance_setup_directional_shadow(int p_shadow_index, Instance *p_instance, const Transform p_cam_transform, const CameraMatrix &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect);
+	void _light_instance_setup_directional_shadow(int p_shadow_index, Instance *p_instance, const Transform3D p_cam_transform, const CameraMatrix &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect);
 
-	_FORCE_INLINE_ bool _light_instance_update_shadow(Instance *p_instance, const Transform p_cam_transform, const CameraMatrix &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect, RID p_shadow_atlas, Scenario *p_scenario, float p_scren_lod_threshold);
+	_FORCE_INLINE_ bool _light_instance_update_shadow(Instance *p_instance, const Transform3D p_cam_transform, const CameraMatrix &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect, RID p_shadow_atlas, Scenario *p_scenario, float p_scren_lod_threshold);
 
 	RID _render_get_environment(RID p_camera, RID p_scenario);
 
@@ -906,7 +906,7 @@ public:
 				Frustum frustum;
 
 				CameraMatrix projection;
-				Transform transform;
+				Transform3D transform;
 				real_t zfar;
 				real_t split;
 				real_t shadow_texel_size;
@@ -941,7 +941,7 @@ public:
 		Cull *cull;
 		Scenario *scenario;
 		RID shadow_atlas;
-		Transform cam_transform;
+		Transform3D cam_transform;
 		uint32_t visible_layers;
 		Instance *render_reflection_probe;
 		const RendererSceneOcclusionCull::HZBuffer *occlusion_buffer;
@@ -952,7 +952,7 @@ public:
 	void _frustum_cull(CullData &cull_data, FrustumCullResult &cull_result, uint64_t p_from, uint64_t p_to);
 
 	bool _render_reflection_probe_step(Instance *p_instance, int p_step);
-	void _render_scene(const Transform &p_cam_transform, const CameraMatrix &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect, RID p_render_buffers, RID p_environment, RID p_force_camera_effects, uint32_t p_visible_layers, RID p_scenario, RID p_viewport, RID p_shadow_atlas, RID p_reflection_probe, int p_reflection_probe_pass, float p_screen_lod_threshold, bool p_using_shadows = true);
+	void _render_scene(const Transform3D &p_cam_transform, const CameraMatrix &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect, RID p_render_buffers, RID p_environment, RID p_force_camera_effects, uint32_t p_visible_layers, RID p_scenario, RID p_viewport, RID p_shadow_atlas, RID p_reflection_probe, int p_reflection_probe_pass, float p_screen_lod_threshold, bool p_using_shadows = true);
 	void render_empty_scene(RID p_render_buffers, RID p_scenario, RID p_shadow_atlas);
 
 	void render_camera(RID p_render_buffers, RID p_camera, RID p_scenario, RID p_viewport, Size2 p_viewport_size, float p_screen_lod_threshold, RID p_shadow_atlas);
@@ -975,7 +975,7 @@ public:
 #define PASSBASE scene_render
 
 	PASS2(directional_shadow_atlas_set_size, int, bool)
-	PASS1(gi_probe_set_quality, RS::GIProbeQuality)
+	PASS1(voxel_gi_set_quality, RS::VoxelGIQuality)
 
 	/* SKY API */
 

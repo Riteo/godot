@@ -2451,7 +2451,9 @@ void ScriptEditor::_add_callback(Object *p_obj, const String &p_function, const 
 		script_list->select(script_list->find_metadata(i));
 
 		// Save the current script so the changes can be picked up by an external editor.
-		save_current_script();
+		if (!_is_built_in_script(script.ptr())) { // But only if it's not built-in script.
+			save_current_script();
+		}
 
 		break;
 	}
@@ -3188,7 +3190,7 @@ void ScriptEditor::_on_find_in_files_result_selected(String fpath, int line_numb
 	if (ResourceLoader::exists(fpath)) {
 		RES res = ResourceLoader::load(fpath);
 
-		if (fpath.get_extension() == "shader") {
+		if (fpath.get_extension() == "gdshader") {
 			ShaderEditorPlugin *shader_editor = Object::cast_to<ShaderEditorPlugin>(EditorNode::get_singleton()->get_editor_data().get_editor("Shader"));
 			shader_editor->edit(res.ptr());
 			shader_editor->make_visible(true);

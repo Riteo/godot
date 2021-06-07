@@ -727,13 +727,13 @@ bool CustomPropertyEditor::edit(Object *p_owner, const String &p_name, Variant::
 			value_editor[3]->set_text(String::num(plane.d));
 
 		} break;
-		case Variant::QUAT: {
+		case Variant::QUATERNION: {
 			field_names.push_back("x");
 			field_names.push_back("y");
 			field_names.push_back("z");
 			field_names.push_back("w");
 			config_value_editors(4, 4, 10, field_names);
-			Quat q = v;
+			Quaternion q = v;
 			value_editor[0]->set_text(String::num(q.x));
 			value_editor[1]->set_text(String::num(q.y));
 			value_editor[2]->set_text(String::num(q.z));
@@ -791,7 +791,7 @@ bool CustomPropertyEditor::edit(Object *p_owner, const String &p_name, Variant::
 			}
 
 		} break;
-		case Variant::TRANSFORM: {
+		case Variant::TRANSFORM3D: {
 			field_names.push_back("xx");
 			field_names.push_back("xy");
 			field_names.push_back("xz");
@@ -806,7 +806,7 @@ bool CustomPropertyEditor::edit(Object *p_owner, const String &p_name, Variant::
 			field_names.push_back("zo");
 			config_value_editors(12, 4, 16, field_names);
 
-			Transform tr = v;
+			Transform3D tr = v;
 			for (int i = 0; i < 9; i++) {
 				value_editor[(i / 3) * 4 + i % 3]->set_text(String::num(tr.basis.elements[i / 3][i % 3]));
 			}
@@ -1513,8 +1513,8 @@ void CustomPropertyEditor::_modified(String p_string) {
 			_emit_changed_whole_or_field();
 
 		} break;
-		case Variant::QUAT: {
-			Quat q;
+		case Variant::QUATERNION: {
+			Quaternion q;
 			q.x = _parse_real_expression(value_editor[0]->get_text());
 			q.y = _parse_real_expression(value_editor[1]->get_text());
 			q.z = _parse_real_expression(value_editor[2]->get_text());
@@ -1557,7 +1557,7 @@ void CustomPropertyEditor::_modified(String p_string) {
 			_emit_changed_whole_or_field();
 
 		} break;
-		case Variant::TRANSFORM: {
+		case Variant::TRANSFORM3D: {
 			Basis basis;
 			for (int i = 0; i < 9; i++) {
 				basis.elements[i / 3][i % 3] = _parse_real_expression(value_editor[(i / 3) * 4 + i % 3]->get_text());
@@ -1569,7 +1569,7 @@ void CustomPropertyEditor::_modified(String p_string) {
 			origin.y = _parse_real_expression(value_editor[7]->get_text());
 			origin.z = _parse_real_expression(value_editor[11]->get_text());
 
-			v = Transform(basis, origin);
+			v = Transform3D(basis, origin);
 			_emit_changed_whole_or_field();
 
 		} break;
@@ -1635,11 +1635,11 @@ void CustomPropertyEditor::_focus_enter() {
 		case Variant::RECT2:
 		case Variant::VECTOR3:
 		case Variant::PLANE:
-		case Variant::QUAT:
+		case Variant::QUATERNION:
 		case Variant::AABB:
 		case Variant::TRANSFORM2D:
 		case Variant::BASIS:
-		case Variant::TRANSFORM: {
+		case Variant::TRANSFORM3D: {
 			for (int i = 0; i < MAX_VALUE_EDITORS; ++i) {
 				if (value_editor[i]->has_focus()) {
 					focused_value_editor = i;
@@ -1661,11 +1661,11 @@ void CustomPropertyEditor::_focus_exit() {
 		case Variant::RECT2:
 		case Variant::VECTOR3:
 		case Variant::PLANE:
-		case Variant::QUAT:
+		case Variant::QUATERNION:
 		case Variant::AABB:
 		case Variant::TRANSFORM2D:
 		case Variant::BASIS:
-		case Variant::TRANSFORM: {
+		case Variant::TRANSFORM3D: {
 			for (int i = 0; i < MAX_VALUE_EDITORS; ++i) {
 				value_editor[i]->select(0, 0);
 			}
