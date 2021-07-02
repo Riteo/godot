@@ -29,7 +29,7 @@
 /*************************************************************************/
 
 // Godot imports
-#include "core/os/file_access.h"
+#include "core/io/file_access.h"
 // PluginScript imports
 #include "pluginscript_instance.h"
 #include "pluginscript_script.h"
@@ -38,13 +38,13 @@
 
 #ifdef DEBUG_ENABLED
 #define __ASSERT_SCRIPT_REASON "Cannot retrieve PluginScript class for this script, is your code correct?"
-#define ASSERT_SCRIPT_VALID()                                       \
-	{                                                               \
-		ERR_FAIL_COND_MSG(!can_instance(), __ASSERT_SCRIPT_REASON); \
+#define ASSERT_SCRIPT_VALID()                                          \
+	{                                                                  \
+		ERR_FAIL_COND_MSG(!can_instantiate(), __ASSERT_SCRIPT_REASON); \
 	}
-#define ASSERT_SCRIPT_VALID_V(ret)                                         \
-	{                                                                      \
-		ERR_FAIL_COND_V_MSG(!can_instance(), ret, __ASSERT_SCRIPT_REASON); \
+#define ASSERT_SCRIPT_VALID_V(ret)                                            \
+	{                                                                         \
+		ERR_FAIL_COND_V_MSG(!can_instantiate(), ret, __ASSERT_SCRIPT_REASON); \
 	}
 #else
 #define ASSERT_SCRIPT_VALID()
@@ -94,9 +94,9 @@ Variant PluginScript::_new(const Variant **p_args, int p_argcount, Callable::Cal
 	Object *owner = nullptr;
 
 	if (get_instance_base_type() == "") {
-		owner = memnew(Reference);
+		owner = memnew(RefCounted);
 	} else {
-		owner = ClassDB::instance(get_instance_base_type());
+		owner = ClassDB::instantiate(get_instance_base_type());
 	}
 
 	if (!owner) {
@@ -104,7 +104,7 @@ Variant PluginScript::_new(const Variant **p_args, int p_argcount, Callable::Cal
 		return Variant();
 	}
 
-	Reference *r = Object::cast_to<Reference>(owner);
+	RefCounted *r = Object::cast_to<RefCounted>(owner);
 	if (r) {
 		ref = REF(r);
 	}
@@ -133,7 +133,7 @@ void PluginScript::_placeholder_erased(PlaceHolderScriptInstance *p_placeholder)
 
 #endif
 
-bool PluginScript::can_instance() const {
+bool PluginScript::can_instantiate() const {
 	bool can = _valid || (!_tool && !ScriptServer::is_scripting_enabled());
 	return can;
 }
@@ -198,7 +198,7 @@ ScriptInstance *PluginScript::instance_create(Object *p_this) {
 	StringName base_type = get_instance_base_type();
 	if (base_type) {
 		if (!ClassDB::is_parent_class(p_this->get_class_name(), base_type)) {
-			String msg = "Script inherits from native type '" + String(base_type) + "', so it can't be instanced in object of type: '" + p_this->get_class() + "'";
+			String msg = "Script inherits from native type '" + String(base_type) + "', so it can't be instantiated in object of type: '" + p_this->get_class() + "'";
 			// TODO: implement PluginscriptLanguage::debug_break_parse
 			// if (EngineDebugger::is_active()) {
 			// 	_language->debug_break_parse(get_path(), 0, msg);

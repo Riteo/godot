@@ -163,14 +163,14 @@ private:
 	void load_script_signals(GDMonoClass *p_class, GDMonoClass *p_native_class);
 	bool _get_signal(GDMonoClass *p_class, GDMonoMethod *p_delegate_invoke, Vector<SignalParameter> &params);
 
-	bool _update_exports();
+	bool _update_exports(PlaceHolderScriptInstance *p_instance_to_update = nullptr);
 
 	bool _get_member_export(IMonoClassMember *p_member, bool p_inspect_export, PropertyInfo &r_prop_info, bool &r_exported);
 #ifdef TOOLS_ENABLED
 	static int _try_get_member_export_hint(IMonoClassMember *p_member, ManagedType p_type, Variant::Type p_variant_type, bool p_allow_generics, PropertyHint &r_hint, String &r_hint_string);
 #endif
 
-	CSharpInstance *_create_instance(const Variant **p_args, int p_argcount, Object *p_owner, bool p_isref, Callable::CallError &r_error);
+	CSharpInstance *_create_instance(const Variant **p_args, int p_argcount, Object *p_owner, bool p_is_ref_counted, Callable::CallError &r_error);
 	Variant _new(const Variant **p_args, int p_argcount, Callable::CallError &r_error);
 
 	// Do not use unless you know what you are doing
@@ -191,7 +191,7 @@ protected:
 	void _get_property_list(List<PropertyInfo> *p_properties) const;
 
 public:
-	bool can_instance() const override;
+	bool can_instantiate() const override;
 	StringName get_instance_base_type() const override;
 	ScriptInstance *instance_create(Object *p_this) override;
 	PlaceHolderScriptInstance *placeholder_instance_create(Object *p_this) override;
@@ -251,7 +251,7 @@ class CSharpInstance : public ScriptInstance {
 	friend class CSharpLanguage;
 
 	Object *owner = nullptr;
-	bool base_ref = false;
+	bool base_ref_counted = false;
 	bool ref_dying = false;
 	bool unsafe_referenced = false;
 	bool predelete_notified = false;
@@ -455,9 +455,8 @@ public:
 	Ref<Script> get_template(const String &p_class_name, const String &p_base_class_name) const override;
 	bool is_using_templates() override;
 	void make_template(const String &p_class_name, const String &p_base_class_name, Ref<Script> &p_script) override;
-	/* TODO */ bool validate(const String &p_script, int &r_line_error, int &r_col_error,
-			String &r_test_error, const String &p_path, List<String> *r_functions,
-			List<ScriptLanguage::Warning> *r_warnings = nullptr, Set<int> *r_safe_lines = nullptr) const override {
+	/* TODO */ bool validate(const String &p_script, const String &p_path, List<String> *r_functions,
+			List<ScriptLanguage::ScriptError> *r_errors = nullptr, List<ScriptLanguage::Warning> *r_warnings = nullptr, Set<int> *r_safe_lines = nullptr) const override {
 		return true;
 	}
 	String validate_path(const String &p_path) const override;

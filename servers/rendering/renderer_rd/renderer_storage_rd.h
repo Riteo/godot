@@ -221,7 +221,7 @@ private:
 		~CanvasTexture();
 	};
 
-	RID_PtrOwner<CanvasTexture, true> canvas_texture_owner;
+	RID_Owner<CanvasTexture, true> canvas_texture_owner;
 
 	/* TEXTURE API */
 	struct Texture {
@@ -513,7 +513,7 @@ private:
 	void _mesh_instance_clear(MeshInstance *mi);
 	void _mesh_instance_add_surface(MeshInstance *mi, Mesh *mesh, uint32_t p_surface);
 
-	mutable RID_PtrOwner<MeshInstance> mesh_instance_owner;
+	mutable RID_Owner<MeshInstance> mesh_instance_owner;
 
 	SelfList<MeshInstance>::List dirty_mesh_instance_weights;
 	SelfList<MeshInstance>::List dirty_mesh_instance_arrays;
@@ -947,6 +947,17 @@ private:
 
 	mutable RID_Owner<ParticlesCollisionInstance> particles_collision_instance_owner;
 
+	/* visibility_notifier */
+
+	struct VisibilityNotifier {
+		AABB aabb;
+		Callable enter_callback;
+		Callable exit_callback;
+		Dependency dependency;
+	};
+
+	mutable RID_Owner<VisibilityNotifier> visibility_notifier_owner;
+
 	/* Skeleton */
 
 	struct Skeleton {
@@ -1065,8 +1076,6 @@ private:
 
 		float dynamic_range = 4.0;
 		float energy = 1.0;
-		float ao = 0.0;
-		float ao_size = 0.5;
 		float bias = 1.4;
 		float normal_bias = 0.0;
 		float propagation = 0.7;
@@ -1125,6 +1134,7 @@ private:
 
 	struct RenderTarget {
 		Size2i size;
+		uint32_t view_count;
 		RID framebuffer;
 		RID color;
 
@@ -1286,7 +1296,6 @@ public:
 
 	virtual void _texture_2d_update(RID p_texture, const Ref<Image> &p_image, int p_layer, bool p_immediate);
 
-	virtual void texture_2d_update_immediate(RID p_texture, const Ref<Image> &p_image, int p_layer = 0); //mostly used for video and streaming
 	virtual void texture_2d_update(RID p_texture, const Ref<Image> &p_image, int p_layer = 0);
 	virtual void texture_3d_update(RID p_texture, const Vector<Ref<Image>> &p_data);
 	virtual void texture_proxy_update(RID p_texture, RID p_proxy_to);
@@ -1445,7 +1454,9 @@ public:
 	virtual void mesh_set_blend_shape_mode(RID p_mesh, RS::BlendShapeMode p_mode);
 	virtual RS::BlendShapeMode mesh_get_blend_shape_mode(RID p_mesh) const;
 
-	virtual void mesh_surface_update_region(RID p_mesh, int p_surface, int p_offset, const Vector<uint8_t> &p_data);
+	virtual void mesh_surface_update_vertex_region(RID p_mesh, int p_surface, int p_offset, const Vector<uint8_t> &p_data);
+	virtual void mesh_surface_update_attribute_region(RID p_mesh, int p_surface, int p_offset, const Vector<uint8_t> &p_data);
+	virtual void mesh_surface_update_skin_region(RID p_mesh, int p_surface, int p_offset, const Vector<uint8_t> &p_data);
 
 	virtual void mesh_surface_set_material(RID p_mesh, int p_surface, RID p_material);
 	virtual RID mesh_surface_get_material(RID p_mesh, int p_surface) const;
@@ -1733,24 +1744,6 @@ public:
 
 		return multimesh->uniform_set_2d;
 	}
-
-	/* IMMEDIATE API */
-
-	RID immediate_allocate() { return RID(); }
-	void immediate_initialize(RID p_immediate) {}
-
-	virtual void immediate_begin(RID p_immediate, RS::PrimitiveType p_rimitive, RID p_texture = RID()) {}
-	virtual void immediate_vertex(RID p_immediate, const Vector3 &p_vertex) {}
-	virtual void immediate_normal(RID p_immediate, const Vector3 &p_normal) {}
-	virtual void immediate_tangent(RID p_immediate, const Plane &p_tangent) {}
-	virtual void immediate_color(RID p_immediate, const Color &p_color) {}
-	virtual void immediate_uv(RID p_immediate, const Vector2 &tex_uv) {}
-	virtual void immediate_uv2(RID p_immediate, const Vector2 &tex_uv) {}
-	virtual void immediate_end(RID p_immediate) {}
-	virtual void immediate_clear(RID p_immediate) {}
-	virtual void immediate_set_material(RID p_immediate, RID p_material) {}
-	virtual RID immediate_get_material(RID p_immediate) const { return RID(); }
-	virtual AABB immediate_get_aabb(RID p_immediate) const { return AABB(); }
 
 	/* SKELETON API */
 
@@ -2044,12 +2037,6 @@ public:
 	void voxel_gi_set_energy(RID p_voxel_gi, float p_energy);
 	float voxel_gi_get_energy(RID p_voxel_gi) const;
 
-	void voxel_gi_set_ao(RID p_voxel_gi, float p_ao);
-	float voxel_gi_get_ao(RID p_voxel_gi) const;
-
-	void voxel_gi_set_ao_size(RID p_voxel_gi, float p_strength);
-	float voxel_gi_get_ao_size(RID p_voxel_gi) const;
-
 	void voxel_gi_set_bias(RID p_voxel_gi, float p_bias);
 	float voxel_gi_get_bias(RID p_voxel_gi) const;
 
@@ -2252,6 +2239,14 @@ public:
 	virtual bool particles_collision_is_heightfield(RID p_particles_collision) const;
 	RID particles_collision_get_heightfield_framebuffer(RID p_particles_collision) const;
 
+	virtual RID visibility_notifier_allocate();
+	virtual void visibility_notifier_initialize(RID p_notifier);
+	virtual void visibility_notifier_set_aabb(RID p_notifier, const AABB &p_aabb);
+	virtual void visibility_notifier_set_callbacks(RID p_notifier, const Callable &p_enter_callbable, const Callable &p_exit_callable);
+
+	virtual AABB visibility_notifier_get_aabb(RID p_notifier) const;
+	virtual void visibility_notifier_call(RID p_notifier, bool p_enter, bool p_deferred);
+
 	//used from 2D and 3D
 	virtual RID particles_collision_instance_create(RID p_collision);
 	virtual void particles_collision_instance_set_transform(RID p_collision_instance, const Transform3D &p_transform);
@@ -2282,7 +2277,7 @@ public:
 
 	RID render_target_create();
 	void render_target_set_position(RID p_render_target, int p_x, int p_y);
-	void render_target_set_size(RID p_render_target, int p_width, int p_height);
+	void render_target_set_size(RID p_render_target, int p_width, int p_height, uint32_t p_view_count);
 	RID render_target_get_texture(RID p_render_target);
 	void render_target_set_external_texture(RID p_render_target, unsigned int p_texture_id);
 	void render_target_set_flag(RID p_render_target, RenderTargetFlags p_flag, bool p_value);

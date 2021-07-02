@@ -486,7 +486,7 @@ Ref<Image> RendererSceneRenderRD::environment_bake_panorama(RID p_env, bool p_ba
 		color.b *= env->bg_energy;
 
 		Ref<Image> ret;
-		ret.instance();
+		ret.instantiate();
 		ret->create(p_size.width, p_size.height, false, Image::FORMAT_RGBAF);
 		for (int i = 0; i < p_size.width; i++) {
 			for (int j = 0; j < p_size.height; j++) {
@@ -1728,7 +1728,7 @@ void RendererSceneRenderRD::_process_ssao(RID p_render_buffers, RID p_environmen
 	settings.half_screen_size = Size2i(buffer_width, buffer_height);
 	settings.quarter_screen_size = Size2i(half_width, half_height);
 
-	storage->get_effects()->generate_ssao(rb->depth_texture, p_normal_buffer, rb->ssao.depth, rb->ssao.depth_slices, rb->ssao.ao_deinterleaved, rb->ssao.ao_deinterleaved_slices, rb->ssao.ao_pong, rb->ssao.ao_pong_slices, rb->ssao.ao_final, rb->ssao.importance_map[0], rb->ssao.importance_map[1], p_projection, settings, uniform_sets_are_invalid);
+	storage->get_effects()->generate_ssao(rb->depth_texture, p_normal_buffer, rb->ssao.depth, rb->ssao.depth_slices, rb->ssao.ao_deinterleaved, rb->ssao.ao_deinterleaved_slices, rb->ssao.ao_pong, rb->ssao.ao_pong_slices, rb->ssao.ao_final, rb->ssao.importance_map[0], rb->ssao.importance_map[1], p_projection, settings, uniform_sets_are_invalid, rb->ssao.downsample_uniform_set, rb->ssao.gather_uniform_set, rb->ssao.importance_map_uniform_set);
 }
 
 void RendererSceneRenderRD::_render_buffers_post_process_and_tonemap(const RenderDataRD *p_render_data) {
@@ -1856,6 +1856,8 @@ void RendererSceneRenderRD::_render_buffers_post_process_and_tonemap(const Rende
 				tonemap.color_correction_texture = storage->texture_get_rd_texture(env->color_correction);
 			}
 		}
+
+		tonemap.view_count = p_render_data->view_count;
 
 		storage->get_effects()->tonemapper(rb->texture, storage->render_target_get_rd_framebuffer(rb->render_target), tonemap);
 	}
@@ -2112,7 +2114,9 @@ float RendererSceneRenderRD::render_buffers_get_volumetric_fog_detail_spread(RID
 	return rb->volumetric_fog->spread;
 }
 
-void RendererSceneRenderRD::render_buffers_configure(RID p_render_buffers, RID p_render_target, int p_width, int p_height, RS::ViewportMSAA p_msaa, RenderingServer::ViewportScreenSpaceAA p_screen_space_aa, bool p_use_debanding) {
+void RendererSceneRenderRD::render_buffers_configure(RID p_render_buffers, RID p_render_target, int p_width, int p_height, RS::ViewportMSAA p_msaa, RenderingServer::ViewportScreenSpaceAA p_screen_space_aa, bool p_use_debanding, uint32_t p_view_count) {
+	ERR_FAIL_COND_MSG(p_view_count == 0, "Must have atleast 1 view");
+
 	RenderBuffers *rb = render_buffers_owner.getornull(p_render_buffers);
 	rb->width = p_width;
 	rb->height = p_height;
@@ -2120,6 +2124,7 @@ void RendererSceneRenderRD::render_buffers_configure(RID p_render_buffers, RID p
 	rb->msaa = p_msaa;
 	rb->screen_space_aa = p_screen_space_aa;
 	rb->use_debanding = p_use_debanding;
+	rb->view_count = p_view_count;
 
 	if (is_clustered_enabled()) {
 		if (rb->cluster_builder == nullptr) {
@@ -2132,9 +2137,13 @@ void RendererSceneRenderRD::render_buffers_configure(RID p_render_buffers, RID p
 
 	{
 		RD::TextureFormat tf;
+		if (rb->view_count > 1) {
+			tf.texture_type = RD::TEXTURE_TYPE_2D_ARRAY;
+		}
 		tf.format = RD::DATA_FORMAT_R16G16B16A16_SFLOAT;
 		tf.width = rb->width;
 		tf.height = rb->height;
+		tf.array_layers = rb->view_count; // create a layer for every view
 		tf.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_STORAGE_BIT;
 		if (rb->msaa != RS::VIEWPORT_MSAA_DISABLED) {
 			tf.usage_bits |= RD::TEXTURE_USAGE_CAN_COPY_TO_BIT | RD::TEXTURE_USAGE_STORAGE_BIT;
@@ -2147,6 +2156,9 @@ void RendererSceneRenderRD::render_buffers_configure(RID p_render_buffers, RID p
 
 	{
 		RD::TextureFormat tf;
+		if (rb->view_count > 1) {
+			tf.texture_type = RD::TEXTURE_TYPE_2D_ARRAY;
+		}
 		if (rb->msaa == RS::VIEWPORT_MSAA_DISABLED) {
 			tf.format = RD::get_singleton()->texture_is_format_supported_for_usage(RD::DATA_FORMAT_D24_UNORM_S8_UINT, RD::TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ? RD::DATA_FORMAT_D24_UNORM_S8_UINT : RD::DATA_FORMAT_D32_SFLOAT_S8_UINT;
 		} else {
@@ -2156,6 +2168,7 @@ void RendererSceneRenderRD::render_buffers_configure(RID p_render_buffers, RID p
 		tf.width = p_width;
 		tf.height = p_height;
 		tf.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT;
+		tf.array_layers = rb->view_count; // create a layer for every view
 
 		if (rb->msaa != RS::VIEWPORT_MSAA_DISABLED) {
 			tf.usage_bits |= RD::TEXTURE_USAGE_CAN_COPY_TO_BIT | RD::TEXTURE_USAGE_STORAGE_BIT;
@@ -2166,7 +2179,7 @@ void RendererSceneRenderRD::render_buffers_configure(RID p_render_buffers, RID p
 		rb->depth_texture = RD::get_singleton()->texture_create(tf, RD::TextureView());
 	}
 
-	rb->data->configure(rb->texture, rb->depth_texture, p_width, p_height, p_msaa);
+	rb->data->configure(rb->texture, rb->depth_texture, p_width, p_height, p_msaa, p_view_count);
 
 	if (is_clustered_enabled()) {
 		rb->cluster_builder->setup(Size2i(p_width, p_height), max_cluster_elements, rb->depth_texture, storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED), rb->texture);
@@ -3498,11 +3511,9 @@ void RendererSceneRenderRD::_pre_opaque_render(RenderDataRD *p_render_data, bool
 	if (p_render_data->render_buffers.is_valid() && p_use_gi) {
 		RenderBuffers *rb = render_buffers_owner.getornull(p_render_data->render_buffers);
 		ERR_FAIL_COND(rb == nullptr);
-		if (rb->sdfgi == nullptr) {
-			return;
+		if (rb->sdfgi != nullptr) {
+			rb->sdfgi->store_probes();
 		}
-
-		rb->sdfgi->store_probes();
 	}
 
 	render_state.cube_shadows.clear();
@@ -3630,7 +3641,7 @@ void RendererSceneRenderRD::_pre_opaque_render(RenderDataRD *p_render_data, bool
 	}
 }
 
-void RendererSceneRenderRD::render_scene(RID p_render_buffers, const Transform3D &p_cam_transform, const CameraMatrix &p_cam_projection, bool p_cam_ortogonal, const PagedArray<GeometryInstance *> &p_instances, const PagedArray<RID> &p_lights, const PagedArray<RID> &p_reflection_probes, const PagedArray<RID> &p_voxel_gi_instances, const PagedArray<RID> &p_decals, const PagedArray<RID> &p_lightmaps, RID p_environment, RID p_camera_effects, RID p_shadow_atlas, RID p_occluder_debug_tex, RID p_reflection_atlas, RID p_reflection_probe, int p_reflection_probe_pass, float p_screen_lod_threshold, const RenderShadowData *p_render_shadows, int p_render_shadow_count, const RenderSDFGIData *p_render_sdfgi_regions, int p_render_sdfgi_region_count, const RenderSDFGIUpdateData *p_sdfgi_update_data) {
+void RendererSceneRenderRD::render_scene(RID p_render_buffers, const CameraData *p_camera_data, const PagedArray<GeometryInstance *> &p_instances, const PagedArray<RID> &p_lights, const PagedArray<RID> &p_reflection_probes, const PagedArray<RID> &p_voxel_gi_instances, const PagedArray<RID> &p_decals, const PagedArray<RID> &p_lightmaps, RID p_environment, RID p_camera_effects, RID p_shadow_atlas, RID p_occluder_debug_tex, RID p_reflection_atlas, RID p_reflection_probe, int p_reflection_probe_pass, float p_screen_lod_threshold, const RenderShadowData *p_render_shadows, int p_render_shadow_count, const RenderSDFGIData *p_render_sdfgi_regions, int p_render_sdfgi_region_count, const RenderSDFGIUpdateData *p_sdfgi_update_data) {
 	// getting this here now so we can direct call a bunch of things more easily
 	RenderBuffers *rb = nullptr;
 	if (p_render_buffers.is_valid()) {
@@ -3643,11 +3654,19 @@ void RendererSceneRenderRD::render_scene(RID p_render_buffers, const Transform3D
 	{
 		render_data.render_buffers = p_render_buffers;
 
-		render_data.cam_transform = p_cam_transform;
-		render_data.cam_projection = p_cam_projection;
-		render_data.cam_ortogonal = p_cam_projection.is_orthogonal(); // !BAS! Shouldn't this be p_cam_ortogonal ?
-		render_data.z_near = p_cam_projection.get_z_near();
-		render_data.z_far = p_cam_projection.get_z_far();
+		// Our first camera is used by default
+		render_data.cam_transform = p_camera_data->main_transform;
+		render_data.cam_projection = p_camera_data->main_projection;
+		render_data.view_projection[0] = p_camera_data->main_projection;
+		render_data.cam_ortogonal = p_camera_data->is_ortogonal;
+
+		render_data.view_count = p_camera_data->view_count;
+		for (uint32_t v = 0; v < p_camera_data->view_count; v++) {
+			render_data.view_projection[v] = p_camera_data->view_projection[v];
+		}
+
+		render_data.z_near = p_camera_data->main_projection.get_z_near();
+		render_data.z_far = p_camera_data->main_projection.get_z_far();
 
 		render_data.instances = &p_instances;
 		render_data.lights = &p_lights;
@@ -3662,8 +3681,9 @@ void RendererSceneRenderRD::render_scene(RID p_render_buffers, const Transform3D
 		render_data.reflection_probe = p_reflection_probe;
 		render_data.reflection_probe_pass = p_reflection_probe_pass;
 
-		render_data.lod_distance_multiplier = p_cam_projection.get_lod_multiplier();
-		render_data.lod_camera_plane = Plane(p_cam_transform.get_origin(), -p_cam_transform.basis.get_axis(Vector3::AXIS_Z));
+		// this should be the same for all cameras..
+		render_data.lod_distance_multiplier = p_camera_data->main_projection.get_lod_multiplier();
+		render_data.lod_camera_plane = Plane(p_camera_data->main_transform.get_origin(), -p_camera_data->main_transform.basis.get_axis(Vector3::AXIS_Z));
 
 		if (get_debug_draw_mode() == RS::VIEWPORT_DEBUG_DRAW_DISABLE_LOD) {
 			render_data.screen_lod_threshold = 0.0;
@@ -3730,17 +3750,18 @@ void RendererSceneRenderRD::render_scene(RID p_render_buffers, const Transform3D
 		current_cluster_builder = nullptr;
 	}
 
-	if (rb != nullptr && rb->sdfgi != nullptr) {
-		rb->sdfgi->update_cascades();
-
-		rb->sdfgi->pre_process_gi(p_cam_transform, &render_data, this);
-	}
-
 	render_state.voxel_gi_count = 0;
-	if (rb != nullptr && rb->sdfgi != nullptr) {
-		gi.setup_voxel_gi_instances(render_data.render_buffers, render_data.cam_transform, *render_data.voxel_gi_instances, render_state.voxel_gi_count, this);
 
-		rb->sdfgi->update_light();
+	if (rb != nullptr) {
+		if (rb->sdfgi) {
+			rb->sdfgi->update_cascades();
+			rb->sdfgi->pre_process_gi(render_data.cam_transform, &render_data, this);
+			rb->sdfgi->update_light();
+		}
+
+		if (p_voxel_gi_instances.size()) {
+			gi.setup_voxel_gi_instances(render_data.render_buffers, render_data.cam_transform, *render_data.voxel_gi_instances, render_state.voxel_gi_count, this);
+		}
 	}
 
 	render_state.depth_prepass_used = false;
@@ -3782,7 +3803,7 @@ void RendererSceneRenderRD::render_scene(RID p_render_buffers, const Transform3D
 		_render_buffers_post_process_and_tonemap(&render_data);
 		_render_buffers_debug_draw(p_render_buffers, p_shadow_atlas, p_occluder_debug_tex);
 		if (debug_draw == RS::VIEWPORT_DEBUG_DRAW_SDFGI && rb != nullptr && rb->sdfgi != nullptr) {
-			rb->sdfgi->debug_draw(p_cam_projection, p_cam_transform, rb->width, rb->height, rb->render_target, rb->texture);
+			rb->sdfgi->debug_draw(render_data.cam_projection, render_data.cam_transform, rb->width, rb->height, rb->render_target, rb->texture);
 		}
 	}
 }
@@ -4153,7 +4174,7 @@ TypedArray<Image> RendererSceneRenderRD::bake_render_uv2(RID p_base, const Vecto
 	{
 		PackedByteArray data = RD::get_singleton()->texture_get_data(albedo_alpha_tex, 0);
 		Ref<Image> img;
-		img.instance();
+		img.instantiate();
 		img->create(p_image_size.width, p_image_size.height, false, Image::FORMAT_RGBA8, data);
 		RD::get_singleton()->free(albedo_alpha_tex);
 		ret.push_back(img);
@@ -4162,7 +4183,7 @@ TypedArray<Image> RendererSceneRenderRD::bake_render_uv2(RID p_base, const Vecto
 	{
 		PackedByteArray data = RD::get_singleton()->texture_get_data(normal_tex, 0);
 		Ref<Image> img;
-		img.instance();
+		img.instantiate();
 		img->create(p_image_size.width, p_image_size.height, false, Image::FORMAT_RGBA8, data);
 		RD::get_singleton()->free(normal_tex);
 		ret.push_back(img);
@@ -4171,7 +4192,7 @@ TypedArray<Image> RendererSceneRenderRD::bake_render_uv2(RID p_base, const Vecto
 	{
 		PackedByteArray data = RD::get_singleton()->texture_get_data(orm_tex, 0);
 		Ref<Image> img;
-		img.instance();
+		img.instantiate();
 		img->create(p_image_size.width, p_image_size.height, false, Image::FORMAT_RGBA8, data);
 		RD::get_singleton()->free(orm_tex);
 		ret.push_back(img);
@@ -4180,7 +4201,7 @@ TypedArray<Image> RendererSceneRenderRD::bake_render_uv2(RID p_base, const Vecto
 	{
 		PackedByteArray data = RD::get_singleton()->texture_get_data(emission_tex, 0);
 		Ref<Image> img;
-		img.instance();
+		img.instantiate();
 		img->create(p_image_size.width, p_image_size.height, false, Image::FORMAT_RGBAH, data);
 		RD::get_singleton()->free(emission_tex);
 		ret.push_back(img);

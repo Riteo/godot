@@ -87,7 +87,7 @@ public:
 	void set_breakpoint(bool p_breakpoint);
 	bool is_breakpoint() const;
 
-	virtual VisualScriptNodeInstance *instance(VisualScriptInstance *p_instance) = 0;
+	virtual VisualScriptNodeInstance *instantiate(VisualScriptInstance *p_instance) = 0;
 
 	struct TypeGuess {
 		Variant::Type type = Variant::NIL;
@@ -325,7 +325,7 @@ public:
 
 	void set_instance_base_type(const StringName &p_type);
 
-	virtual bool can_instance() const override;
+	virtual bool can_instantiate() const override;
 
 	virtual Ref<Script> get_base_script() const override;
 	virtual StringName get_instance_base_type() const override;
@@ -449,8 +449,8 @@ public:
 	~VisualScriptInstance();
 };
 
-class VisualScriptFunctionState : public Reference {
-	GDCLASS(VisualScriptFunctionState, Reference);
+class VisualScriptFunctionState : public RefCounted {
+	GDCLASS(VisualScriptFunctionState, RefCounted);
 	friend class VisualScriptInstance;
 
 	ObjectID instance_id;
@@ -571,7 +571,7 @@ public:
 	virtual Ref<Script> get_template(const String &p_class_name, const String &p_base_class_name) const;
 	virtual bool is_using_templates();
 	virtual void make_template(const String &p_class_name, const String &p_base_class_name, Ref<Script> &p_script);
-	virtual bool validate(const String &p_script, int &r_line_error, int &r_col_error, String &r_test_error, const String &p_path = "", List<String> *r_functions = nullptr, List<ScriptLanguage::Warning> *r_warnings = nullptr, Set<int> *r_safe_lines = nullptr) const;
+	virtual bool validate(const String &p_script, const String &p_path = "", List<String> *r_functions = nullptr, List<ScriptLanguage::ScriptError> *r_errors = nullptr, List<ScriptLanguage::Warning> *r_warnings = nullptr, Set<int> *r_safe_lines = nullptr) const;
 	virtual Script *create_script() const;
 	virtual bool has_named_classes() const;
 	virtual bool supports_builtin_mode() const;
@@ -619,7 +619,7 @@ public:
 template <class T>
 static Ref<VisualScriptNode> create_node_generic(const String &p_name) {
 	Ref<T> node;
-	node.instance();
+	node.instantiate();
 	return node;
 }
 

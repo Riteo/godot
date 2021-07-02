@@ -1,4 +1,9 @@
 #define M_PI 3.14159265359
+#define MAX_VIEWS 2
+
+#if defined(USE_MULTIVIEW) && defined(has_VK_KHR_multiview)
+#extension GL_EXT_multiview : enable
+#endif
 
 #include "decal_data_inc.glsl"
 
@@ -46,6 +51,7 @@ layout(set = 0, binding = 1) uniform sampler material_samplers[12];
 
 layout(set = 0, binding = 2) uniform sampler shadow_sampler;
 
+#define INSTANCE_FLAGS_NON_UNIFORM_SCALE (1 << 5)
 #define INSTANCE_FLAGS_USE_GI_BUFFERS (1 << 6)
 #define INSTANCE_FLAGS_USE_SDFGI (1 << 7)
 #define INSTANCE_FLAGS_USE_LIGHTMAP_CAPTURE (1 << 8)
@@ -59,8 +65,6 @@ layout(set = 0, binding = 2) uniform sampler shadow_sampler;
 #define INSTANCE_FLAGS_PARTICLE_TRAIL_SHIFT 16
 //3 bits of stride
 #define INSTANCE_FLAGS_PARTICLE_TRAIL_MASK 0xFF
-
-#define INSTANCE_FLAGS_NON_UNIFORM_SCALE (1 << 24)
 
 layout(set = 0, binding = 3, std430) restrict readonly buffer OmniLights {
 	LightData data[];
@@ -121,9 +125,12 @@ global_variables;
 layout(set = 1, binding = 0, std140) uniform SceneData {
 	mat4 projection_matrix;
 	mat4 inv_projection_matrix;
-
 	mat4 camera_matrix;
 	mat4 inv_camera_matrix;
+
+	// only used for multiview
+	mat4 projection_matrix_view[MAX_VIEWS];
+	mat4 inv_projection_matrix_view[MAX_VIEWS];
 
 	vec2 viewport_size;
 	vec2 screen_pixel_size;

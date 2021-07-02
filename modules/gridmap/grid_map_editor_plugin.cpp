@@ -62,12 +62,6 @@ void GridMapEditor::_menu_option(int p_option) {
 			floor->set_value(floor->get_value() + 1);
 		} break;
 
-		case MENU_OPTION_LOCK_VIEW: {
-			int index = options->get_popup()->get_item_index(MENU_OPTION_LOCK_VIEW);
-			lock_view = !options->get_popup()->is_item_checked(index);
-
-			options->get_popup()->set_item_checked(index, lock_view);
-		} break;
 		case MENU_OPTION_CLIP_DISABLED:
 		case MENU_OPTION_CLIP_ABOVE:
 		case MENU_OPTION_CLIP_BELOW: {
@@ -1080,25 +1074,21 @@ void GridMapEditor::_notification(int p_what) {
 			if (cgmt.operator->() != last_mesh_library) {
 				update_palette();
 			}
-
-			if (lock_view) {
-				EditorNode *editor = Object::cast_to<EditorNode>(get_tree()->get_root()->get_child(0));
-
-				Plane p;
-				p.normal[edit_axis] = 1.0;
-				p.d = edit_floor[edit_axis] * node->get_cell_size()[edit_axis];
-				p = node->get_transform().xform(p); // plane to snap
-
-				Node3DEditorPlugin *sep = Object::cast_to<Node3DEditorPlugin>(editor->get_editor_plugin_screen());
-				if (sep) {
-					sep->snap_cursor_to_plane(p);
-				}
-			}
 		} break;
 
 		case NOTIFICATION_THEME_CHANGED: {
 			options->set_icon(get_theme_icon("GridMap", "EditorIcons"));
 			search_box->set_right_icon(get_theme_icon("Search", "EditorIcons"));
+		} break;
+
+		case NOTIFICATION_APPLICATION_FOCUS_OUT: {
+			if (input_action == INPUT_PAINT) {
+				// Simulate mouse released event to stop drawing when editor focus exists.
+				Ref<InputEventMouseButton> release;
+				release.instantiate();
+				release->set_button_index(MOUSE_BUTTON_LEFT);
+				forward_spatial_input_event(nullptr, release);
+			}
 		} break;
 	}
 }
@@ -1187,8 +1177,6 @@ GridMapEditor::GridMapEditor(EditorNode *p_editor) {
 	spatial_editor_hb->hide();
 
 	options->set_text(TTR("Grid Map"));
-	options->get_popup()->add_check_item(TTR("Snap View"), MENU_OPTION_LOCK_VIEW);
-	options->get_popup()->add_separator();
 	options->get_popup()->add_item(TTR("Previous Floor"), MENU_OPTION_PREV_LEVEL, KEY_Q);
 	options->get_popup()->add_item(TTR("Next Floor"), MENU_OPTION_NEXT_LEVEL, KEY_E);
 	options->get_popup()->add_separator();
@@ -1368,7 +1356,7 @@ GridMapEditor::GridMapEditor(EditorNode *p_editor) {
 		Array d;
 		d.resize(RS::ARRAY_MAX);
 
-		inner_mat.instance();
+		inner_mat.instantiate();
 		inner_mat->set_albedo(Color(0.7, 0.7, 1.0, 0.2));
 		inner_mat->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
 		inner_mat->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
@@ -1377,14 +1365,14 @@ GridMapEditor::GridMapEditor(EditorNode *p_editor) {
 		RenderingServer::get_singleton()->mesh_add_surface_from_arrays(selection_mesh, RS::PRIMITIVE_TRIANGLES, d);
 		RenderingServer::get_singleton()->mesh_surface_set_material(selection_mesh, 0, inner_mat->get_rid());
 
-		outer_mat.instance();
+		outer_mat.instantiate();
 		outer_mat->set_albedo(Color(0.7, 0.7, 1.0, 0.8));
 		outer_mat->set_on_top_of_alpha();
 
 		outer_mat->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
 		outer_mat->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
 
-		selection_floor_mat.instance();
+		selection_floor_mat.instantiate();
 		selection_floor_mat->set_albedo(Color(0.80, 0.80, 1.0, 1));
 		selection_floor_mat->set_on_top_of_alpha();
 		selection_floor_mat->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
@@ -1411,7 +1399,7 @@ GridMapEditor::GridMapEditor(EditorNode *p_editor) {
 
 	_set_selection(false);
 
-	indicator_mat.instance();
+	indicator_mat.instantiate();
 	indicator_mat->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
 	indicator_mat->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
 	indicator_mat->set_flag(StandardMaterial3D::FLAG_SRGB_VERTEX_COLOR, true);

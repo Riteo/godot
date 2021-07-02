@@ -32,6 +32,7 @@
 
 #include "core/core_string_names.h"
 #include "core/debugger/engine_debugger.h"
+#include "core/io/json.h"
 #include "core/io/marshalls.h"
 #include "core/io/resource.h"
 #include "core/math/math_funcs.h"
@@ -1115,9 +1116,9 @@ void Variant::reference(const Variant &p_variant) {
 		case OBJECT: {
 			memnew_placement(_data._mem, ObjData);
 
-			if (p_variant._get_obj().obj && p_variant._get_obj().id.is_reference()) {
-				Reference *reference = static_cast<Reference *>(p_variant._get_obj().obj);
-				if (!reference->reference()) {
+			if (p_variant._get_obj().obj && p_variant._get_obj().id.is_ref_counted()) {
+				RefCounted *ref_counted = static_cast<RefCounted *>(p_variant._get_obj().obj);
+				if (!ref_counted->reference()) {
 					_get_obj().obj = nullptr;
 					_get_obj().id = ObjectID();
 					break;
@@ -1301,11 +1302,11 @@ void Variant::_clear_internal() {
 			reinterpret_cast<NodePath *>(_data._mem)->~NodePath();
 		} break;
 		case OBJECT: {
-			if (_get_obj().id.is_reference()) {
+			if (_get_obj().id.is_ref_counted()) {
 				//we are safe that there is a reference here
-				Reference *reference = static_cast<Reference *>(_get_obj().obj);
-				if (reference->unreference()) {
-					memdelete(reference);
+				RefCounted *ref_counted = static_cast<RefCounted *>(_get_obj().obj);
+				if (ref_counted->unreference()) {
+					memdelete(ref_counted);
 				}
 			}
 			_get_obj().obj = nullptr;
@@ -1636,51 +1637,27 @@ String Variant::stringify(List<const void *> &stack) const {
 		case STRING:
 			return *reinterpret_cast<const String *>(_data._mem);
 		case VECTOR2:
-			return "(" + operator Vector2() + ")";
+			return operator Vector2();
 		case VECTOR2I:
-			return "(" + operator Vector2i() + ")";
+			return operator Vector2i();
 		case RECT2:
-			return "(" + operator Rect2() + ")";
+			return operator Rect2();
 		case RECT2I:
-			return "(" + operator Rect2i() + ")";
-		case TRANSFORM2D: {
-			Transform2D mat32 = operator Transform2D();
-			return "(" + Variant(mat32.elements[0]).operator String() + ", " + Variant(mat32.elements[1]).operator String() + ", " + Variant(mat32.elements[2]).operator String() + ")";
-		} break;
+			return operator Rect2i();
+		case TRANSFORM2D:
+			return operator Transform2D();
 		case VECTOR3:
-			return "(" + operator Vector3() + ")";
+			return operator Vector3();
 		case VECTOR3I:
-			return "(" + operator Vector3i() + ")";
+			return operator Vector3i();
 		case PLANE:
 			return operator Plane();
 		case AABB:
 			return operator ::AABB();
 		case QUATERNION:
-			return "(" + operator Quaternion() + ")";
-		case BASIS: {
-			Basis mat3 = operator Basis();
-
-			String mtx("(");
-			for (int i = 0; i < 3; i++) {
-				if (i != 0) {
-					mtx += ", ";
-				}
-
-				mtx += "(";
-
-				for (int j = 0; j < 3; j++) {
-					if (j != 0) {
-						mtx += ", ";
-					}
-
-					mtx += Variant(mat3.elements[i][j]).operator String();
-				}
-
-				mtx += ")";
-			}
-
-			return mtx + ")";
-		} break;
+			return operator Quaternion();
+		case BASIS:
+			return operator Basis();
 		case TRANSFORM3D:
 			return operator Transform3D();
 		case STRING_NAME:
@@ -1688,7 +1665,7 @@ String Variant::stringify(List<const void *> &stack) const {
 		case NODE_PATH:
 			return operator NodePath();
 		case COLOR:
-			return String::num(operator Color().r) + "," + String::num(operator Color().g) + "," + String::num(operator Color().b) + "," + String::num(operator Color().a);
+			return operator Color();
 		case DICTIONARY: {
 			const Dictionary &d = *reinterpret_cast<const Dictionary *>(_data._mem);
 			if (stack.find(d.id())) {
@@ -1722,6 +1699,7 @@ String Variant::stringify(List<const void *> &stack) const {
 			}
 			str += "}";
 
+			stack.erase(d.id());
 			return str;
 		} break;
 		case PACKED_VECTOR2_ARRAY: {
@@ -1825,12 +1803,13 @@ String Variant::stringify(List<const void *> &stack) const {
 			}
 
 			str += "]";
+			stack.erase(arr.id());
 			return str;
 
 		} break;
 		case OBJECT: {
 			if (_get_obj().obj) {
-				if (!_get_obj().id.is_reference() && ObjectDB::get_instance(_get_obj().id) == nullptr) {
+				if (!_get_obj().id.is_ref_counted() && ObjectDB::get_instance(_get_obj().id) == nullptr) {
 					return "[Freed Object]";
 				}
 
@@ -1858,6 +1837,11 @@ String Variant::stringify(List<const void *> &stack) const {
 	}
 
 	return "";
+}
+
+String Variant::to_json_string() const {
+	JSON json;
+	return json.stringify(*this);
 }
 
 Variant::operator Vector2() const {
@@ -2530,9 +2514,9 @@ Variant::Variant(const Object *p_object) {
 	memnew_placement(_data._mem, ObjData);
 
 	if (p_object) {
-		if (p_object->is_reference()) {
-			Reference *reference = const_cast<Reference *>(static_cast<const Reference *>(p_object));
-			if (!reference->init_ref()) {
+		if (p_object->is_ref_counted()) {
+			RefCounted *ref_counted = const_cast<RefCounted *>(static_cast<const RefCounted *>(p_object));
+			if (!ref_counted->init_ref()) {
 				_get_obj().obj = nullptr;
 				_get_obj().id = ObjectID();
 				return;
@@ -2756,17 +2740,17 @@ void Variant::operator=(const Variant &p_variant) {
 			*reinterpret_cast<::RID *>(_data._mem) = *reinterpret_cast<const ::RID *>(p_variant._data._mem);
 		} break;
 		case OBJECT: {
-			if (_get_obj().id.is_reference()) {
+			if (_get_obj().id.is_ref_counted()) {
 				//we are safe that there is a reference here
-				Reference *reference = static_cast<Reference *>(_get_obj().obj);
-				if (reference->unreference()) {
-					memdelete(reference);
+				RefCounted *ref_counted = static_cast<RefCounted *>(_get_obj().obj);
+				if (ref_counted->unreference()) {
+					memdelete(ref_counted);
 				}
 			}
 
-			if (p_variant._get_obj().obj && p_variant._get_obj().id.is_reference()) {
-				Reference *reference = static_cast<Reference *>(p_variant._get_obj().obj);
-				if (!reference->reference()) {
+			if (p_variant._get_obj().obj && p_variant._get_obj().id.is_ref_counted()) {
+				RefCounted *ref_counted = static_cast<RefCounted *>(p_variant._get_obj().obj);
+				if (!ref_counted->reference()) {
 					_get_obj().obj = nullptr;
 					_get_obj().id = ObjectID();
 					break;
@@ -3323,7 +3307,7 @@ bool Variant::hash_compare(const Variant &p_variant) const {
 }
 
 bool Variant::is_ref() const {
-	return type == OBJECT && _get_obj().id.is_reference();
+	return type == OBJECT && _get_obj().id.is_ref_counted();
 }
 
 Vector<Variant> varray() {

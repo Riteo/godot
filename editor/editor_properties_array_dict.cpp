@@ -337,7 +337,7 @@ void EditorPropertyArray::update_property() {
 				editor->setup("Object");
 				prop = editor;
 			} else {
-				prop = EditorInspector::instantiate_property_editor(nullptr, value_type, "", subtype_hint, subtype_hint_string, 0);
+				prop = EditorInspector::instantiate_property_editor(nullptr, value_type, "", subtype_hint, subtype_hint_string, PROPERTY_USAGE_NONE);
 			}
 
 			prop->set_object_and_property(object.ptr(), prop_name);
@@ -550,6 +550,8 @@ void EditorPropertyArray::_length_changed(double p_page) {
 void EditorPropertyArray::setup(Variant::Type p_array_type, const String &p_hint_string) {
 	array_type = p_array_type;
 
+	// The format of p_hint_string is:
+	// subType/subTypeHint:nextSubtype ... etc
 	if (array_type == Variant::ARRAY && !p_hint_string.is_empty()) {
 		int hint_subtype_separator = p_hint_string.find(":");
 		if (hint_subtype_separator >= 0) {
@@ -567,12 +569,12 @@ void EditorPropertyArray::setup(Variant::Type p_array_type, const String &p_hint
 }
 
 void EditorPropertyArray::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("can_drop_data_fw"), &EditorPropertyArray::can_drop_data_fw);
-	ClassDB::bind_method(D_METHOD("drop_data_fw"), &EditorPropertyArray::drop_data_fw);
+	ClassDB::bind_method(D_METHOD("_can_drop_data_fw"), &EditorPropertyArray::can_drop_data_fw);
+	ClassDB::bind_method(D_METHOD("_drop_data_fw"), &EditorPropertyArray::drop_data_fw);
 }
 
 EditorPropertyArray::EditorPropertyArray() {
-	object.instance();
+	object.instantiate();
 	page_len = int(EDITOR_GET("interface/inspector/max_array_dictionary_items_per_page"));
 	edit = memnew(Button);
 	edit->set_h_size_flags(SIZE_EXPAND_FILL);
@@ -971,7 +973,7 @@ void EditorPropertyDictionary::update_property() {
 				PanelContainer *pc = memnew(PanelContainer);
 				vbox->add_child(pc);
 				Ref<StyleBoxFlat> flat;
-				flat.instance();
+				flat.instantiate();
 				for (int j = 0; j < 4; j++) {
 					flat->set_default_margin(Side(j), 2 * EDSCALE);
 				}
@@ -1066,7 +1068,7 @@ void EditorPropertyDictionary::_bind_methods() {
 }
 
 EditorPropertyDictionary::EditorPropertyDictionary() {
-	object.instance();
+	object.instantiate();
 	page_len = int(EDITOR_GET("interface/inspector/max_array_dictionary_items_per_page"));
 	edit = memnew(Button);
 	edit->set_h_size_flags(SIZE_EXPAND_FILL);

@@ -103,7 +103,7 @@ class RenderForwardClustered : public RendererSceneRenderRD {
 		void ensure_specular();
 		void ensure_voxelgi();
 		void clear();
-		virtual void configure(RID p_color_buffer, RID p_depth_buffer, int p_width, int p_height, RS::ViewportMSAA p_msaa);
+		virtual void configure(RID p_color_buffer, RID p_depth_buffer, int p_width, int p_height, RS::ViewportMSAA p_msaa, uint32_t p_view_count);
 
 		~RenderBufferDataForwardClustered();
 	};
@@ -184,6 +184,7 @@ class RenderForwardClustered : public RendererSceneRenderRD {
 	};
 
 	enum {
+		INSTANCE_DATA_FLAGS_NON_UNIFORM_SCALE = 1 << 5,
 		INSTANCE_DATA_FLAG_USE_GI_BUFFERS = 1 << 6,
 		INSTANCE_DATA_FLAG_USE_SDFGI = 1 << 7,
 		INSTANCE_DATA_FLAG_USE_LIGHTMAP_CAPTURE = 1 << 8,
@@ -196,7 +197,6 @@ class RenderForwardClustered : public RendererSceneRenderRD {
 		INSTANCE_DATA_FLAG_MULTIMESH_HAS_CUSTOM_DATA = 1 << 15,
 		INSTANCE_DATA_FLAGS_PARTICLE_TRAIL_SHIFT = 16,
 		INSTANCE_DATA_FLAGS_PARTICLE_TRAIL_MASK = 0xFF,
-		INSTANCE_DATA_FLAGS_NON_UNIFORM_SCALE = 1 << 24,
 	};
 
 	struct SceneState {
@@ -204,7 +204,6 @@ class RenderForwardClustered : public RendererSceneRenderRD {
 		struct UBO {
 			float projection_matrix[16];
 			float inv_projection_matrix[16];
-
 			float camera_matrix[16];
 			float inv_camera_matrix[16];
 

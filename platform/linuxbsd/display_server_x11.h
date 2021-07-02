@@ -55,6 +55,10 @@
 #include "platform/linuxbsd/vulkan_context_x11.h"
 #endif
 
+#if defined(DBUS_ENABLED)
+#include "freedesktop_screensaver.h"
+#endif
+
 #include <X11/Xcursor/Xcursor.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/XInput2.h>
@@ -101,6 +105,11 @@ class DisplayServerX11 : public DisplayServer {
 #if defined(VULKAN_ENABLED)
 	VulkanContextX11 *context_vulkan;
 	RenderingDeviceVulkan *rendering_device_vulkan;
+#endif
+
+#if defined(DBUS_ENABLED)
+	FreeDesktopScreenSaver *screensaver;
+	bool keep_screen_on = false;
 #endif
 
 	struct WindowData {
@@ -162,7 +171,7 @@ class DisplayServerX11 : public DisplayServer {
 	Point2i last_click_pos;
 	uint64_t last_click_ms;
 	int last_click_button_index;
-	uint32_t last_button_state;
+	MouseButton last_button_state = MOUSE_BUTTON_NONE;
 	bool app_focused = false;
 	uint64_t time_since_no_focus = 0;
 
@@ -187,7 +196,7 @@ class DisplayServerX11 : public DisplayServer {
 
 	bool _refresh_device_info();
 
-	unsigned int _get_mouse_button_state(unsigned int p_x11_button, int p_x11_type);
+	MouseButton _get_mouse_button_state(MouseButton p_x11_button, int p_x11_type);
 	void _get_key_modifier_state(unsigned int p_x11_state, Ref<InputEventWithModifiers> state);
 	void _flush_mouse_motion();
 
@@ -279,7 +288,7 @@ public:
 	virtual void mouse_warp_to_position(const Point2i &p_to);
 	virtual Point2i mouse_get_position() const;
 	virtual Point2i mouse_get_absolute_position() const;
-	virtual int mouse_get_button_state() const;
+	virtual MouseButton mouse_get_button_state() const;
 
 	virtual void clipboard_set(const String &p_text);
 	virtual String clipboard_get() const;
@@ -290,6 +299,11 @@ public:
 	virtual Rect2i screen_get_usable_rect(int p_screen = SCREEN_OF_MAIN_WINDOW) const;
 	virtual int screen_get_dpi(int p_screen = SCREEN_OF_MAIN_WINDOW) const;
 	virtual bool screen_is_touchscreen(int p_screen = SCREEN_OF_MAIN_WINDOW) const;
+
+#if defined(DBUS_ENABLED)
+	virtual void screen_set_keep_on(bool p_enable);
+	virtual bool screen_is_kept_on() const;
+#endif
 
 	virtual Vector<DisplayServer::WindowID> get_window_list() const;
 

@@ -757,7 +757,7 @@ void GraphNode::_connpos_update() {
 			continue;
 		}
 
-		Size2i size = c->get_combined_minimum_size();
+		Size2i size = c->get_rect().size;
 
 		int y = sb->get_margin(SIDE_TOP) + vofs;
 		int h = size.y;
@@ -1021,6 +1021,6 @@ void GraphNode::_bind_methods() {
 }
 
 GraphNode::GraphNode() {
-	title_buf.instance();
+	title_buf.instantiate();
 	set_mouse_filter(MOUSE_FILTER_STOP);
 }

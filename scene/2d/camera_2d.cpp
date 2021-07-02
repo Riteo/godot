@@ -178,20 +178,23 @@ Transform2D Camera2D::get_camera_transform() {
 	}
 
 	Rect2 screen_rect(-screen_offset + ret_camera_pos, screen_size * zoom);
-	if (screen_rect.position.x < limit[SIDE_LEFT]) {
-		screen_rect.position.x = limit[SIDE_LEFT];
-	}
 
-	if (screen_rect.position.x + screen_rect.size.x > limit[SIDE_RIGHT]) {
-		screen_rect.position.x = limit[SIDE_RIGHT] - screen_rect.size.x;
-	}
+	if (!limit_smoothing_enabled) {
+		if (screen_rect.position.x < limit[SIDE_LEFT]) {
+			screen_rect.position.x = limit[SIDE_LEFT];
+		}
 
-	if (screen_rect.position.y + screen_rect.size.y > limit[SIDE_BOTTOM]) {
-		screen_rect.position.y = limit[SIDE_BOTTOM] - screen_rect.size.y;
-	}
+		if (screen_rect.position.x + screen_rect.size.x > limit[SIDE_RIGHT]) {
+			screen_rect.position.x = limit[SIDE_RIGHT] - screen_rect.size.x;
+		}
 
-	if (screen_rect.position.y < limit[SIDE_TOP]) {
-		screen_rect.position.y = limit[SIDE_TOP];
+		if (screen_rect.position.y + screen_rect.size.y > limit[SIDE_BOTTOM]) {
+			screen_rect.position.y = limit[SIDE_BOTTOM] - screen_rect.size.y;
+		}
+
+		if (screen_rect.position.y < limit[SIDE_TOP]) {
+			screen_rect.position.y = limit[SIDE_TOP];
+		}
 	}
 
 	if (offset != Vector2()) {
@@ -724,7 +727,7 @@ void Camera2D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "rotating"), "set_rotating", "is_rotating");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "current"), "_set_current", "is_current");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "zoom"), "set_zoom", "get_zoom");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "custom_viewport", PROPERTY_HINT_RESOURCE_TYPE, "Viewport", 0), "set_custom_viewport", "get_custom_viewport");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "custom_viewport", PROPERTY_HINT_RESOURCE_TYPE, "Viewport", PROPERTY_USAGE_NONE), "set_custom_viewport", "get_custom_viewport");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "process_callback", PROPERTY_HINT_ENUM, "Physics,Idle"), "set_process_callback", "get_process_callback");
 
 	ADD_GROUP("Limit", "limit_");

@@ -31,8 +31,8 @@
 #ifndef EDITOR_FEATURE_PROFILE_H
 #define EDITOR_FEATURE_PROFILE_H
 
-#include "core/object/reference.h"
-#include "core/os/file_access.h"
+#include "core/io/file_access.h"
+#include "core/object/ref_counted.h"
 #include "editor/editor_file_dialog.h"
 #include "editor_help.h"
 #include "scene/gui/dialogs.h"
@@ -41,8 +41,8 @@
 #include "scene/gui/split_container.h"
 #include "scene/gui/tree.h"
 
-class EditorFeatureProfile : public Reference {
-	GDCLASS(EditorFeatureProfile, Reference);
+class EditorFeatureProfile : public RefCounted {
+	GDCLASS(EditorFeatureProfile, RefCounted);
 
 public:
 	enum Feature {

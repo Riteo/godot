@@ -22,11 +22,12 @@
 # Yongjin Jo <wnrhd114@gmail.com>, 2020.
 # Yungjoong Song <yungjoong.song@gmail.com>, 2020.
 # Henry LeRoux <henry.leroux@ocsbstudent.ca>, 2021.
+# Postive_ Cloud <postive12@gmail.com>, 2021.
 msgid ""
 msgstr ""
 "Project-Id-Version: Godot Engine editor\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2021-05-19 20:16+0000\n"
+"PO-Revision-Date: 2021-06-20 13:35+0000\n"
 "Last-Translator: Myeongjin Lee <aranet100@gmail.com>\n"
 "Language-Team: Korean <https://hosted.weblate.org/projects/godot-engine/"
 "godot/ko/>\n"
@@ -35,7 +36,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Weblate 4.7-dev\n"
+"X-Generator: Weblate 4.7\n"
 
 #: core/math/expression.cpp modules/gdscript/gdscript_functions.cpp
 #: modules/visual_script/visual_script_builtin_funcs.cpp
@@ -59,7 +60,7 @@ msgstr "표현식의 입력 %i (전달되지 않음) 이(가) 올바르지 않�
 
 #: core/math/expression.cpp
 msgid "self can't be used because instance is null (not passed)"
-msgstr "인스턴스가 null (전달되지 않음) 이므로 self 를 사용할 수 없습니다"
+msgstr "인스턴스가 null(전달되지 않음)이므로 self 명령어는 사용할 수 없습니다"
 
 #: core/math/expression.cpp
 msgid "Invalid operands to operator %s, %s and %s."
@@ -1130,6 +1131,10 @@ msgstr "딕셔너리 값 변경"
 #: editor/editor_about.cpp
 msgid "Thanks from the Godot community!"
 msgstr "Godot 커뮤니티에서 감사드립니다!"
+
+#: editor/editor_about.cpp editor/editor_node.cpp editor/project_manager.cpp
+msgid "Click to copy."
+msgstr "클릭하여 복사합니다."
 
 #: editor/editor_about.cpp
 msgid "Godot Engine contributors"
@@ -12115,8 +12120,24 @@ msgstr ""
 "하세요."
 
 #: platform/android/export/export.cpp
+msgid ""
+"Either Debug Keystore, Debug User AND Debug Password settings must be "
+"configured OR none of them."
+msgstr ""
+"Debug Keystore, Debug User 및 Debug Password 설정을 구성하거나 그 중 어느 것"
+"도 없어야 합니다."
+
+#: platform/android/export/export.cpp
 msgid "Debug keystore not configured in the Editor Settings nor in the preset."
 msgstr "Debug keystore를 편집기 설정과 프리셋에 설정하지 않았습니다."
+
+#: platform/android/export/export.cpp
+msgid ""
+"Either Release Keystore, Release User AND Release Password settings must be "
+"configured OR none of them."
+msgstr ""
+"Release Keystore, Release User 및 Release Password 설정을 구성하거나 그 중 어"
+"느 것도 없어야 합니다."
 
 #: platform/android/export/export.cpp
 msgid "Release keystore incorrectly configured in the export preset."

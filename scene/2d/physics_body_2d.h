@@ -50,7 +50,7 @@ protected:
 	Ref<KinematicCollision2D> _move(const Vector2 &p_motion, bool p_infinite_inertia = true, bool p_exclude_raycast_shapes = true, bool p_test_only = false, real_t p_margin = 0.08);
 
 public:
-	bool move_and_collide(const Vector2 &p_motion, bool p_infinite_inertia, PhysicsServer2D::MotionResult &r_result, real_t p_margin, bool p_exclude_raycast_shapes = true, bool p_test_only = false);
+	bool move_and_collide(const Vector2 &p_motion, bool p_infinite_inertia, PhysicsServer2D::MotionResult &r_result, real_t p_margin, bool p_exclude_raycast_shapes = true, bool p_test_only = false, bool p_cancel_sliding = true);
 	bool test_move(const Transform2D &p_from, const Vector2 &p_motion, bool p_infinite_inertia = true, bool p_exclude_raycast_shapes = true, const Ref<KinematicCollision2D> &r_collision = Ref<KinematicCollision2D>(), real_t p_margin = 0.08);
 
 	TypedArray<PhysicsBody2D> get_collision_exceptions();
@@ -301,7 +301,7 @@ private:
 	void set_max_slides(int p_max_slides);
 
 	real_t get_floor_max_angle() const;
-	void set_floor_max_angle(real_t p_floor_max_angle);
+	void set_floor_max_angle(real_t p_radians);
 
 	const Vector2 &get_snap() const;
 	void set_snap(const Vector2 &p_snap);
@@ -335,8 +335,8 @@ public:
 	~CharacterBody2D();
 };
 
-class KinematicCollision2D : public Reference {
-	GDCLASS(KinematicCollision2D, Reference);
+class KinematicCollision2D : public RefCounted {
+	GDCLASS(KinematicCollision2D, RefCounted);
 
 	PhysicsBody2D *owner = nullptr;
 	friend class PhysicsBody2D;
@@ -354,6 +354,7 @@ public:
 	Object *get_local_shape() const;
 	Object *get_collider() const;
 	ObjectID get_collider_id() const;
+	RID get_collider_rid() const;
 	Object *get_collider_shape() const;
 	int get_collider_shape_index() const;
 	Vector2 get_collider_velocity() const;

@@ -226,7 +226,8 @@ class VisualScriptEditor : public ScriptEditorBase {
 	void _update_node_size(int p_id);
 	void _port_name_focus_out(const Node *p_name_box, int p_id, int p_port, bool is_input);
 
-	Vector2 _get_available_pos(bool centered = true, Vector2 ofs = Vector2()) const;
+	Vector2 _get_pos_in_graph(Vector2 p_point) const;
+	Vector2 _get_available_pos(bool p_centered = true, Vector2 p_pos = Vector2()) const;
 
 	bool node_has_sequence_connections(int p_id);
 
@@ -317,6 +318,7 @@ public:
 	virtual void set_tooltip_request_func(String p_method, Object *p_obj) override;
 	virtual Control *get_edit_menu() override;
 	virtual void clear_edit_menu() override;
+	virtual void set_find_replace_bar(FindReplaceBar *p_bar) override { p_bar->hide(); }; // Not needed here.
 	virtual bool can_lose_focus_on_node_selection() override { return false; }
 	virtual void validate() override;
 

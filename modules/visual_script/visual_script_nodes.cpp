@@ -296,7 +296,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptFunction::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptFunction::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceFunction *instance = memnew(VisualScriptNodeInstanceFunction);
 	instance->node = this;
 	instance->instance = p_instance;
@@ -791,7 +791,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptComposeArray::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptComposeArray::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptComposeArrayNode *instance = memnew(VisualScriptComposeArrayNode);
 	instance->input_count = inputports.size();
 	return instance;
@@ -912,73 +912,135 @@ PropertyInfo VisualScriptOperator::get_output_value_port_info(int p_idx) const {
 	return pinfo;
 }
 
-static const char *op_names[] = {
-	//comparison
-	"Are Equal", //OP_EQUAL,
-	"Are Not Equal", //OP_NOT_EQUAL,
-	"Less Than", //OP_LESS,
-	"Less Than or Equal", //OP_LESS_EQUAL,
-	"Greater Than", //OP_GREATER,
-	"Greater Than or Equal", //OP_GREATER_EQUAL,
-	//mathematic
-	"Add", //OP_ADD,
-	"Subtract", //OP_SUBTRACT,
-	"Multiply", //OP_MULTIPLY,
-	"Divide", //OP_DIVIDE,
-	"Negate", //OP_NEGATE,
-	"Positive", //OP_POSITIVE,
-	"Remainder", //OP_MODULE,
-	"Concatenate", //OP_STRING_CONCAT,
-	//bitwise
-	"Bit Shift Left", //OP_SHIFT_LEFT,
-	"Bit Shift Right", //OP_SHIFT_RIGHT,
-	"Bit And", //OP_BIT_AND,
-	"Bit Or", //OP_BIT_OR,
-	"Bit Xor", //OP_BIT_XOR,
-	"Bit Negate", //OP_BIT_NEGATE,
-	//logic
-	"And", //OP_AND,
-	"Or", //OP_OR,
-	"Xor", //OP_XOR,
-	"Not", //OP_NOT,
-	//containment
-	"In", //OP_IN,
-};
-
 String VisualScriptOperator::get_caption() const {
-	static const char32_t *op_names[] = {
-		//comparison
-		U"A = B", //OP_EQUAL,
-		U"A \u2260 B", //OP_NOT_EQUAL,
-		U"A < B", //OP_LESS,
-		U"A \u2264 B", //OP_LESS_EQUAL,
-		U"A > B", //OP_GREATER,
-		U"A \u2265 B", //OP_GREATER_EQUAL,
-		//mathematic
-		U"A + B", //OP_ADD,
-		U"A - B", //OP_SUBTRACT,
-		U"A \u00D7 B", //OP_MULTIPLY,
-		U"A \u00F7 B", //OP_DIVIDE,
-		U"\u00AC A", //OP_NEGATE,
-		U"+ A", //OP_POSITIVE,
-		U"A mod B", //OP_MODULE,
-		U"A .. B", //OP_STRING_CONCAT,
-		//bitwise
-		U"A << B", //OP_SHIFT_LEFT,
-		U"A >> B", //OP_SHIFT_RIGHT,
-		U"A & B", //OP_BIT_AND,
-		U"A | B", //OP_BIT_OR,
-		U"A ^ B", //OP_BIT_XOR,
-		U"~A", //OP_BIT_NEGATE,
-		//logic
-		U"A and B", //OP_AND,
-		U"A or B", //OP_OR,
-		U"A xor B", //OP_XOR,
-		U"not A", //OP_NOT,
-		U"A in B", //OP_IN,
+	switch (op) {
+		// comparison
+		case Variant::OP_EQUAL:
+			return U"A = B";
+		case Variant::OP_NOT_EQUAL:
+			return U"A \u2260 B";
+		case Variant::OP_LESS:
+			return U"A < B";
+		case Variant::OP_LESS_EQUAL:
+			return U"A \u2264 B";
+		case Variant::OP_GREATER:
+			return U"A > B";
+		case Variant::OP_GREATER_EQUAL:
+			return U"A \u2265 B";
 
-	};
-	return op_names[op];
+		// mathematic
+		case Variant::OP_ADD:
+			return U"A + B";
+		case Variant::OP_SUBTRACT:
+			return U"A - B";
+		case Variant::OP_MULTIPLY:
+			return U"A \u00D7 B";
+		case Variant::OP_DIVIDE:
+			return U"A \u00F7 B";
+		case Variant::OP_NEGATE:
+			return U"\u00AC A";
+		case Variant::OP_POSITIVE:
+			return U"+ A";
+		case Variant::OP_MODULE:
+			return U"A mod B";
+
+		// bitwise
+		case Variant::OP_SHIFT_LEFT:
+			return U"A << B";
+		case Variant::OP_SHIFT_RIGHT:
+			return U"A >> B";
+		case Variant::OP_BIT_AND:
+			return U"A & B";
+		case Variant::OP_BIT_OR:
+			return U"A | B";
+		case Variant::OP_BIT_XOR:
+			return U"A ^ B";
+		case Variant::OP_BIT_NEGATE:
+			return U"~A";
+
+		// logic
+		case Variant::OP_AND:
+			return U"A and B";
+		case Variant::OP_OR:
+			return U"A or B";
+		case Variant::OP_XOR:
+			return U"A xor B";
+		case Variant::OP_NOT:
+			return U"not A";
+		case Variant::OP_IN:
+			return U"A in B";
+
+		default: {
+			ERR_FAIL_V_MSG(
+					U"Unknown node",
+					U"Unknown node type encountered, caption not available.");
+		}
+	}
+}
+
+String VisualScriptOperator::get_operator_name(Variant::Operator p_op) {
+	switch (p_op) {
+		// comparison
+		case Variant::OP_EQUAL:
+			return "Are Equal";
+		case Variant::OP_NOT_EQUAL:
+			return "Are Not Equal";
+		case Variant::OP_LESS:
+			return "Less Than";
+		case Variant::OP_LESS_EQUAL:
+			return "Less Than or Equal";
+		case Variant::OP_GREATER:
+			return "Greater Than";
+		case Variant::OP_GREATER_EQUAL:
+			return "Greater Than or Equal";
+
+		// mathematic
+		case Variant::OP_ADD:
+			return "Add";
+		case Variant::OP_SUBTRACT:
+			return "Subtract";
+		case Variant::OP_MULTIPLY:
+			return "Multiply";
+		case Variant::OP_DIVIDE:
+			return "Divide";
+		case Variant::OP_NEGATE:
+			return "Negate";
+		case Variant::OP_POSITIVE:
+			return "Positive";
+		case Variant::OP_MODULE:
+			return "Remainder";
+
+		// bitwise
+		case Variant::OP_SHIFT_LEFT:
+			return "Bit Shift Left";
+		case Variant::OP_SHIFT_RIGHT:
+			return "Bit Shift Right";
+		case Variant::OP_BIT_AND:
+			return "Bit And";
+		case Variant::OP_BIT_OR:
+			return "Bit Or";
+		case Variant::OP_BIT_XOR:
+			return "Bit Xor";
+		case Variant::OP_BIT_NEGATE:
+			return "Bit Negate";
+
+		// logic
+		case Variant::OP_AND:
+			return "And";
+		case Variant::OP_OR:
+			return "Or";
+		case Variant::OP_XOR:
+			return "Xor";
+		case Variant::OP_NOT:
+			return "Not";
+		case Variant::OP_IN:
+			return "In";
+
+		default: {
+			ERR_FAIL_INDEX_V(p_op, Variant::OP_MAX, "");
+			return "Unknown Operator";
+		}
+	}
 }
 
 void VisualScriptOperator::set_operator(Variant::Operator p_op) {
@@ -1018,7 +1080,7 @@ void VisualScriptOperator::_bind_methods() {
 		if (i > 0) {
 			types += ",";
 		}
-		types += op_names[i];
+		types += get_operator_name(static_cast<Variant::Operator>(i));
 	}
 
 	String argt = "Any";
@@ -1051,9 +1113,9 @@ public:
 				r_error_str = *p_outputs[0];
 			} else {
 				if (unary) {
-					r_error_str = String(op_names[op]) + RTR(": Invalid argument of type: ") + Variant::get_type_name(p_inputs[0]->get_type());
+					r_error_str = String(Variant::get_operator_name(op)) + RTR(": Invalid argument of type: ") + Variant::get_type_name(p_inputs[0]->get_type());
 				} else {
-					r_error_str = String(op_names[op]) + RTR(": Invalid arguments: ") + "A: " + Variant::get_type_name(p_inputs[0]->get_type()) + "  B: " + Variant::get_type_name(p_inputs[1]->get_type());
+					r_error_str = String(Variant::get_operator_name(op)) + RTR(": Invalid arguments: ") + "A: " + Variant::get_type_name(p_inputs[0]->get_type()) + "  B: " + Variant::get_type_name(p_inputs[1]->get_type());
 				}
 			}
 		}
@@ -1062,7 +1124,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptOperator::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptOperator::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceOperator *instance = memnew(VisualScriptNodeInstanceOperator);
 	instance->unary = get_input_value_port_count() == 1;
 	instance->op = op;
@@ -1077,7 +1139,7 @@ VisualScriptOperator::VisualScriptOperator() {
 template <Variant::Operator OP>
 static Ref<VisualScriptNode> create_op_node(const String &p_name) {
 	Ref<VisualScriptOperator> node;
-	node.instance();
+	node.instantiate();
 	node->set_operator(OP);
 	return node;
 }
@@ -1169,7 +1231,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptSelect::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptSelect::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceSelect *instance = memnew(VisualScriptNodeInstanceSelect);
 	return instance;
 }
@@ -1277,7 +1339,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptVariableGet::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptVariableGet::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceVariableGet *instance = memnew(VisualScriptNodeInstanceVariableGet);
 	instance->node = this;
 	instance->instance = p_instance;
@@ -1389,7 +1451,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptVariableSet::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptVariableSet::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceVariableSet *instance = memnew(VisualScriptNodeInstanceVariableSet);
 	instance->node = this;
 	instance->instance = p_instance;
@@ -1472,7 +1534,7 @@ void VisualScriptConstant::_validate_property(PropertyInfo &property) const {
 	if (property.name == "value") {
 		property.type = type;
 		if (type == Variant::NIL) {
-			property.usage = 0; //do not save if nil
+			property.usage = PROPERTY_USAGE_NONE; //do not save if nil
 		}
 	}
 }
@@ -1504,7 +1566,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptConstant::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptConstant::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceConstant *instance = memnew(VisualScriptNodeInstanceConstant);
 	instance->constant = value;
 	return instance;
@@ -1597,7 +1659,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptPreload::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptPreload::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstancePreload *instance = memnew(VisualScriptNodeInstancePreload);
 	instance->preload = preload;
 	return instance;
@@ -1662,7 +1724,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptIndexGet::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptIndexGet::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceIndexGet *instance = memnew(VisualScriptNodeInstanceIndexGet);
 	return instance;
 }
@@ -1732,7 +1794,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptIndexSet::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptIndexSet::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceIndexSet *instance = memnew(VisualScriptNodeInstanceIndexSet);
 	return instance;
 }
@@ -1798,7 +1860,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptGlobalConstant::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptGlobalConstant::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceGlobalConstant *instance = memnew(VisualScriptNodeInstanceGlobalConstant);
 	instance->index = index;
 	return instance;
@@ -1916,7 +1978,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptClassConstant::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptClassConstant::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceClassConstant *instance = memnew(VisualScriptNodeInstanceClassConstant);
 	instance->value = ClassDB::get_integer_constant(base_type, name, &instance->valid);
 	return instance;
@@ -2050,7 +2112,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptBasicTypeConstant::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptBasicTypeConstant::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceBasicTypeConstant *instance = memnew(VisualScriptNodeInstanceBasicTypeConstant);
 	instance->value = Variant::get_constant_value(type, name, &instance->valid);
 	return instance;
@@ -2062,7 +2124,7 @@ void VisualScriptBasicTypeConstant::_validate_property(PropertyInfo &property) c
 		Variant::get_constants_for_type(type, &constants);
 
 		if (constants.size() == 0) {
-			property.usage = 0;
+			property.usage = PROPERTY_USAGE_NONE;
 			return;
 		}
 		property.hint_string = "";
@@ -2174,7 +2236,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptMathConstant::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptMathConstant::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceMathConstant *instance = memnew(VisualScriptNodeInstanceMathConstant);
 	instance->value = const_value[constant];
 	return instance;
@@ -2268,7 +2330,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptEngineSingleton::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptEngineSingleton::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceEngineSingleton *instance = memnew(VisualScriptNodeInstanceEngineSingleton);
 	instance->singleton = Engine::get_singleton()->get_singleton_object(singleton);
 	return instance;
@@ -2394,7 +2456,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptSceneNode::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptSceneNode::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceSceneNode *instance = memnew(VisualScriptNodeInstanceSceneNode);
 	instance->node = this;
 	instance->instance = p_instance;
@@ -2574,7 +2636,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptSceneTree::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptSceneTree::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceSceneTree *instance = memnew(VisualScriptNodeInstanceSceneTree);
 	instance->node = this;
 	instance->instance = p_instance;
@@ -2655,7 +2717,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptResourcePath::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptResourcePath::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceResourcePath *instance = memnew(VisualScriptNodeInstanceResourcePath);
 	instance->path = path;
 	return instance;
@@ -2727,7 +2789,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptSelf::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptSelf::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceSelf *instance = memnew(VisualScriptNodeInstanceSelf);
 	instance->instance = p_instance;
 	return instance;
@@ -2908,7 +2970,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptCustomNode::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptCustomNode::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceCustomNode *instance = memnew(VisualScriptNodeInstanceCustomNode);
 	instance->instance = p_instance;
 	instance->node = this;
@@ -3059,7 +3121,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptSubCall::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptSubCall::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceSubCall *instance = memnew(VisualScriptNodeInstanceSubCall);
 	instance->instance = p_instance;
 	Ref<Script> script = get_script();
@@ -3172,7 +3234,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptComment::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptComment::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceComment *instance = memnew(VisualScriptNodeInstanceComment);
 	instance->instance = p_instance;
 	return instance;
@@ -3279,7 +3341,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptConstructor::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptConstructor::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceConstructor *instance = memnew(VisualScriptNodeInstanceConstructor);
 	instance->instance = p_instance;
 	instance->type = type;
@@ -3308,7 +3370,7 @@ static Ref<VisualScriptNode> create_constructor_node(const String &p_name) {
 	ERR_FAIL_COND_V(!constructor_map.has(p_name), Ref<VisualScriptNode>());
 
 	Ref<VisualScriptConstructor> vsc;
-	vsc.instance();
+	vsc.instantiate();
 	vsc->set_constructor_type(constructor_map[p_name].first);
 	vsc->set_constructor(constructor_map[p_name].second);
 
@@ -3389,7 +3451,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptLocalVar::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptLocalVar::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceLocalVar *instance = memnew(VisualScriptNodeInstanceLocalVar);
 	instance->instance = p_instance;
 	instance->name = name;
@@ -3497,7 +3559,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptLocalVarSet::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptLocalVarSet::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceLocalVarSet *instance = memnew(VisualScriptNodeInstanceLocalVarSet);
 	instance->instance = p_instance;
 	instance->name = name;
@@ -3634,7 +3696,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptInputAction::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptInputAction::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceInputAction *instance = memnew(VisualScriptNodeInstanceInputAction);
 	instance->instance = p_instance;
 	instance->action = name;
@@ -3812,7 +3874,7 @@ public:
 	}
 };
 
-VisualScriptNodeInstance *VisualScriptDeconstruct::instance(VisualScriptInstance *p_instance) {
+VisualScriptNodeInstance *VisualScriptDeconstruct::instantiate(VisualScriptInstance *p_instance) {
 	VisualScriptNodeInstanceDeconstruct *instance = memnew(VisualScriptNodeInstanceDeconstruct);
 	instance->instance = p_instance;
 	instance->outputs.resize(elements.size());
@@ -3849,7 +3911,7 @@ VisualScriptDeconstruct::VisualScriptDeconstruct() {
 template <Variant::Type T>
 static Ref<VisualScriptNode> create_node_deconst_typed(const String &p_name) {
 	Ref<VisualScriptDeconstruct> node;
-	node.instance();
+	node.instantiate();
 	node->set_deconstruct_type(T);
 	return node;
 }

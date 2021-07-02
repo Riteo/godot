@@ -190,6 +190,14 @@ bool Engine::is_validation_layers_enabled() const {
 	return use_validation_layers;
 }
 
+void Engine::set_print_error_messages(bool p_enabled) {
+	_print_error_enabled = p_enabled;
+}
+
+bool Engine::is_printing_error_messages() const {
+	return _print_error_enabled;
+}
+
 void Engine::add_singleton(const Singleton &p_singleton) {
 	singletons.push_back(p_singleton);
 	singleton_ptrs[p_singleton.name] = p_singleton.ptr;
@@ -228,13 +236,14 @@ Engine::Engine() {
 	singleton = this;
 }
 
-Engine::Singleton::Singleton(const StringName &p_name, Object *p_ptr) :
+Engine::Singleton::Singleton(const StringName &p_name, Object *p_ptr, const StringName &p_class_name) :
 		name(p_name),
-		ptr(p_ptr) {
+		ptr(p_ptr),
+		class_name(p_class_name) {
 #ifdef DEBUG_ENABLED
-	Reference *ref = Object::cast_to<Reference>(p_ptr);
-	if (ref && !ref->is_referenced()) {
-		WARN_PRINT("You must use Ref<> to ensure the lifetime of a Reference object intended to be used as a singleton.");
+	RefCounted *rc = Object::cast_to<RefCounted>(p_ptr);
+	if (rc && !rc->is_referenced()) {
+		WARN_PRINT("You must use Ref<> to ensure the lifetime of a RefCounted object intended to be used as a singleton.");
 	}
 #endif
 }

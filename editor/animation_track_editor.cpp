@@ -1168,31 +1168,29 @@ public:
 					p_list->push_back(PropertyInfo(Variant::VECTOR3, "scale"));
 				} break;
 				case Animation::TYPE_VALUE: {
-					if (!same_key_type) {
-						break;
-					}
+					if (same_key_type) {
+						Variant v = animation->track_get_key_value(first_track, first_key);
 
-					Variant v = animation->track_get_key_value(first_track, first_key);
+						if (hint.type != Variant::NIL) {
+							PropertyInfo pi = hint;
+							pi.name = "value";
+							p_list->push_back(pi);
+						} else {
+							PropertyHint hint = PROPERTY_HINT_NONE;
+							String hint_string;
 
-					if (hint.type != Variant::NIL) {
-						PropertyInfo pi = hint;
-						pi.name = "value";
-						p_list->push_back(pi);
-					} else {
-						PropertyHint hint = PROPERTY_HINT_NONE;
-						String hint_string;
-
-						if (v.get_type() == Variant::OBJECT) {
-							//could actually check the object property if exists..? yes i will!
-							Ref<Resource> res = v;
-							if (res.is_valid()) {
-								hint = PROPERTY_HINT_RESOURCE_TYPE;
-								hint_string = res->get_class();
+							if (v.get_type() == Variant::OBJECT) {
+								//could actually check the object property if exists..? yes i will!
+								Ref<Resource> res = v;
+								if (res.is_valid()) {
+									hint = PROPERTY_HINT_RESOURCE_TYPE;
+									hint_string = res->get_class();
+								}
 							}
-						}
 
-						if (v.get_type() != Variant::NIL) {
-							p_list->push_back(PropertyInfo(v.get_type(), "value", hint, hint_string));
+							if (v.get_type() != Variant::NIL) {
+								p_list->push_back(PropertyInfo(v.get_type(), "value", hint, hint_string));
+							}
 						}
 					}
 
@@ -1586,6 +1584,10 @@ void AnimationTimelineEdit::set_zoom(Range *p_zoom) {
 	zoom->connect("value_changed", callable_mp(this, &AnimationTimelineEdit::_zoom_changed));
 }
 
+void AnimationTimelineEdit::set_track_edit(AnimationTrackEdit *p_track_edit) {
+	track_edit = p_track_edit;
+}
+
 void AnimationTimelineEdit::set_play_position(float p_pos) {
 	play_position_pos = p_pos;
 	play_position->update();
@@ -1643,7 +1645,31 @@ void AnimationTimelineEdit::_play_position_draw() {
 void AnimationTimelineEdit::_gui_input(const Ref<InputEvent> &p_event) {
 	ERR_FAIL_COND(p_event.is_null());
 
-	Ref<InputEventMouseButton> mb = p_event;
+	const Ref<InputEventMouseButton> mb = p_event;
+
+	if (mb.is_valid() && mb->is_pressed() && mb->is_command_pressed() && mb->get_button_index() == MOUSE_BUTTON_WHEEL_UP) {
+		get_zoom()->set_value(get_zoom()->get_value() * 1.05);
+		accept_event();
+	}
+
+	if (mb.is_valid() && mb->is_pressed() && mb->is_command_pressed() && mb->get_button_index() == MOUSE_BUTTON_WHEEL_DOWN) {
+		get_zoom()->set_value(get_zoom()->get_value() / 1.05);
+		accept_event();
+	}
+
+	if (mb.is_valid() && mb->is_pressed() && mb->is_alt_pressed() && mb->get_button_index() == MOUSE_BUTTON_WHEEL_UP) {
+		if (track_edit) {
+			track_edit->get_editor()->goto_prev_step(true);
+		}
+		accept_event();
+	}
+
+	if (mb.is_valid() && mb->is_pressed() && mb->is_alt_pressed() && mb->get_button_index() == MOUSE_BUTTON_WHEEL_DOWN) {
+		if (track_edit) {
+			track_edit->get_editor()->goto_next_step(true);
+		}
+		accept_event();
+	}
 
 	if (mb.is_valid() && mb->is_pressed() && mb->get_button_index() == MOUSE_BUTTON_LEFT && hsize_rect.has_point(mb->get_position())) {
 		dragging_hsize = true;
@@ -1742,6 +1768,7 @@ AnimationTimelineEdit::AnimationTimelineEdit() {
 	editing = false;
 	name_limit = 150 * EDSCALE;
 	zoom = nullptr;
+	track_edit = nullptr;
 
 	play_position_pos = 0;
 	play_position = memnew(Control);
@@ -2308,6 +2335,7 @@ void AnimationTrackEdit::set_undo_redo(UndoRedo *p_undo_redo) {
 
 void AnimationTrackEdit::set_timeline(AnimationTimelineEdit *p_timeline) {
 	timeline = p_timeline;
+	timeline->set_track_edit(this);
 	timeline->connect("zoom_changed", callable_mp(this, &AnimationTrackEdit::_zoom_changed));
 	timeline->connect("name_limit_changed", callable_mp(this, &AnimationTrackEdit::_zoom_changed));
 }
@@ -2350,7 +2378,7 @@ void AnimationTrackEdit::_zoom_changed() {
 	play_position->update();
 }
 
-void AnimationTrackEdit::_path_entered(const String &p_text) {
+void AnimationTrackEdit::_path_submitted(const String &p_text) {
 	undo_redo->create_action(TTR("Change Track Path"));
 	undo_redo->add_do_method(animation.ptr(), "track_set_path", track, p_text);
 	undo_redo->add_undo_method(animation.ptr(), "track_set_path", track, animation->track_get_path(track));
@@ -2725,7 +2753,7 @@ void AnimationTrackEdit::_gui_input(const Ref<InputEvent> &p_event) {
 			path = memnew(LineEdit);
 			path_popup->add_child(path);
 			path->set_anchors_and_offsets_preset(PRESET_WIDE);
-			path->connect("text_entered", callable_mp(this, &AnimationTrackEdit::_path_entered));
+			path->connect("text_submitted", callable_mp(this, &AnimationTrackEdit::_path_submitted));
 		}
 
 		path->set_text(animation->track_get_path(track));
@@ -3732,7 +3760,7 @@ Ref<Animation> AnimationTrackEditor::_create_and_get_reset_animation() {
 		return player->get_animation("RESET");
 	} else {
 		Ref<Animation> reset_anim;
-		reset_anim.instance();
+		reset_anim.instantiate();
 		reset_anim->set_length(ANIM_MIN_LENGTH);
 		undo_redo->add_do_method(player, "add_animation", "RESET", reset_anim);
 		undo_redo->add_do_method(AnimationPlayerEditor::singleton, "_animation_player_changed", player);
@@ -4969,6 +4997,16 @@ void AnimationTrackEditor::_scroll_input(const Ref<InputEvent> &p_event) {
 		scroll->accept_event();
 	}
 
+	if (mb.is_valid() && mb->is_pressed() && mb->is_alt_pressed() && mb->get_button_index() == MOUSE_BUTTON_WHEEL_UP) {
+		goto_prev_step(true);
+		scroll->accept_event();
+	}
+
+	if (mb.is_valid() && mb->is_pressed() && mb->is_alt_pressed() && mb->get_button_index() == MOUSE_BUTTON_WHEEL_DOWN) {
+		goto_next_step(true);
+		scroll->accept_event();
+	}
+
 	if (mb.is_valid() && mb->get_button_index() == MOUSE_BUTTON_LEFT) {
 		if (mb->is_pressed()) {
 			box_selecting = true;
@@ -5141,6 +5179,56 @@ void AnimationTrackEditor::_anim_duplicate_keys(bool transpose) {
 void AnimationTrackEditor::_edit_menu_about_to_popup() {
 	AnimationPlayer *player = AnimationPlayerEditor::singleton->get_player();
 	edit->get_popup()->set_item_disabled(edit->get_popup()->get_item_index(EDIT_APPLY_RESET), !player->can_apply_reset());
+}
+
+void AnimationTrackEditor::goto_prev_step(bool p_from_mouse_event) {
+	if (animation.is_null()) {
+		return;
+	}
+	float step = animation->get_step();
+	if (step == 0) {
+		step = 1;
+	}
+	if (p_from_mouse_event && Input::get_singleton()->is_key_pressed(KEY_SHIFT)) {
+		// Use more precise snapping when holding Shift.
+		// This is used when scrobbling the timeline using Alt + Mouse wheel.
+		step *= 0.25;
+	}
+
+	float pos = timeline->get_play_position();
+	pos = Math::snapped(pos - step, step);
+	if (pos < 0) {
+		pos = 0;
+	}
+	set_anim_pos(pos);
+	emit_signal("timeline_changed", pos, true);
+}
+
+void AnimationTrackEditor::goto_next_step(bool p_from_mouse_event) {
+	if (animation.is_null()) {
+		return;
+	}
+	float step = animation->get_step();
+	if (step == 0) {
+		step = 1;
+	}
+	if (p_from_mouse_event && Input::get_singleton()->is_key_pressed(KEY_SHIFT)) {
+		// Use more precise snapping when holding Shift.
+		// This is used when scrobbling the timeline using Alt + Mouse wheel.
+		// Do not use precise snapping when using the menu action or keyboard shortcut,
+		// as the default keyboard shortcut requires pressing Shift.
+		step *= 0.25;
+	}
+
+	float pos = timeline->get_play_position();
+
+	pos = Math::snapped(pos + step, step);
+	if (pos > animation->get_length()) {
+		pos = animation->get_length();
+	}
+	set_anim_pos(pos);
+
+	emit_signal("timeline_changed", pos, true);
 }
 
 void AnimationTrackEditor::_edit_menu_pressed(int p_option) {
@@ -5428,42 +5516,10 @@ void AnimationTrackEditor::_edit_menu_pressed(int p_option) {
 			}
 		} break;
 		case EDIT_GOTO_NEXT_STEP: {
-			if (animation.is_null()) {
-				break;
-			}
-			float step = animation->get_step();
-			if (step == 0) {
-				step = 1;
-			}
-
-			float pos = timeline->get_play_position();
-
-			pos = Math::snapped(pos + step, step);
-			if (pos > animation->get_length()) {
-				pos = animation->get_length();
-			}
-			set_anim_pos(pos);
-
-			emit_signal("timeline_changed", pos, true);
-
+			goto_next_step(false);
 		} break;
 		case EDIT_GOTO_PREV_STEP: {
-			if (animation.is_null()) {
-				break;
-			}
-			float step = animation->get_step();
-			if (step == 0) {
-				step = 1;
-			}
-
-			float pos = timeline->get_play_position();
-			pos = Math::snapped(pos - step, step);
-			if (pos < 0) {
-				pos = 0;
-			}
-			set_anim_pos(pos);
-			emit_signal("timeline_changed", pos, true);
-
+			goto_prev_step(false);
 		} break;
 		case EDIT_APPLY_RESET: {
 			AnimationPlayerEditor::singleton->get_player()->apply_reset(true);
@@ -5927,7 +5983,7 @@ AnimationTrackEditor::AnimationTrackEditor() {
 	//default plugins
 
 	Ref<AnimationTrackEditDefaultPlugin> def_plugin;
-	def_plugin.instance();
+	def_plugin.instantiate();
 	add_track_edit_plugin(def_plugin);
 
 	//dialogs

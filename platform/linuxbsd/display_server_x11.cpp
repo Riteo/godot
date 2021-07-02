@@ -121,6 +121,9 @@ bool DisplayServerX11::has_feature(Feature p_feature) const {
 		case FEATURE_ICON:
 		case FEATURE_NATIVE_ICON:
 		case FEATURE_SWAP_BUFFERS:
+#ifdef DBUS_ENABLED
+		case FEATURE_KEEP_SCREEN_ON:
+#endif
 			return true;
 		default: {
 		}
@@ -450,7 +453,7 @@ Point2i DisplayServerX11::mouse_get_absolute_position() const {
 	return Vector2i();
 }
 
-int DisplayServerX11::mouse_get_button_state() const {
+MouseButton DisplayServerX11::mouse_get_button_state() const {
 	return last_button_state;
 }
 
@@ -821,6 +824,26 @@ bool DisplayServerX11::screen_is_touchscreen(int p_screen) const {
 
 	return DisplayServer::screen_is_touchscreen(p_screen);
 }
+
+#ifdef DBUS_ENABLED
+void DisplayServerX11::screen_set_keep_on(bool p_enable) {
+	if (screen_is_kept_on() == p_enable) {
+		return;
+	}
+
+	if (p_enable) {
+		screensaver->inhibit();
+	} else {
+		screensaver->uninhibit();
+	}
+
+	keep_screen_on = p_enable;
+}
+
+bool DisplayServerX11::screen_is_kept_on() const {
+	return keep_screen_on;
+}
+#endif
 
 Vector<DisplayServer::WindowID> DisplayServerX11::get_window_list() const {
 	_THREAD_SAFE_METHOD_
@@ -2172,13 +2195,13 @@ void DisplayServerX11::_get_key_modifier_state(unsigned int p_x11_state, Ref<Inp
 	state->set_meta_pressed((p_x11_state & Mod4Mask));
 }
 
-unsigned int DisplayServerX11::_get_mouse_button_state(unsigned int p_x11_button, int p_x11_type) {
-	unsigned int mask = 1 << (p_x11_button - 1);
+MouseButton DisplayServerX11::_get_mouse_button_state(MouseButton p_x11_button, int p_x11_type) {
+	MouseButton mask = MouseButton(1 << (p_x11_button - 1));
 
 	if (p_x11_type == ButtonPress) {
 		last_button_state |= mask;
 	} else {
-		last_button_state &= ~mask;
+		last_button_state &= MouseButton(~mask);
 	}
 
 	return last_button_state;
@@ -2255,7 +2278,7 @@ void DisplayServerX11::_handle_key_event(WindowID p_window, XKeyEvent *p_event, 
 			tmp.parse_utf8(utf8string, utf8bytes);
 			for (int i = 0; i < tmp.length(); i++) {
 				Ref<InputEventKey> k;
-				k.instance();
+				k.instantiate();
 				if (physical_keycode == 0 && keycode == 0 && tmp[i] == 0) {
 					continue;
 				}
@@ -2346,7 +2369,7 @@ void DisplayServerX11::_handle_key_event(WindowID p_window, XKeyEvent *p_event, 
 	//print_verbose("mod1: "+itos(xkeyevent->state&Mod1Mask)+" mod 5: "+itos(xkeyevent->state&Mod5Mask));
 
 	Ref<InputEventKey> k;
-	k.instance();
+	k.instantiate();
 	k->set_window_id(p_window);
 
 	_get_key_modifier_state(xkeyevent->state, k);
@@ -2904,7 +2927,7 @@ void DisplayServerX11::process_events() {
 						bool is_begin = event_data->evtype == XI_TouchBegin;
 
 						Ref<InputEventScreenTouch> st;
-						st.instance();
+						st.instantiate();
 						st->set_window_id(window_id);
 						st->set_index(index);
 						st->set_position(pos);
@@ -2938,7 +2961,7 @@ void DisplayServerX11::process_events() {
 
 						if (curr_pos_elem->value() != pos) {
 							Ref<InputEventScreenDrag> sd;
-							sd.instance();
+							sd.instantiate();
 							sd->set_window_id(window_id);
 							sd->set_index(index);
 							sd->set_position(pos);
@@ -3091,7 +3114,7 @@ void DisplayServerX11::process_events() {
 				// Release every pointer to avoid sticky points
 				for (Map<int, Vector2>::Element *E = xi.state.front(); E; E = E->next()) {
 					Ref<InputEventScreenTouch> st;
-					st.instance();
+					st.instantiate();
 					st->set_index(E->key());
 					st->set_window_id(window_id);
 					st->set_position(E->get());
@@ -3126,15 +3149,15 @@ void DisplayServerX11::process_events() {
 				}
 
 				Ref<InputEventMouseButton> mb;
-				mb.instance();
+				mb.instantiate();
 
 				mb->set_window_id(window_id);
 				_get_key_modifier_state(event.xbutton.state, mb);
-				mb->set_button_index(event.xbutton.button);
-				if (mb->get_button_index() == 2) {
-					mb->set_button_index(3);
-				} else if (mb->get_button_index() == 3) {
-					mb->set_button_index(2);
+				mb->set_button_index((MouseButton)event.xbutton.button);
+				if (mb->get_button_index() == MOUSE_BUTTON_RIGHT) {
+					mb->set_button_index(MOUSE_BUTTON_MIDDLE);
+				} else if (mb->get_button_index() == MOUSE_BUTTON_MIDDLE) {
+					mb->set_button_index(MOUSE_BUTTON_RIGHT);
 				}
 				mb->set_button_mask(_get_mouse_button_state(mb->get_button_index(), event.xbutton.type));
 				mb->set_position(Vector2(event.xbutton.x, event.xbutton.y));
@@ -3291,13 +3314,13 @@ void DisplayServerX11::process_events() {
 				}
 
 				Ref<InputEventMouseMotion> mm;
-				mm.instance();
+				mm.instantiate();
 
 				mm->set_window_id(window_id);
 				if (xi.pressure_supported) {
 					mm->set_pressure(xi.pressure);
 				} else {
-					mm->set_pressure((mouse_get_button_state() & (1 << (MOUSE_BUTTON_LEFT - 1))) ? 1.0f : 0.0f);
+					mm->set_pressure((mouse_get_button_state() & MOUSE_BUTTON_MASK_LEFT) ? 1.0f : 0.0f);
 				}
 				mm->set_tilt(xi.tilt);
 
@@ -3855,8 +3878,6 @@ DisplayServerX11::DisplayServerX11(const String &p_rendering_driver, WindowMode 
 		img[i] = nullptr;
 	}
 
-	last_button_state = 0;
-
 	xmbstring = nullptr;
 
 	last_click_ms = 0;
@@ -4272,6 +4293,11 @@ DisplayServerX11::DisplayServerX11(const String &p_rendering_driver, WindowMode 
 
 	_update_real_mouse_position(windows[MAIN_WINDOW_ID]);
 
+#ifdef DBUS_ENABLED
+	screensaver = memnew(FreeDesktopScreenSaver);
+	screen_set_keep_on(GLOBAL_DEF("display/window/energy_saving/keep_screen_on", true));
+#endif
+
 	r_error = OK;
 }
 
@@ -4336,6 +4362,10 @@ DisplayServerX11::~DisplayServerX11() {
 	if (xmbstring) {
 		memfree(xmbstring);
 	}
+
+#ifdef DBUS_ENABLED
+	memdelete(screensaver);
+#endif
 }
 
 void DisplayServerX11::register_x11_driver() {

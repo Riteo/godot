@@ -525,7 +525,7 @@ void EditorAudioBus::_effect_add(int p_which) {
 
 	StringName name = effect_options->get_item_metadata(p_which);
 
-	Object *fx = ClassDB::instance(name);
+	Object *fx = ClassDB::instantiate(name);
 	ERR_FAIL_COND(!fx);
 	AudioEffect *afx = Object::cast_to<AudioEffect>(fx);
 	ERR_FAIL_COND(!afx);
@@ -757,9 +757,9 @@ void EditorAudioBus::_bind_methods() {
 	ClassDB::bind_method("update_bus", &EditorAudioBus::update_bus);
 	ClassDB::bind_method("update_send", &EditorAudioBus::update_send);
 	ClassDB::bind_method("_gui_input", &EditorAudioBus::_gui_input);
-	ClassDB::bind_method("get_drag_data_fw", &EditorAudioBus::get_drag_data_fw);
-	ClassDB::bind_method("can_drop_data_fw", &EditorAudioBus::can_drop_data_fw);
-	ClassDB::bind_method("drop_data_fw", &EditorAudioBus::drop_data_fw);
+	ClassDB::bind_method("_get_drag_data_fw", &EditorAudioBus::get_drag_data_fw);
+	ClassDB::bind_method("_can_drop_data_fw", &EditorAudioBus::can_drop_data_fw);
+	ClassDB::bind_method("_drop_data_fw", &EditorAudioBus::drop_data_fw);
 
 	ADD_SIGNAL(MethodInfo("duplicate_request"));
 	ADD_SIGNAL(MethodInfo("delete_request"));
@@ -782,7 +782,7 @@ EditorAudioBus::EditorAudioBus(EditorAudioBuses *p_buses, bool p_is_master) {
 	set_v_size_flags(SIZE_EXPAND_FILL);
 
 	track_name = memnew(LineEdit);
-	track_name->connect("text_entered", callable_mp(this, &EditorAudioBus::_name_changed));
+	track_name->connect("text_submitted", callable_mp(this, &EditorAudioBus::_name_changed));
 	track_name->connect("focus_exited", callable_mp(this, &EditorAudioBus::_name_focus_exit));
 	vb->add_child(track_name);
 
@@ -921,7 +921,7 @@ EditorAudioBus::EditorAudioBus(EditorAudioBuses *p_buses, bool p_is_master) {
 	ClassDB::get_inheriters_from_class("AudioEffect", &effects);
 	effects.sort_custom<StringName::AlphCompare>();
 	for (List<StringName>::Element *E = effects.front(); E; E = E->next()) {
-		if (!ClassDB::can_instance(E->get())) {
+		if (!ClassDB::can_instantiate(E->get())) {
 			continue;
 		}
 
@@ -1238,7 +1238,7 @@ void EditorAudioBuses::_file_dialog_callback(const String &p_string) {
 	} else if (file_dialog->get_file_mode() == EditorFileDialog::FILE_MODE_SAVE_FILE) {
 		if (new_layout) {
 			Ref<AudioBusLayout> empty_state;
-			empty_state.instance();
+			empty_state.instantiate();
 			AudioServer::get_singleton()->set_bus_layout(empty_state);
 		}
 

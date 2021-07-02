@@ -63,12 +63,16 @@
 # Cam <cameron.toms@gmail.com>, 2021.
 # Juan camilo <jugarciago01@gmail.com>, 2021.
 # Manuel González <mgoopazo@gmail.com>, 2021.
+# softonicblip <blazeawardspace@gmail.com>, 2021.
+# Ib Quezada <ib@ibquezada.com>, 2021.
+# hiking <joaquinfc@protonmail.com>, 2021.
+# pabloggomez <pgg2733@gmail.com>, 2021.
 msgid ""
 msgstr ""
 "Project-Id-Version: Godot Engine editor\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2021-05-29 13:49+0000\n"
-"Last-Translator: Manuel González <mgoopazo@gmail.com>\n"
+"PO-Revision-Date: 2021-06-23 21:56+0000\n"
+"Last-Translator: pabloggomez <pgg2733@gmail.com>\n"
 "Language-Team: Spanish <https://hosted.weblate.org/projects/godot-engine/"
 "godot/es/>\n"
 "Language: es\n"
@@ -76,7 +80,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 4.7-dev\n"
+"X-Generator: Weblate 4.7.1-dev\n"
 
 #: core/math/expression.cpp modules/gdscript/gdscript_functions.cpp
 #: modules/visual_script/visual_script_builtin_funcs.cpp
@@ -1184,6 +1188,10 @@ msgstr "Cambiar Valor del Diccionario"
 #: editor/editor_about.cpp
 msgid "Thanks from the Godot community!"
 msgstr "¡Muchas gracias de parte de la comunidad de Godot!"
+
+#: editor/editor_about.cpp editor/editor_node.cpp editor/project_manager.cpp
+msgid "Click to copy."
+msgstr "Clic para copiar."
 
 #: editor/editor_about.cpp
 msgid "Godot Engine contributors"
@@ -4924,8 +4932,8 @@ msgstr "Eliminar el nodo o transición seleccionado/a."
 #: editor/plugins/animation_state_machine_editor.cpp
 msgid "Toggle autoplay this animation on start, restart or seek to zero."
 msgstr ""
-"Act./Desact. reproducción automática de esta animación al comenzar, "
-"reiniciar o hacer seek hasta el cero."
+"Alternar reproducción automática de esta animación al comenzar, reiniciar o "
+"hacer puesta a cero."
 
 #: editor/plugins/animation_state_machine_editor.cpp
 msgid "Set the end animation. This is useful for sub-transitions."
@@ -5318,11 +5326,10 @@ msgstr ""
 "están contenidos dentro de la región cuadrangular [0,0,1,0]."
 
 #: editor/plugins/baked_lightmap_editor_plugin.cpp
-#, fuzzy
 msgid ""
 "Godot editor was built without ray tracing support, lightmaps can't be baked."
 msgstr ""
-"El editor de Godot se construyó sin soporte de trazado de rayos, los "
+"El editor de Godot se construyó sin soporte para trazado de rayos, los "
 "lightmaps no pueden ser bakeados."
 
 #: editor/plugins/baked_lightmap_editor_plugin.cpp
@@ -12320,9 +12327,25 @@ msgstr ""
 "Instalala desde el menú de Proyecto."
 
 #: platform/android/export/export.cpp
+msgid ""
+"Either Debug Keystore, Debug User AND Debug Password settings must be "
+"configured OR none of them."
+msgstr ""
+"Deben configurarse los ajustes de Depuración de Claves, Depuración de "
+"Usuarios Y Depuración de Contraseñas O ninguno de ellos."
+
+#: platform/android/export/export.cpp
 msgid "Debug keystore not configured in the Editor Settings nor in the preset."
 msgstr ""
 "Debug keystore no configurada en Configuración del Editor ni en el preset."
+
+#: platform/android/export/export.cpp
+msgid ""
+"Either Release Keystore, Release User AND Release Password settings must be "
+"configured OR none of them."
+msgstr ""
+"Deben configurarse los ajustes de Liberación del Almacén de Claves, "
+"Liberación del Usuario Y Liberación de la Contraseña O ninguno de ellos."
 
 #: platform/android/export/export.cpp
 msgid "Release keystore incorrectly configured in the export preset."

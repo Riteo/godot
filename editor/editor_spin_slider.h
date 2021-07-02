@@ -39,6 +39,7 @@ class EditorSpinSlider : public Range {
 	GDCLASS(EditorSpinSlider, Range);
 
 	String label;
+	String suffix;
 	int updown_offset;
 	bool hover_updown;
 	bool mouse_hover;
@@ -68,7 +69,7 @@ class EditorSpinSlider : public Range {
 
 	void _grabber_gui_input(const Ref<InputEvent> &p_event);
 	void _value_input_closed();
-	void _value_input_entered(const String &);
+	void _value_input_submitted(const String &);
 	void _value_focus_exited();
 	bool hide_slider;
 	bool flat;
@@ -92,6 +93,9 @@ public:
 	String get_text_value() const;
 	void set_label(const String &p_label);
 	String get_label() const;
+
+	void set_suffix(const String &p_suffix);
+	String get_suffix() const;
 
 	void set_hide_slider(bool p_hide);
 	bool is_hiding_slider() const;

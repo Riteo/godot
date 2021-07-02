@@ -41,6 +41,9 @@
 
 class Viewport;
 class SceneState;
+class Tween;
+class PropertyTweener;
+
 class Node : public Object {
 	GDCLASS(Node, Object);
 	OBJ_CATEGORY("Nodes");
@@ -163,7 +166,7 @@ private:
 	void _propagate_after_exit_tree();
 	void _propagate_validate_owner();
 	void _print_stray_nodes();
-	void _propagate_process_owner(Node *p_owner, int p_notification);
+	void _propagate_process_owner(Node *p_owner, int p_pause_notification, int p_enabled_notification);
 	Array _get_node_and_resource(const NodePath &p_path);
 
 	void _duplicate_signals(const Node *p_original, Node *p_copy) const;
@@ -181,6 +184,7 @@ private:
 	void _propagate_pause_notification(bool p_enable);
 
 	_FORCE_INLINE_ bool _can_process(bool p_paused) const;
+	_FORCE_INLINE_ bool _is_enabled() const;
 
 protected:
 	void _block() { data.blocked++; }
@@ -224,6 +228,8 @@ public:
 		NOTIFICATION_INTERNAL_PROCESS = 25,
 		NOTIFICATION_INTERNAL_PHYSICS_PROCESS = 26,
 		NOTIFICATION_POST_ENTER_TREE = 27,
+		NOTIFICATION_DISABLED = 28,
+		NOTIFICATION_ENABLED = 29,
 		//keep these linked to node
 
 		NOTIFICATION_WM_MOUSE_ENTER = 1002,
@@ -279,7 +285,7 @@ public:
 
 	_FORCE_INLINE_ bool is_inside_tree() const { return data.inside_tree; }
 
-	bool is_a_parent_of(const Node *p_node) const;
+	bool is_ancestor_of(const Node *p_node) const;
 	bool is_greater_than(const Node *p_node) const;
 
 	NodePath get_path() const;
@@ -307,6 +313,8 @@ public:
 
 	void remove_and_skip();
 	int get_index() const;
+
+	Ref<Tween> create_tween();
 
 	void print_tree();
 	void print_tree_pretty();
@@ -380,6 +388,7 @@ public:
 	ProcessMode get_process_mode() const;
 	bool can_process() const;
 	bool can_process_notification(int p_what) const;
+	bool is_enabled() const;
 
 	void request_ready();
 

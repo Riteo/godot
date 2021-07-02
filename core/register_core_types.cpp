@@ -37,6 +37,8 @@
 #include "core/crypto/aes_context.h"
 #include "core/crypto/crypto.h"
 #include "core/crypto/hashing_context.h"
+#include "core/extension/native_extension.h"
+#include "core/extension/native_extension_manager.h"
 #include "core/input/input.h"
 #include "core/input/input_map.h"
 #include "core/io/config_file.h"
@@ -68,6 +70,7 @@
 #include "core/object/class_db.h"
 #include "core/object/undo_redo.h"
 #include "core/os/main_loop.h"
+#include "core/os/time.h"
 #include "core/string/optimized_translation.h"
 #include "core/string/translation.h"
 
@@ -85,7 +88,6 @@ static _OS *_os = nullptr;
 static _Engine *_engine = nullptr;
 static _ClassDB *_classdb = nullptr;
 static _Marshalls *_marshalls = nullptr;
-static _JSON *_json = nullptr;
 static _EngineDebugger *_engine_debugger = nullptr;
 
 static IP *ip = nullptr;
@@ -94,6 +96,8 @@ static _Geometry2D *_geometry_2d = nullptr;
 static _Geometry3D *_geometry_3d = nullptr;
 
 extern Mutex _global_mutex;
+
+static NativeExtensionManager *native_extension_manager = nullptr;
 
 extern void register_global_constants();
 extern void unregister_global_constants();
@@ -113,25 +117,25 @@ void register_core_types() {
 
 	CoreStringNames::create();
 
-	resource_format_po.instance();
+	resource_format_po.instantiate();
 	ResourceLoader::add_resource_format_loader(resource_format_po);
 
-	resource_saver_binary.instance();
+	resource_saver_binary.instantiate();
 	ResourceSaver::add_resource_format_saver(resource_saver_binary);
-	resource_loader_binary.instance();
+	resource_loader_binary.instantiate();
 	ResourceLoader::add_resource_format_loader(resource_loader_binary);
 
-	resource_format_importer.instance();
+	resource_format_importer.instantiate();
 	ResourceLoader::add_resource_format_loader(resource_format_importer);
 
-	resource_format_image.instance();
+	resource_format_image.instantiate();
 	ResourceLoader::add_resource_format_loader(resource_format_image);
 
 	ClassDB::register_class<Object>();
 
 	ClassDB::register_virtual_class<Script>();
 
-	ClassDB::register_class<Reference>();
+	ClassDB::register_class<RefCounted>();
 	ClassDB::register_class<WeakRef>();
 	ClassDB::register_class<Resource>();
 	ClassDB::register_class<Image>();
@@ -153,14 +157,20 @@ void register_core_types() {
 	ClassDB::register_class<InputEventPanGesture>();
 	ClassDB::register_class<InputEventMIDI>();
 
+	// Network
+	ClassDB::register_virtual_class<IP>();
+
 	ClassDB::register_virtual_class<StreamPeer>();
 	ClassDB::register_class<StreamPeerBuffer>();
 	ClassDB::register_class<StreamPeerTCP>();
 	ClassDB::register_class<TCPServer>();
+
+	ClassDB::register_virtual_class<PacketPeer>();
+	ClassDB::register_class<PacketPeerStream>();
 	ClassDB::register_class<PacketPeerUDP>();
 	ClassDB::register_class<UDPServer>();
-	ClassDB::register_custom_instance_class<PacketPeerDTLS>();
-	ClassDB::register_custom_instance_class<DTLSServer>();
+
+	ClassDB::register_custom_instance_class<HTTPClient>();
 
 	// Crypto
 	ClassDB::register_class<HashingContext>();
@@ -170,22 +180,20 @@ void register_core_types() {
 	ClassDB::register_custom_instance_class<HMACContext>();
 	ClassDB::register_custom_instance_class<Crypto>();
 	ClassDB::register_custom_instance_class<StreamPeerSSL>();
+	ClassDB::register_custom_instance_class<PacketPeerDTLS>();
+	ClassDB::register_custom_instance_class<DTLSServer>();
 
-	resource_format_saver_crypto.instance();
+	resource_format_saver_crypto.instantiate();
 	ResourceSaver::add_resource_format_saver(resource_format_saver_crypto);
-	resource_format_loader_crypto.instance();
+	resource_format_loader_crypto.instantiate();
 	ResourceLoader::add_resource_format_loader(resource_format_loader_crypto);
 
-	ClassDB::register_virtual_class<IP>();
-	ClassDB::register_virtual_class<PacketPeer>();
-	ClassDB::register_class<PacketPeerStream>();
 	ClassDB::register_virtual_class<NetworkedMultiplayerPeer>();
 	ClassDB::register_class<MultiplayerAPI>();
 	ClassDB::register_class<MainLoop>();
 	ClassDB::register_class<Translation>();
 	ClassDB::register_class<OptimizedTranslation>();
 	ClassDB::register_class<UndoRedo>();
-	ClassDB::register_class<HTTPClient>();
 	ClassDB::register_class<TriangleMesh>();
 
 	ClassDB::register_class<ResourceFormatLoader>();
@@ -198,7 +206,7 @@ void register_core_types() {
 	ClassDB::register_class<_Semaphore>();
 
 	ClassDB::register_class<XMLParser>();
-	ClassDB::register_class<JSONParser>();
+	ClassDB::register_class<JSON>();
 
 	ClassDB::register_class<ConfigFile>();
 
@@ -211,9 +219,13 @@ void register_core_types() {
 	ClassDB::register_class<EncodedObjectAsID>();
 	ClassDB::register_class<RandomNumberGenerator>();
 
-	ClassDB::register_class<JSONParseResult>();
-
 	ClassDB::register_virtual_class<ResourceImporter>();
+
+	ClassDB::register_class<NativeExtension>();
+
+	ClassDB::register_virtual_class<NativeExtensionManager>();
+
+	native_extension_manager = memnew(NativeExtensionManager);
 
 	ip = IP::create();
 
@@ -226,7 +238,6 @@ void register_core_types() {
 	_engine = memnew(_Engine);
 	_classdb = memnew(_ClassDB);
 	_marshalls = memnew(_Marshalls);
-	_json = memnew(_JSON);
 	_engine_debugger = memnew(_EngineDebugger);
 }
 
@@ -255,12 +266,12 @@ void register_core_singletons() {
 	ClassDB::register_class<TranslationServer>();
 	ClassDB::register_virtual_class<Input>();
 	ClassDB::register_class<InputMap>();
-	ClassDB::register_class<_JSON>();
 	ClassDB::register_class<Expression>();
 	ClassDB::register_class<_EngineDebugger>();
+	ClassDB::register_class<Time>();
 
 	Engine::get_singleton()->add_singleton(Engine::Singleton("ProjectSettings", ProjectSettings::get_singleton()));
-	Engine::get_singleton()->add_singleton(Engine::Singleton("IP", IP::get_singleton()));
+	Engine::get_singleton()->add_singleton(Engine::Singleton("IP", IP::get_singleton(), "IP"));
 	Engine::get_singleton()->add_singleton(Engine::Singleton("Geometry2D", _Geometry2D::get_singleton()));
 	Engine::get_singleton()->add_singleton(Engine::Singleton("Geometry3D", _Geometry3D::get_singleton()));
 	Engine::get_singleton()->add_singleton(Engine::Singleton("ResourceLoader", _ResourceLoader::get_singleton()));
@@ -272,18 +283,33 @@ void register_core_singletons() {
 	Engine::get_singleton()->add_singleton(Engine::Singleton("TranslationServer", TranslationServer::get_singleton()));
 	Engine::get_singleton()->add_singleton(Engine::Singleton("Input", Input::get_singleton()));
 	Engine::get_singleton()->add_singleton(Engine::Singleton("InputMap", InputMap::get_singleton()));
-	Engine::get_singleton()->add_singleton(Engine::Singleton("JSON", _JSON::get_singleton()));
 	Engine::get_singleton()->add_singleton(Engine::Singleton("EngineDebugger", _EngineDebugger::get_singleton()));
+	Engine::get_singleton()->add_singleton(Engine::Singleton("Time", Time::get_singleton()));
+	Engine::get_singleton()->add_singleton(Engine::Singleton("NativeExtensionManager", NativeExtensionManager::get_singleton()));
+}
+
+void register_core_extensions() {
+	//harcoded for now
+	if (ProjectSettings::get_singleton()->has_setting("native_extensions/paths")) {
+		Vector<String> paths = ProjectSettings::get_singleton()->get("native_extensions/paths");
+		for (int i = 0; i < paths.size(); i++) {
+			NativeExtensionManager::LoadStatus status = native_extension_manager->load_extension(paths[i]);
+			ERR_CONTINUE_MSG(status != NativeExtensionManager::LOAD_STATUS_OK, "Error loading extension: " + paths[i]);
+		}
+	}
+	native_extension_manager->initialize_extensions(NativeExtension::INITIALIZATION_LEVEL_CORE);
 }
 
 void unregister_core_types() {
+	native_extension_manager->deinitialize_extensions(NativeExtension::INITIALIZATION_LEVEL_CORE);
+
+	memdelete(native_extension_manager);
 	memdelete(_resource_loader);
 	memdelete(_resource_saver);
 	memdelete(_os);
 	memdelete(_engine);
 	memdelete(_classdb);
 	memdelete(_marshalls);
-	memdelete(_json);
 	memdelete(_engine_debugger);
 
 	memdelete(_geometry_2d);

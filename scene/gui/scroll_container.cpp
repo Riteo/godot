@@ -32,10 +32,6 @@
 #include "core/os/os.h"
 #include "scene/main/window.h"
 
-bool ScrollContainer::clips_input() const {
-	return true;
-}
-
 Size2 ScrollContainer::get_minimum_size() const {
 	Ref<StyleBox> sb = get_theme_stylebox("bg");
 	Size2 min_size;
@@ -239,13 +235,13 @@ void ScrollContainer::_update_scrollbar_position() {
 }
 
 void ScrollContainer::_gui_focus_changed(Control *p_control) {
-	if (follow_focus && is_a_parent_of(p_control)) {
+	if (follow_focus && is_ancestor_of(p_control)) {
 		ensure_control_visible(p_control);
 	}
 }
 
 void ScrollContainer::ensure_control_visible(Control *p_control) {
-	ERR_FAIL_COND_MSG(!is_a_parent_of(p_control), "Must be a parent of the control.");
+	ERR_FAIL_COND_MSG(!is_ancestor_of(p_control), "Must be an ancestor of the control.");
 
 	Rect2 global_rect = get_global_rect();
 	Rect2 other_rect = p_control->get_global_rect();

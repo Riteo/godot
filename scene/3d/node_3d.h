@@ -34,8 +34,8 @@
 #include "scene/main/node.h"
 #include "scene/main/scene_tree.h"
 
-class Node3DGizmo : public Reference {
-	GDCLASS(Node3DGizmo, Reference);
+class Node3DGizmo : public RefCounted {
+	GDCLASS(Node3DGizmo, RefCounted);
 
 public:
 	virtual void create() = 0;
@@ -75,6 +75,8 @@ class Node3D : public Node {
 		bool top_level = false;
 		bool inside_world = false;
 
+		RID visibility_parent;
+
 		int children_lock = 0;
 		Node3D *parent = nullptr;
 		List<Node3D *> children;
@@ -95,11 +97,16 @@ class Node3D : public Node {
 
 	} data;
 
+	NodePath visibility_parent_path;
+
 	void _update_gizmo();
 	void _notify_dirty();
 	void _propagate_transform_changed(Node3D *p_origin);
 
 	void _propagate_visibility_changed();
+
+	void _propagate_visibility_parent();
+	void _update_visibility_parent(bool p_update_root);
 
 protected:
 	_FORCE_INLINE_ void set_ignore_transform_notification(bool p_ignore) { data.ignore_notification = p_ignore; }
@@ -118,18 +125,16 @@ public:
 		NOTIFICATION_LOCAL_TRANSFORM_CHANGED = 44,
 	};
 
-	Node3D *get_parent_spatial() const;
+	Node3D *get_parent_node_3d() const;
 
 	Ref<World3D> get_world_3d() const;
 
 	void set_position(const Vector3 &p_position);
 	void set_rotation(const Vector3 &p_euler_rad);
-	void set_rotation_degrees(const Vector3 &p_euler_deg);
 	void set_scale(const Vector3 &p_scale);
 
 	Vector3 get_position() const;
 	Vector3 get_rotation() const;
-	Vector3 get_rotation_degrees() const;
 	Vector3 get_scale() const;
 
 	void set_transform(const Transform3D &p_transform);
@@ -195,6 +200,9 @@ public:
 	bool is_visible_in_tree() const;
 
 	void force_update_transform();
+
+	void set_visibility_parent(const NodePath &p_path);
+	NodePath get_visibility_parent() const;
 
 	Node3D();
 };

@@ -1862,7 +1862,7 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 #if 0
 		Vector<uint8_t> data = RD::get_singleton()->texture_get_data(cascades[cascade].sdf, 0);
 		Ref<Image> img;
-		img.instance();
+		img.instantiate();
 		for (uint32_t i = 0; i < cascade_size; i++) {
 			Vector<uint8_t> subarr = data.subarray(128 * 128 * i, 128 * 128 * (i + 1) - 1);
 			img->create(cascade_size, cascade_size, false, Image::FORMAT_L8, subarr);
@@ -1875,7 +1875,7 @@ void RendererSceneGIRD::SDFGI::render_region(RID p_render_buffers, int p_region,
 #if 0
 		Vector<uint8_t> data = RD::get_singleton()->texture_get_data(render_albedo, 0);
 		Ref<Image> img;
-		img.instance();
+		img.instantiate();
 		for (uint32_t i = 0; i < cascade_size; i++) {
 			Vector<uint8_t> subarr = data.subarray(128 * 128 * i * 2, 128 * 128 * (i + 1) * 2 - 1);
 			img->createcascade_size, cascade_size, false, Image::FORMAT_RGB565, subarr);
@@ -3078,9 +3078,6 @@ void RendererSceneGIRD::setup_voxel_gi_instances(RID p_render_buffers, const Tra
 				gipd.bias = storage->voxel_gi_get_bias(base_probe);
 				gipd.normal_bias = storage->voxel_gi_get_normal_bias(base_probe);
 				gipd.blend_ambient = !storage->voxel_gi_is_interior(base_probe);
-				gipd.anisotropy_strength = 0;
-				gipd.ao = storage->voxel_gi_get_ao(base_probe);
-				gipd.ao_size = Math::pow(storage->voxel_gi_get_ao_size(base_probe), 4.0f);
 				gipd.mipmaps = gipi->mipmaps.size();
 			}
 

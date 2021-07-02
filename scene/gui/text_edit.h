@@ -96,7 +96,7 @@ private:
 			bool hidden = false;
 
 			Line() {
-				data_buf.instance();
+				data_buf.instantiate();
 			}
 		};
 
@@ -112,11 +112,12 @@ private:
 
 		int width = -1;
 
-		int indent_size = 4;
+		int tab_size = 4;
 		int gutter_count = 0;
 
 	public:
-		void set_indent_size(int p_indent_size);
+		void set_tab_size(int p_tab_size);
+		int get_tab_size() const;
 		void set_font(const Ref<Font> &p_font);
 		void set_font_size(int p_font_size);
 		void set_font_features(const Dictionary &p_features);
@@ -124,7 +125,7 @@ private:
 		void set_draw_control_chars(bool p_draw_control_chars);
 
 		int get_line_height(int p_line, int p_wrap_index) const;
-		int get_line_width(int p_line) const;
+		int get_line_width(int p_line, int p_wrap_index = -1) const;
 		int get_max_width(bool p_exclude_hidden = false) const;
 
 		void set_width(float p_width);
@@ -259,9 +260,6 @@ private:
 
 	int max_chars = 0;
 	bool readonly = true; // Initialise to opposite first, so we get past the early-out in set_readonly.
-	bool indent_using_spaces = false;
-	int indent_size = 4;
-	String space_indent = "    ";
 
 	Timer *caret_blink_timer;
 	bool caret_blink_enabled = false;
@@ -296,7 +294,6 @@ private:
 	bool scroll_past_end_of_file_enabled = false;
 	bool brace_matching_enabled = false;
 	bool highlight_current_line = false;
-	bool auto_indent = false;
 
 	String cut_copy_line;
 	bool insert_mode = false;
@@ -349,11 +346,8 @@ private:
 
 	void update_cursor_wrap_offset();
 	void _update_wrap_at(bool p_force = false);
-	bool line_wraps(int line) const;
-	int times_line_wraps(int line) const;
 	Vector<String> get_wrap_rows_text(int p_line) const;
 	int get_cursor_wrap_index() const;
-	int get_line_wrap_index_at_col(int p_line, int p_column) const;
 	int get_char_count();
 
 	double get_scroll_pos_for_line(int p_line, int p_wrap_index = 0) const;
@@ -423,14 +417,9 @@ private:
 
 	void _clear();
 
-	int _calculate_spaces_till_next_left_indent(int column);
-	int _calculate_spaces_till_next_right_indent(int column);
-
 	// Methods used in shortcuts
 	void _swap_current_input_direction();
 	void _new_line(bool p_split_current = true, bool p_above = false);
-	void _indent_right();
-	void _indent_left();
 	void _move_cursor_left(bool p_select, bool p_move_by_word = false);
 	void _move_cursor_right(bool p_select, bool p_move_by_word = false);
 	void _move_cursor_up(bool p_select);
@@ -439,9 +428,8 @@ private:
 	void _move_cursor_to_line_end(bool p_select);
 	void _move_cursor_page_up(bool p_select);
 	void _move_cursor_page_down(bool p_select);
-	void _backspace(bool p_word = false, bool p_all_to_left = false);
+	void _do_backspace(bool p_word = false, bool p_all_to_left = false);
 	void _delete(bool p_word = false, bool p_all_to_right = false);
-	void _delete_selection();
 	void _move_cursor_document_start(bool p_select);
 	void _move_cursor_document_end(bool p_select);
 	void _handle_unicode_character(uint32_t unicode, bool p_had_selection);
@@ -514,6 +502,7 @@ public:
 
 	void set_gutter_width(int p_gutter, int p_width);
 	int get_gutter_width(int p_gutter) const;
+	int get_total_gutter_width() const;
 
 	void set_gutter_draw(int p_gutter, bool p_draw);
 	bool is_gutter_drawn(int p_gutter) const;
@@ -523,6 +512,8 @@ public:
 
 	void set_gutter_overwritable(int p_gutter, bool p_overwritable);
 	bool is_gutter_overwritable(int p_gutter) const;
+
+	void merge_gutters(int p_from_line, int p_to_line);
 
 	void set_gutter_custom_draw(int p_gutter, Object *p_object, const StringName &p_callback);
 
@@ -622,32 +613,24 @@ public:
 	void insert_text_at_cursor(const String &p_text);
 	void insert_at(const String &p_text, int at);
 	int get_line_count() const;
+	int get_line_width(int p_line, int p_wrap_offset = -1) const;
+	int get_line_wrap_index_at_col(int p_line, int p_column) const;
 
 	void set_line_as_hidden(int p_line, bool p_hidden);
 	bool is_line_hidden(int p_line) const;
-	void fold_all_lines();
 	void unhide_all_lines();
 	int num_lines_from(int p_line_from, int visible_amount) const;
 	int num_lines_from_rows(int p_line_from, int p_wrap_index_from, int visible_amount, int &wrap_index) const;
 	int get_last_unhidden_line() const;
 
-	bool can_fold(int p_line) const;
-	bool is_folded(int p_line) const;
-	Vector<int> get_folded_lines() const;
-	void fold_line(int p_line);
-	void unfold_line(int p_line);
-	void toggle_fold_line(int p_line);
-
 	String get_text();
 	String get_line(int line) const;
+	bool has_ime_text() const;
 	void set_line(int line, String new_text);
 	int get_row_height() const;
-	void backspace_at_cursor();
 
-	void indent_selected_lines_left();
-	void indent_selected_lines_right();
 	int get_indent_level(int p_line) const;
-	bool is_line_comment(int p_line) const;
+	int get_first_non_whitespace_column(int p_line) const;
 
 	inline void set_scroll_pass_end_of_file(bool p_enabled) {
 		scroll_past_end_of_file_enabled = p_enabled;
@@ -660,7 +643,6 @@ public:
 		brace_matching_enabled = p_enabled;
 		update();
 	}
-	void set_auto_indent(bool p_auto_indent);
 
 	void center_viewport_to_cursor();
 
@@ -701,9 +683,14 @@ public:
 
 	void set_wrap_enabled(bool p_wrap_enabled);
 	bool is_wrap_enabled() const;
+	bool line_wraps(int line) const;
+	int times_line_wraps(int line) const;
 
 	void clear();
 
+	void delete_selection();
+
+	virtual void backspace();
 	void cut();
 	void copy();
 	void paste();
@@ -735,10 +722,8 @@ public:
 	void redo();
 	void clear_undo_history();
 
-	void set_indent_using_spaces(const bool p_use_spaces);
-	bool is_indent_using_spaces() const;
-	void set_indent_size(const int p_size);
-	int get_indent_size();
+	void set_tab_size(const int p_size);
+	int get_tab_size() const;
 	void set_draw_tabs(bool p_draw);
 	bool is_drawing_tabs() const;
 	void set_draw_spaces(bool p_draw);
@@ -748,9 +733,6 @@ public:
 
 	void set_insert_mode(bool p_enabled);
 	bool is_insert_mode() const;
-
-	void add_keyword(const String &p_keyword);
-	void clear_keywords();
 
 	double get_v_scroll() const;
 	void set_v_scroll(double p_scroll);

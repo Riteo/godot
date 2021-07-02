@@ -972,7 +972,7 @@ void Variant::call(const StringName &p_method, const Variant **p_args, int p_arg
 			return;
 		}
 #ifdef DEBUG_ENABLED
-		if (EngineDebugger::is_active() && !_get_obj().id.is_reference() && ObjectDB::get_instance(_get_obj().id) == nullptr) {
+		if (EngineDebugger::is_active() && !_get_obj().id.is_ref_counted() && ObjectDB::get_instance(_get_obj().id) == nullptr) {
 			r_error.error = Callable::CallError::CALL_ERROR_INSTANCE_IS_NULL;
 			return;
 		}
@@ -1124,6 +1124,25 @@ bool Variant::is_builtin_method_vararg(Variant::Type p_type, const StringName &p
 	const VariantBuiltInMethodInfo *method = builtin_method_info[p_type].lookup_ptr(p_method);
 	ERR_FAIL_COND_V(!method, false);
 	return method->is_vararg;
+}
+
+uint32_t Variant::get_builtin_method_hash(Variant::Type p_type, const StringName &p_method) {
+	ERR_FAIL_INDEX_V(p_type, Variant::VARIANT_MAX, 0);
+	const VariantBuiltInMethodInfo *method = builtin_method_info[p_type].lookup_ptr(p_method);
+	ERR_FAIL_COND_V(!method, 0);
+	uint32_t hash = hash_djb2_one_32(method->is_const);
+	hash = hash_djb2_one_32(method->is_static, hash);
+	hash = hash_djb2_one_32(method->is_vararg, hash);
+	hash = hash_djb2_one_32(method->has_return_type, hash);
+	if (method->has_return_type) {
+		hash = hash_djb2_one_32(method->return_type, hash);
+	}
+	hash = hash_djb2_one_32(method->argument_count, hash);
+	for (int i = 0; i < method->argument_count; i++) {
+		hash = method->get_argument_type(i);
+	}
+
+	return hash;
 }
 
 void Variant::get_method_list(List<MethodInfo> *p_list) const {
@@ -1365,7 +1384,7 @@ static void _register_variant_builtin_methods() {
 	// FIXME: Static function, not sure how to bind
 	//bind_method(String, humanize_size, sarray("size"), varray());
 
-	bind_method(String, is_abs_path, sarray(), varray());
+	bind_method(String, is_absolute_path, sarray(), varray());
 	bind_method(String, is_rel_path, sarray(), varray());
 	bind_method(String, get_base_dir, sarray(), varray());
 	bind_method(String, get_file, sarray(), varray());
@@ -1380,7 +1399,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(String, validate_node_name, sarray(), varray());
 
 	bind_method(String, is_valid_identifier, sarray(), varray());
-	bind_method(String, is_valid_integer, sarray(), varray());
+	bind_method(String, is_valid_int, sarray(), varray());
 	bind_method(String, is_valid_float, sarray(), varray());
 	bind_method(String, is_valid_hex_number, sarray("with_prefix"), varray(false));
 	bind_method(String, is_valid_html_color, sarray(), varray());
@@ -1552,6 +1571,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(Quaternion, is_normalized, sarray(), varray());
 	bind_method(Quaternion, is_equal_approx, sarray("to"), varray());
 	bind_method(Quaternion, inverse, sarray(), varray());
+	bind_method(Quaternion, angle_to, sarray("to"), varray());
 	bind_method(Quaternion, dot, sarray("with"), varray());
 	bind_method(Quaternion, slerp, sarray("to", "weight"), varray());
 	bind_method(Quaternion, slerpni, sarray("to", "weight"), varray());
@@ -1610,6 +1630,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(Callable, is_null, sarray(), varray());
 	bind_method(Callable, is_custom, sarray(), varray());
 	bind_method(Callable, is_standard, sarray(), varray());
+	bind_method(Callable, is_valid, sarray(), varray());
 	bind_method(Callable, get_object, sarray(), varray());
 	bind_method(Callable, get_object_id, sarray(), varray());
 	bind_method(Callable, get_method, sarray(), varray());

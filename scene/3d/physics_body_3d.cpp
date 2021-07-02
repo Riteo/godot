@@ -65,7 +65,7 @@ void PhysicsBody3D::_bind_methods() {
 
 PhysicsBody3D::PhysicsBody3D(PhysicsServer3D::BodyMode p_mode) :
 		CollisionObject3D(PhysicsServer3D::get_singleton()->body_create(), false) {
-	PhysicsServer3D::get_singleton()->body_set_mode(get_rid(), p_mode);
+	set_body_mode(p_mode);
 }
 
 PhysicsBody3D::~PhysicsBody3D() {
@@ -106,7 +106,7 @@ Ref<KinematicCollision3D> PhysicsBody3D::_move(const Vector3 &p_motion, bool p_i
 	PhysicsServer3D::MotionResult result;
 	if (move_and_collide(p_motion, p_infinite_inertia, result, p_margin, p_exclude_raycast_shapes, p_test_only)) {
 		if (motion_cache.is_null()) {
-			motion_cache.instance();
+			motion_cache.instantiate();
 			motion_cache->owner = this;
 		}
 
@@ -118,9 +118,42 @@ Ref<KinematicCollision3D> PhysicsBody3D::_move(const Vector3 &p_motion, bool p_i
 	return Ref<KinematicCollision3D>();
 }
 
-bool PhysicsBody3D::move_and_collide(const Vector3 &p_motion, bool p_infinite_inertia, PhysicsServer3D::MotionResult &r_result, real_t p_margin, bool p_exclude_raycast_shapes, bool p_test_only) {
+bool PhysicsBody3D::move_and_collide(const Vector3 &p_motion, bool p_infinite_inertia, PhysicsServer3D::MotionResult &r_result, real_t p_margin, bool p_exclude_raycast_shapes, bool p_test_only, bool p_cancel_sliding) {
 	Transform3D gt = get_global_transform();
 	bool colliding = PhysicsServer3D::get_singleton()->body_test_motion(get_rid(), gt, p_motion, p_infinite_inertia, p_margin, &r_result, p_exclude_raycast_shapes);
+
+	// Restore direction of motion to be along original motion,
+	// in order to avoid sliding due to recovery,
+	// but only if collision depth is low enough to avoid tunneling.
+	real_t motion_length = p_motion.length();
+	if (motion_length > CMP_EPSILON) {
+		real_t precision = CMP_EPSILON;
+
+		if (colliding && p_cancel_sliding) {
+			// Can't just use margin as a threshold because collision depth is calculated on unsafe motion,
+			// so even in normal resting cases the depth can be a bit more than the margin.
+			precision += motion_length * (r_result.collision_unsafe_fraction - r_result.collision_safe_fraction);
+
+			if (r_result.collision_depth > (real_t)p_margin + precision) {
+				p_cancel_sliding = false;
+			}
+		}
+
+		if (p_cancel_sliding) {
+			// Check depth of recovery.
+			Vector3 motion_normal = p_motion / motion_length;
+			real_t dot = r_result.motion.dot(motion_normal);
+			Vector3 recovery = r_result.motion - motion_normal * dot;
+			real_t recovery_length = recovery.length();
+			// Fixes cases where canceling slide causes the motion to go too deep into the ground,
+			// Becauses we're only taking rest information into account and not general recovery.
+			if (recovery_length < (real_t)p_margin + precision) {
+				// Apply adjustment to motion.
+				r_result.motion = motion_normal * dot;
+				r_result.remainder = p_motion - r_result.motion;
+			}
+		}
+	}
 
 	for (int i = 0; i < 3; i++) {
 		if (locked_axis & (1 << i)) {
@@ -200,9 +233,9 @@ void StaticBody3D::set_kinematic_motion_enabled(bool p_enabled) {
 	kinematic_motion = p_enabled;
 
 	if (kinematic_motion) {
-		PhysicsServer3D::get_singleton()->body_set_mode(get_rid(), PhysicsServer3D::BODY_MODE_KINEMATIC);
+		set_body_mode(PhysicsServer3D::BODY_MODE_KINEMATIC);
 	} else {
-		PhysicsServer3D::get_singleton()->body_set_mode(get_rid(), PhysicsServer3D::BODY_MODE_STATIC);
+		set_body_mode(PhysicsServer3D::BODY_MODE_STATIC);
 	}
 
 	_update_kinematic_motion();
@@ -249,35 +282,37 @@ Vector3 StaticBody3D::get_angular_velocity() const {
 }
 
 void StaticBody3D::_notification(int p_what) {
-	if (p_what == NOTIFICATION_INTERNAL_PHYSICS_PROCESS) {
+	switch (p_what) {
+		case NOTIFICATION_INTERNAL_PHYSICS_PROCESS: {
 #ifdef TOOLS_ENABLED
-		if (Engine::get_singleton()->is_editor_hint()) {
-			return;
-		}
+			if (Engine::get_singleton()->is_editor_hint()) {
+				return;
+			}
 #endif
 
-		ERR_FAIL_COND(!kinematic_motion);
+			ERR_FAIL_COND(!kinematic_motion);
 
-		real_t delta_time = get_physics_process_delta_time();
+			real_t delta_time = get_physics_process_delta_time();
 
-		Transform3D new_transform = get_global_transform();
-		new_transform.origin += constant_linear_velocity * delta_time;
+			Transform3D new_transform = get_global_transform();
+			new_transform.origin += constant_linear_velocity * delta_time;
 
-		real_t ang_vel = constant_angular_velocity.length();
-		if (!Math::is_zero_approx(ang_vel)) {
-			Vector3 ang_vel_axis = constant_angular_velocity / ang_vel;
-			Basis rot(ang_vel_axis, ang_vel * delta_time);
-			new_transform.basis = rot * new_transform.basis;
-			new_transform.orthonormalize();
-		}
+			real_t ang_vel = constant_angular_velocity.length();
+			if (!Math::is_zero_approx(ang_vel)) {
+				Vector3 ang_vel_axis = constant_angular_velocity / ang_vel;
+				Basis rot(ang_vel_axis, ang_vel * delta_time);
+				new_transform.basis = rot * new_transform.basis;
+				new_transform.orthonormalize();
+			}
 
-		PhysicsServer3D::get_singleton()->body_set_state(get_rid(), PhysicsServer3D::BODY_STATE_TRANSFORM, new_transform);
+			PhysicsServer3D::get_singleton()->body_set_state(get_rid(), PhysicsServer3D::BODY_STATE_TRANSFORM, new_transform);
 
-		// Propagate transform change to node.
-		set_ignore_transform_notification(true);
-		set_global_transform(new_transform);
-		set_ignore_transform_notification(false);
-		_on_transform_changed();
+			// Propagate transform change to node.
+			set_ignore_transform_notification(true);
+			set_global_transform(new_transform);
+			set_ignore_transform_notification(false);
+			_on_transform_changed();
+		} break;
 	}
 }
 
@@ -565,18 +600,19 @@ void RigidBody3D::_direct_state_changed(Object *p_state) {
 
 void RigidBody3D::_notification(int p_what) {
 #ifdef TOOLS_ENABLED
-	if (p_what == NOTIFICATION_ENTER_TREE) {
-		if (Engine::get_singleton()->is_editor_hint()) {
-			set_notify_local_transform(true); //used for warnings and only in editor
-		}
-	}
+	switch (p_what) {
+		case NOTIFICATION_ENTER_TREE: {
+			if (Engine::get_singleton()->is_editor_hint()) {
+				set_notify_local_transform(true); //used for warnings and only in editor
+			}
+		} break;
 
-	if (p_what == NOTIFICATION_LOCAL_TRANSFORM_CHANGED) {
-		if (Engine::get_singleton()->is_editor_hint()) {
-			update_configuration_warnings();
-		}
+		case NOTIFICATION_LOCAL_TRANSFORM_CHANGED: {
+			if (Engine::get_singleton()->is_editor_hint()) {
+				update_configuration_warnings();
+			}
+		} break;
 	}
-
 #endif
 }
 
@@ -584,18 +620,16 @@ void RigidBody3D::set_mode(Mode p_mode) {
 	mode = p_mode;
 	switch (p_mode) {
 		case MODE_DYNAMIC: {
-			PhysicsServer3D::get_singleton()->body_set_mode(get_rid(), PhysicsServer3D::BODY_MODE_DYNAMIC);
+			set_body_mode(PhysicsServer3D::BODY_MODE_DYNAMIC);
 		} break;
 		case MODE_STATIC: {
-			PhysicsServer3D::get_singleton()->body_set_mode(get_rid(), PhysicsServer3D::BODY_MODE_STATIC);
-
+			set_body_mode(PhysicsServer3D::BODY_MODE_STATIC);
 		} break;
 		case MODE_DYNAMIC_LOCKED: {
-			PhysicsServer3D::get_singleton()->body_set_mode(get_rid(), PhysicsServer3D::BODY_MODE_DYNAMIC_LOCKED);
-
+			set_body_mode(PhysicsServer3D::BODY_MODE_DYNAMIC_LOCKED);
 		} break;
 		case MODE_KINEMATIC: {
-			PhysicsServer3D::get_singleton()->body_set_mode(get_rid(), PhysicsServer3D::BODY_MODE_KINEMATIC);
+			set_body_mode(PhysicsServer3D::BODY_MODE_KINEMATIC);
 		} break;
 	}
 	update_configuration_warnings();
@@ -902,7 +936,7 @@ void RigidBody3D::_bind_methods() {
 	BIND_VMETHOD(MethodInfo("_integrate_forces", PropertyInfo(Variant::OBJECT, "state", PROPERTY_HINT_RESOURCE_TYPE, "PhysicsDirectBodyState3D")));
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "mode", PROPERTY_HINT_ENUM, "Dynamic,Static,DynamicLocked,Kinematic"), "set_mode", "get_mode");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "mass", PROPERTY_HINT_EXP_RANGE, "0.01,65535,0.01"), "set_mass", "get_mass");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "mass", PROPERTY_HINT_RANGE, "0.01,65535,0.01,exp"), "set_mass", "get_mass");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "physics_material_override", PROPERTY_HINT_RESOURCE_TYPE, "PhysicsMaterial"), "set_physics_material_override", "get_physics_material_override");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "gravity_scale", PROPERTY_HINT_RANGE, "-128,128,0.01"), "set_gravity_scale", "get_gravity_scale");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "custom_integrator"), "set_use_custom_integrator", "is_using_custom_integrator");
@@ -978,15 +1012,16 @@ void CharacterBody3D::move_and_slide() {
 	floor_normal = Vector3();
 	floor_velocity = Vector3();
 
-	int slide_count = max_slides;
-	while (slide_count) {
+	// No sliding on first attempt to keep motion stable when possible.
+	bool sliding_enabled = false;
+	for (int iteration = 0; iteration < max_slides; ++iteration) {
 		PhysicsServer3D::MotionResult result;
 		bool found_collision = false;
 
 		for (int i = 0; i < 2; ++i) {
 			bool collided;
 			if (i == 0) { //collide
-				collided = move_and_collide(motion, infinite_inertia, result, margin);
+				collided = move_and_collide(motion, infinite_inertia, result, margin, true, false, !sliding_enabled);
 				if (!collided) {
 					motion = Vector3(); //clear because no collision happened and motion completed
 				}
@@ -1002,7 +1037,6 @@ void CharacterBody3D::move_and_slide() {
 				found_collision = true;
 
 				motion_results.push_back(result);
-				motion = result.remainder;
 
 				if (up_direction == Vector3()) {
 					//all is a wall
@@ -1016,7 +1050,7 @@ void CharacterBody3D::move_and_slide() {
 						floor_velocity = result.collider_velocity;
 
 						if (stop_on_slope) {
-							if ((body_velocity_normal + up_direction).length() < 0.01 && result.motion.length() < 1) {
+							if ((body_velocity_normal + up_direction).length() < 0.01) {
 								Transform3D gt = get_global_transform();
 								gt.origin -= result.motion.slide(up_direction);
 								set_global_transform(gt);
@@ -1031,22 +1065,26 @@ void CharacterBody3D::move_and_slide() {
 					}
 				}
 
-				motion = motion.slide(result.collision_normal);
-				linear_velocity = linear_velocity.slide(result.collision_normal);
+				if (sliding_enabled || !on_floor) {
+					motion = result.remainder.slide(result.collision_normal);
+					linear_velocity = linear_velocity.slide(result.collision_normal);
 
-				for (int j = 0; j < 3; j++) {
-					if (locked_axis & (1 << j)) {
-						linear_velocity[j] = 0.0;
+					for (int j = 0; j < 3; j++) {
+						if (locked_axis & (1 << j)) {
+							linear_velocity[j] = 0.0;
+						}
 					}
+				} else {
+					motion = result.remainder;
 				}
 			}
+
+			sliding_enabled = true;
 		}
 
 		if (!found_collision || motion == Vector3()) {
 			break;
 		}
-
-		--slide_count;
 	}
 
 	if (!was_on_floor || snap == Vector3()) {
@@ -1168,7 +1206,7 @@ Ref<KinematicCollision3D> CharacterBody3D::_get_slide_collision(int p_bounce) {
 	}
 
 	if (slide_colliders[p_bounce].is_null()) {
-		slide_colliders.write[p_bounce].instance();
+		slide_colliders.write[p_bounce].instantiate();
 		slide_colliders.write[p_bounce]->owner = this;
 	}
 
@@ -1204,8 +1242,8 @@ real_t CharacterBody3D::get_floor_max_angle() const {
 	return floor_max_angle;
 }
 
-void CharacterBody3D::set_floor_max_angle(real_t p_floor_max_angle) {
-	floor_max_angle = p_floor_max_angle;
+void CharacterBody3D::set_floor_max_angle(real_t p_radians) {
+	floor_max_angle = p_radians;
 }
 
 const Vector3 &CharacterBody3D::get_snap() const {
@@ -1225,14 +1263,16 @@ void CharacterBody3D::set_up_direction(const Vector3 &p_up_direction) {
 }
 
 void CharacterBody3D::_notification(int p_what) {
-	if (p_what == NOTIFICATION_ENTER_TREE) {
-		// Reset move_and_slide() data.
-		on_floor = false;
-		on_floor_body = RID();
-		on_ceiling = false;
-		on_wall = false;
-		motion_results.clear();
-		floor_velocity = Vector3();
+	switch (p_what) {
+		case NOTIFICATION_ENTER_TREE: {
+			// Reset move_and_slide() data.
+			on_floor = false;
+			on_floor_body = RID();
+			on_ceiling = false;
+			on_wall = false;
+			motion_results.clear();
+			floor_velocity = Vector3();
+		} break;
 	}
 }
 
@@ -1251,7 +1291,7 @@ void CharacterBody3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_max_slides"), &CharacterBody3D::get_max_slides);
 	ClassDB::bind_method(D_METHOD("set_max_slides", "max_slides"), &CharacterBody3D::set_max_slides);
 	ClassDB::bind_method(D_METHOD("get_floor_max_angle"), &CharacterBody3D::get_floor_max_angle);
-	ClassDB::bind_method(D_METHOD("set_floor_max_angle", "floor_max_angle"), &CharacterBody3D::set_floor_max_angle);
+	ClassDB::bind_method(D_METHOD("set_floor_max_angle", "radians"), &CharacterBody3D::set_floor_max_angle);
 	ClassDB::bind_method(D_METHOD("get_snap"), &CharacterBody3D::get_snap);
 	ClassDB::bind_method(D_METHOD("set_snap", "snap"), &CharacterBody3D::set_snap);
 	ClassDB::bind_method(D_METHOD("get_up_direction"), &CharacterBody3D::get_up_direction);
@@ -1270,7 +1310,7 @@ void CharacterBody3D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "stop_on_slope"), "set_stop_on_slope_enabled", "is_stop_on_slope_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "infinite_inertia"), "set_infinite_inertia_enabled", "is_infinite_inertia_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_slides"), "set_max_slides", "get_max_slides");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "floor_max_angle"), "set_floor_max_angle", "get_floor_max_angle");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "floor_max_angle", PROPERTY_HINT_RANGE, "0,180,0.1,radians"), "set_floor_max_angle", "get_floor_max_angle");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "snap"), "set_snap", "get_snap");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "up_direction"), "set_up_direction", "get_up_direction");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "collision/safe_margin", PROPERTY_HINT_RANGE, "0.001,256,0.001"), "set_safe_margin", "get_safe_margin");
@@ -1326,6 +1366,10 @@ ObjectID KinematicCollision3D::get_collider_id() const {
 	return result.collider_id;
 }
 
+RID KinematicCollision3D::get_collider_rid() const {
+	return result.collider;
+}
+
 Object *KinematicCollision3D::get_collider_shape() const {
 	Object *collider = get_collider();
 	if (collider) {
@@ -1359,6 +1403,7 @@ void KinematicCollision3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_local_shape"), &KinematicCollision3D::get_local_shape);
 	ClassDB::bind_method(D_METHOD("get_collider"), &KinematicCollision3D::get_collider);
 	ClassDB::bind_method(D_METHOD("get_collider_id"), &KinematicCollision3D::get_collider_id);
+	ClassDB::bind_method(D_METHOD("get_collider_rid"), &KinematicCollision3D::get_collider_rid);
 	ClassDB::bind_method(D_METHOD("get_collider_shape"), &KinematicCollision3D::get_collider_shape);
 	ClassDB::bind_method(D_METHOD("get_collider_shape_index"), &KinematicCollision3D::get_collider_shape_index);
 	ClassDB::bind_method(D_METHOD("get_collider_velocity"), &KinematicCollision3D::get_collider_velocity);
@@ -1371,6 +1416,7 @@ void KinematicCollision3D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "local_shape"), "", "get_local_shape");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "collider"), "", "get_collider");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "collider_id"), "", "get_collider_id");
+	ADD_PROPERTY(PropertyInfo(Variant::RID, "collider_rid"), "", "get_collider_rid");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "collider_shape"), "", "get_collider_shape");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "collider_shape_index"), "", "get_collider_shape_index");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "collider_velocity"), "", "get_collider_velocity");
@@ -2078,7 +2124,8 @@ void PhysicalBone3D::_notification(int p_what) {
 				_reload_joint();
 			}
 			break;
-		case NOTIFICATION_EXIT_TREE:
+
+		case NOTIFICATION_EXIT_TREE: {
 			if (parent_skeleton) {
 				if (-1 != bone_id) {
 					parent_skeleton->unbind_physical_bone_from_bone(bone_id);
@@ -2088,12 +2135,13 @@ void PhysicalBone3D::_notification(int p_what) {
 			}
 			parent_skeleton = nullptr;
 			PhysicsServer3D::get_singleton()->joint_clear(joint);
-			break;
-		case NOTIFICATION_TRANSFORM_CHANGED:
+		} break;
+
+		case NOTIFICATION_TRANSFORM_CHANGED: {
 			if (Engine::get_singleton()->is_editor_hint()) {
 				update_offset();
 			}
-			break;
+		} break;
 	}
 }
 
@@ -2139,8 +2187,6 @@ void PhysicalBone3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_joint_offset"), &PhysicalBone3D::get_joint_offset);
 	ClassDB::bind_method(D_METHOD("set_joint_rotation", "euler"), &PhysicalBone3D::set_joint_rotation);
 	ClassDB::bind_method(D_METHOD("get_joint_rotation"), &PhysicalBone3D::get_joint_rotation);
-	ClassDB::bind_method(D_METHOD("set_joint_rotation_degrees", "euler_degrees"), &PhysicalBone3D::set_joint_rotation_degrees);
-	ClassDB::bind_method(D_METHOD("get_joint_rotation_degrees"), &PhysicalBone3D::get_joint_rotation_degrees);
 
 	ClassDB::bind_method(D_METHOD("set_body_offset", "offset"), &PhysicalBone3D::set_body_offset);
 	ClassDB::bind_method(D_METHOD("get_body_offset"), &PhysicalBone3D::get_body_offset);
@@ -2175,12 +2221,11 @@ void PhysicalBone3D::_bind_methods() {
 	ADD_GROUP("Joint", "joint_");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "joint_type", PROPERTY_HINT_ENUM, "None,PinJoint,ConeJoint,HingeJoint,SliderJoint,6DOFJoint"), "set_joint_type", "get_joint_type");
 	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM3D, "joint_offset"), "set_joint_offset", "get_joint_offset");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "joint_rotation_degrees", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR), "set_joint_rotation_degrees", "get_joint_rotation_degrees");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "joint_rotation", PROPERTY_HINT_NONE, "", 0), "set_joint_rotation", "get_joint_rotation");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "joint_rotation", PROPERTY_HINT_RANGE, "-360,360,0.01,or_lesser,or_greater,radians"), "set_joint_rotation", "get_joint_rotation");
 
 	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM3D, "body_offset"), "set_body_offset", "get_body_offset");
 
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "mass", PROPERTY_HINT_EXP_RANGE, "0.01,65535,0.01"), "set_mass", "get_mass");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "mass", PROPERTY_HINT_RANGE, "0.01,65535,0.01,exp"), "set_mass", "get_mass");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "friction", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_friction", "get_friction");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "bounce", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_bounce", "get_bounce");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "gravity_scale", PROPERTY_HINT_RANGE, "-10,10,0.01"), "set_gravity_scale", "get_gravity_scale");
@@ -2411,14 +2456,6 @@ Vector3 PhysicalBone3D::get_joint_rotation() const {
 	return joint_offset.basis.get_rotation();
 }
 
-void PhysicalBone3D::set_joint_rotation_degrees(const Vector3 &p_euler_deg) {
-	set_joint_rotation(p_euler_deg * (Math_PI / 180.0));
-}
-
-Vector3 PhysicalBone3D::get_joint_rotation_degrees() const {
-	return get_joint_rotation() * (180.0 / Math_PI);
-}
-
 const Transform3D &PhysicalBone3D::get_body_offset() const {
 	return body_offset;
 }
@@ -2588,7 +2625,7 @@ void PhysicalBone3D::_start_physics_simulation() {
 		return;
 	}
 	reset_to_rest_position();
-	PhysicsServer3D::get_singleton()->body_set_mode(get_rid(), PhysicsServer3D::BODY_MODE_DYNAMIC);
+	set_body_mode(PhysicsServer3D::BODY_MODE_DYNAMIC);
 	PhysicsServer3D::get_singleton()->body_set_collision_layer(get_rid(), get_collision_layer());
 	PhysicsServer3D::get_singleton()->body_set_collision_mask(get_rid(), get_collision_mask());
 	PhysicsServer3D::get_singleton()->body_set_force_integration_callback(get_rid(), callable_mp(this, &PhysicalBone3D::_direct_state_changed));
@@ -2601,11 +2638,11 @@ void PhysicalBone3D::_stop_physics_simulation() {
 		return;
 	}
 	if (parent_skeleton->get_animate_physical_bones()) {
-		PhysicsServer3D::get_singleton()->body_set_mode(get_rid(), PhysicsServer3D::BODY_MODE_KINEMATIC);
+		set_body_mode(PhysicsServer3D::BODY_MODE_KINEMATIC);
 		PhysicsServer3D::get_singleton()->body_set_collision_layer(get_rid(), get_collision_layer());
 		PhysicsServer3D::get_singleton()->body_set_collision_mask(get_rid(), get_collision_mask());
 	} else {
-		PhysicsServer3D::get_singleton()->body_set_mode(get_rid(), PhysicsServer3D::BODY_MODE_STATIC);
+		set_body_mode(PhysicsServer3D::BODY_MODE_STATIC);
 		PhysicsServer3D::get_singleton()->body_set_collision_layer(get_rid(), 0);
 		PhysicsServer3D::get_singleton()->body_set_collision_mask(get_rid(), 0);
 	}

@@ -51,9 +51,11 @@ public:
 		TYPE_VERTEX,
 		TYPE_FRAGMENT,
 		TYPE_LIGHT,
-		TYPE_EMIT,
+		TYPE_START,
 		TYPE_PROCESS,
-		TYPE_END,
+		TYPE_COLLIDE,
+		TYPE_START_CUSTOM,
+		TYPE_PROCESS_CUSTOM,
 		TYPE_SKY,
 		TYPE_MAX
 	};
@@ -347,6 +349,10 @@ class VisualShaderNodeInput : public VisualShaderNode {
 	static const Port preview_ports[];
 
 	String input_name = "[None]";
+
+public:
+	void set_shader_type(VisualShader::Type p_shader_type);
+	void set_shader_mode(Shader::Mode p_shader_mode);
 
 protected:
 	static void _bind_methods();

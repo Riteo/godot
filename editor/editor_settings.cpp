@@ -35,13 +35,13 @@
 #include "core/io/certs_compressed.gen.h"
 #include "core/io/compression.h"
 #include "core/io/config_file.h"
+#include "core/io/dir_access.h"
+#include "core/io/file_access.h"
 #include "core/io/file_access_memory.h"
 #include "core/io/ip.h"
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
 #include "core/io/translation_loader_po.h"
-#include "core/os/dir_access.h"
-#include "core/os/file_access.h"
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
 #include "core/version.h"
@@ -79,7 +79,7 @@ bool EditorSettings::_set_only(const StringName &p_name, const Variant &p_value)
 			Ref<InputEvent> shortcut = arr[i + 1];
 
 			Ref<Shortcut> sc;
-			sc.instance();
+			sc.instantiate();
 			sc->set_shortcut(shortcut);
 			add_shortcut(name, sc);
 		}
@@ -240,19 +240,19 @@ void EditorSettings::_get_property_list(List<PropertyInfo> *p_list) const {
 	}
 
 	for (Set<_EVCSort>::Element *E = vclist.front(); E; E = E->next()) {
-		int pinfo = 0;
+		uint32_t pusage = PROPERTY_USAGE_NONE;
 		if (E->get().save || !optimize_save) {
-			pinfo |= PROPERTY_USAGE_STORAGE;
+			pusage |= PROPERTY_USAGE_STORAGE;
 		}
 
 		if (!E->get().name.begins_with("_") && !E->get().name.begins_with("projects/")) {
-			pinfo |= PROPERTY_USAGE_EDITOR;
+			pusage |= PROPERTY_USAGE_EDITOR;
 		} else {
-			pinfo |= PROPERTY_USAGE_STORAGE; //hiddens must always be saved
+			pusage |= PROPERTY_USAGE_STORAGE; //hiddens must always be saved
 		}
 
 		PropertyInfo pi(E->get().type, E->get().name);
-		pi.usage = pinfo;
+		pi.usage = pusage;
 		if (hints.has(E->get().name)) {
 			pi = hints[E->get().name];
 		}
@@ -373,28 +373,7 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	// Editor
 	_initial_set("interface/editor/display_scale", 0);
 	// Display what the Auto display scale setting effectively corresponds to.
-	// The code below is adapted in `editor/editor_node.cpp` and `editor/project_manager.cpp`.
-	// Make sure to update those when modifying the code below.
-#ifdef OSX_ENABLED
-	float scale = DisplayServer::get_singleton()->screen_get_max_scale();
-#else
-	const int screen = DisplayServer::get_singleton()->window_get_current_screen();
-	float scale;
-	if (DisplayServer::get_singleton()->screen_get_dpi(screen) >= 192 && DisplayServer::get_singleton()->screen_get_size(screen).y >= 1400) {
-		// hiDPI display.
-		scale = 2.0;
-	} else if (DisplayServer::get_singleton()->screen_get_size(screen).y >= 1700) {
-		// Likely a hiDPI display, but we aren't certain due to the returned DPI.
-		// Use an intermediate scale to handle this situation.
-		scale = 1.5;
-	} else if (DisplayServer::get_singleton()->screen_get_size(screen).y <= 800) {
-		// Small loDPI display. Use a smaller display scale so that editor elements fit more easily.
-		// Icons won't look great, but this is better than having editor elements overflow from its window.
-		scale = 0.75;
-	} else {
-		scale = 1.0;
-	}
-#endif
+	float scale = get_auto_display_scale();
 	hints["interface/editor/display_scale"] = PropertyInfo(Variant::INT, "interface/editor/display_scale", PROPERTY_HINT_ENUM, vformat("Auto (%d%%),75%%,100%%,125%%,150%%,175%%,200%%,Custom", Math::round(scale * 100)), PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED);
 	_initial_set("interface/editor/custom_display_scale", 1.0f);
 	hints["interface/editor/custom_display_scale"] = PropertyInfo(Variant::FLOAT, "interface/editor/custom_display_scale", PROPERTY_HINT_RANGE, "0.5,3,0.01", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED);
@@ -421,8 +400,12 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	hints["interface/editor/code_font"] = PropertyInfo(Variant::STRING, "interface/editor/code_font", PROPERTY_HINT_GLOBAL_FILE, "*.ttf,*.otf", PROPERTY_USAGE_DEFAULT);
 	_initial_set("interface/editor/low_processor_mode_sleep_usec", 6900); // ~144 FPS
 	hints["interface/editor/low_processor_mode_sleep_usec"] = PropertyInfo(Variant::FLOAT, "interface/editor/low_processor_mode_sleep_usec", PROPERTY_HINT_RANGE, "1,100000,1", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED);
-	_initial_set("interface/editor/unfocused_low_processor_mode_sleep_usec", 50000); // 20 FPS
-	hints["interface/editor/unfocused_low_processor_mode_sleep_usec"] = PropertyInfo(Variant::FLOAT, "interface/editor/unfocused_low_processor_mode_sleep_usec", PROPERTY_HINT_RANGE, "1,100000,1", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED);
+	_initial_set("interface/editor/unfocused_low_processor_mode_sleep_usec", 100000); // 10 FPS
+	// Allow an unfocused FPS limit as low as 1 FPS for those who really need low power usage
+	// (but don't need to preview particles or shaders while the editor is unfocused).
+	// With very low FPS limits, the editor can take a small while to become usable after being focused again,
+	// so this should be used at the user's discretion.
+	hints["interface/editor/unfocused_low_processor_mode_sleep_usec"] = PropertyInfo(Variant::FLOAT, "interface/editor/unfocused_low_processor_mode_sleep_usec", PROPERTY_HINT_RANGE, "1,1000000,1", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_RESTART_IF_CHANGED);
 	_initial_set("interface/editor/separate_distraction_mode", false);
 	_initial_set("interface/editor/automatically_open_screenshots", true);
 	_initial_set("interface/editor/single_window_mode", false);
@@ -768,8 +751,8 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 			for (int i = 0; i < list.size(); i++) {
 				String name = list[i].replace("/", "::");
 				set("projects/" + name, list[i]);
-			};
-		};
+			}
+		}
 
 		if (p_extra_config->has_section("presets")) {
 			List<String> keys;
@@ -779,9 +762,9 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 				String key = E->get();
 				Variant val = p_extra_config->get_value("presets", key);
 				set(key, val);
-			};
-		};
-	};
+			}
+		}
+	}
 }
 
 void EditorSettings::_load_godot2_text_editor_theme() {
@@ -871,9 +854,8 @@ static void _create_script_templates(const String &p_path) {
 	Dictionary templates = _get_builtin_script_templates();
 	List<Variant> keys;
 	templates.get_key_list(&keys);
-	FileAccess *file = FileAccess::create(FileAccess::ACCESS_FILESYSTEM);
-
-	DirAccess *dir = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+	FileAccessRef file = FileAccess::create(FileAccess::ACCESS_FILESYSTEM);
+	DirAccessRef dir = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
 	dir->change_dir(p_path);
 	for (int i = 0; i < keys.size(); i++) {
 		if (!dir->file_exists(keys[i])) {
@@ -883,9 +865,6 @@ static void _create_script_templates(const String &p_path) {
 			file->close();
 		}
 	}
-
-	memdelete(dir);
-	memdelete(file);
 }
 
 // PUBLIC METHODS
@@ -895,103 +874,48 @@ EditorSettings *EditorSettings::get_singleton() {
 }
 
 void EditorSettings::create() {
+	// IMPORTANT: create() *must* create a valid EditorSettings singleton,
+	// as the rest of the engine code will assume it. As such, it should never
+	// return (incl. via ERR_FAIL) without initializing the singleton member.
+
 	if (singleton.ptr()) {
-		return; //pointless
+		ERR_PRINT("Can't recreate EditorSettings as it already exists.");
+		return;
 	}
 
+	ClassDB::register_class<EditorSettings>(); // Otherwise it can't be unserialized.
+
+	String config_file_path;
 	Ref<ConfigFile> extra_config = memnew(ConfigFile);
+
+	if (!EditorPaths::get_singleton()) {
+		ERR_PRINT("Bug (please report): EditorPaths haven't been initialized, EditorSettings cannot be created properly.");
+		goto fail;
+	}
 
 	if (EditorPaths::get_singleton()->is_self_contained()) {
 		Error err = extra_config->load(EditorPaths::get_singleton()->get_self_contained_file());
 		if (err != OK) {
-			ERR_PRINT("Can't load extra config from path :" + EditorPaths::get_singleton()->get_self_contained_file());
+			ERR_PRINT("Can't load extra config from path: " + EditorPaths::get_singleton()->get_self_contained_file());
 		}
 	}
 
-	DirAccess *dir = nullptr;
-
-	ClassDB::register_class<EditorSettings>(); //otherwise it can't be unserialized
-
-	String config_file_path;
-
 	if (EditorPaths::get_singleton()->are_paths_valid()) {
-		// Validate/create data dir and subdirectories
+		_create_script_templates(EditorPaths::get_singleton()->get_config_dir().plus_file("script_templates"));
 
-		String data_dir = EditorPaths::get_singleton()->get_data_dir();
+		// Validate editor config file.
 
-		dir = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
-		if (dir->change_dir(data_dir) != OK) {
-			dir->make_dir_recursive(data_dir);
-			if (dir->change_dir(data_dir) != OK) {
-				ERR_PRINT("Cannot create data directory!");
-				memdelete(dir);
-				goto fail;
-			}
-		}
-
-		if (dir->change_dir("templates") != OK) {
-			dir->make_dir("templates");
-		} else {
-			dir->change_dir("..");
-		}
-
-		// Validate/create config dir and subdirectories
-
-		if (dir->change_dir(EditorPaths::get_singleton()->get_config_dir()) != OK) {
-			dir->make_dir_recursive(EditorPaths::get_singleton()->get_config_dir());
-			if (dir->change_dir(EditorPaths::get_singleton()->get_config_dir()) != OK) {
-				ERR_PRINT("Cannot create config directory!");
-				memdelete(dir);
-				goto fail;
-			}
-		}
-
-		if (dir->change_dir("text_editor_themes") != OK) {
-			dir->make_dir("text_editor_themes");
-		} else {
-			dir->change_dir("..");
-		}
-
-		if (dir->change_dir("script_templates") != OK) {
-			dir->make_dir("script_templates");
-		} else {
-			dir->change_dir("..");
-		}
-
-		if (dir->change_dir("feature_profiles") != OK) {
-			dir->make_dir("feature_profiles");
-		} else {
-			dir->change_dir("..");
-		}
-
-		_create_script_templates(dir->get_current_dir().plus_file("script_templates"));
-
-		{
-			// Validate/create project-specific editor settings dir.
-			DirAccessRef da = DirAccess::create(DirAccess::ACCESS_RESOURCES);
-			if (da->change_dir(EditorSettings::PROJECT_EDITOR_SETTINGS_PATH) != OK) {
-				Error err = da->make_dir_recursive(EditorSettings::PROJECT_EDITOR_SETTINGS_PATH);
-				if (err || da->change_dir(EditorSettings::PROJECT_EDITOR_SETTINGS_PATH) != OK) {
-					ERR_FAIL_MSG("Failed to create '" + EditorSettings::PROJECT_EDITOR_SETTINGS_PATH + "' folder.");
-				}
-			}
-		}
-
-		// Validate editor config file
-
+		DirAccessRef dir = DirAccess::open(EditorPaths::get_singleton()->get_config_dir());
 		String config_file_name = "editor_settings-" + itos(VERSION_MAJOR) + ".tres";
 		config_file_path = EditorPaths::get_singleton()->get_config_dir().plus_file(config_file_name);
 		if (!dir->file_exists(config_file_name)) {
-			memdelete(dir);
 			goto fail;
 		}
-
-		memdelete(dir);
 
 		singleton = ResourceLoader::load(config_file_path, "EditorSettings");
 
 		if (singleton.is_null()) {
-			WARN_PRINT("Could not open config file.");
+			ERR_PRINT("Could not load editor settings from path: " + config_file_path);
 			goto fail;
 		}
 
@@ -1009,7 +933,6 @@ void EditorSettings::create() {
 	}
 
 fail:
-
 	// patch init projects
 	String exe_path = OS::get_singleton()->get_executable_path().get_base_dir();
 
@@ -1017,9 +940,9 @@ fail:
 		Vector<String> list = extra_config->get_value("init_projects", "list");
 		for (int i = 0; i < list.size(); i++) {
 			list.write[i] = exe_path.plus_file(list[i]);
-		};
+		}
 		extra_config->set_value("init_projects", "list", list);
-	};
+	}
 
 	singleton = Ref<EditorSettings>(memnew(EditorSettings));
 	singleton->save_changed_setting = true;
@@ -1251,16 +1174,15 @@ void EditorSettings::add_property_hint(const PropertyInfo &p_hint) {
 	hints[p_hint.name] = p_hint;
 }
 
-// Data directories
+// Editor data and config directories
+// EditorPaths::create() is responsible for the creation of these directories.
 
 String EditorSettings::get_templates_dir() const {
 	return EditorPaths::get_singleton()->get_data_dir().plus_file("templates");
 }
 
-// Config directories
-
 String EditorSettings::get_project_settings_dir() const {
-	return EditorSettings::PROJECT_EDITOR_SETTINGS_PATH;
+	return EditorPaths::get_singleton()->get_project_data_dir().plus_file("editor");
 }
 
 String EditorSettings::get_text_editor_themes_dir() const {
@@ -1274,8 +1196,6 @@ String EditorSettings::get_script_templates_dir() const {
 String EditorSettings::get_project_script_templates_dir() const {
 	return ProjectSettings::get_singleton()->get("editor/script/templates_search_path");
 }
-
-// Cache directory
 
 String EditorSettings::get_feature_profiles_dir() const {
 	return EditorPaths::get_singleton()->get_config_dir().plus_file("feature_profiles");
@@ -1508,6 +1428,29 @@ String EditorSettings::get_editor_layouts_config() const {
 	return EditorPaths::get_singleton()->get_config_dir().plus_file("editor_layouts.cfg");
 }
 
+float EditorSettings::get_auto_display_scale() const {
+#ifdef OSX_ENABLED
+	return DisplayServer::get_singleton()->screen_get_max_scale();
+#else
+	const int screen = DisplayServer::get_singleton()->window_get_current_screen();
+	// Use the smallest dimension to use a correct display scale on portait displays.
+	const int smallest_dimension = MIN(DisplayServer::get_singleton()->screen_get_size(screen).x, DisplayServer::get_singleton()->screen_get_size(screen).y);
+	if (DisplayServer::get_singleton()->screen_get_dpi(screen) >= 192 && smallest_dimension >= 1400) {
+		// hiDPI display.
+		return 2.0;
+	} else if (smallest_dimension >= 1700) {
+		// Likely a hiDPI display, but we aren't certain due to the returned DPI.
+		// Use an intermediate scale to handle this situation.
+		return 1.5;
+	} else if (smallest_dimension <= 800) {
+		// Small loDPI display. Use a smaller display scale so that editor elements fit more easily.
+		// Icons won't look great, but this is better than having editor elements overflow from its window.
+		return 0.75;
+	}
+	return 1.0;
+#endif
+}
+
 // Shortcuts
 
 void EditorSettings::add_shortcut(const String &p_name, Ref<Shortcut> &p_shortcut) {
@@ -1533,7 +1476,7 @@ Ref<Shortcut> EditorSettings::get_shortcut(const String &p_name) const {
 	Ref<Shortcut> sc;
 	const Map<String, List<Ref<InputEvent>>>::Element *builtin_override = builtin_action_overrides.find(p_name);
 	if (builtin_override) {
-		sc.instance();
+		sc.instantiate();
 		sc->set_shortcut(builtin_override->get().front()->get());
 		sc->set_name(InputMap::get_singleton()->get_builtin_display_name(p_name));
 	}
@@ -1542,7 +1485,7 @@ Ref<Shortcut> EditorSettings::get_shortcut(const String &p_name) const {
 	if (sc.is_null()) {
 		const OrderedHashMap<String, List<Ref<InputEvent>>>::ConstElement builtin_default = InputMap::get_singleton()->get_builtins().find(p_name);
 		if (builtin_default) {
-			sc.instance();
+			sc.instantiate();
 			sc->set_shortcut(builtin_default.get().front()->get());
 			sc->set_name(InputMap::get_singleton()->get_builtin_display_name(p_name));
 		}
@@ -1585,7 +1528,7 @@ Ref<Shortcut> ED_SHORTCUT(const String &p_path, const String &p_name, uint32_t p
 
 	Ref<InputEventKey> ie;
 	if (p_keycode) {
-		ie.instance();
+		ie.instantiate();
 
 		ie->set_unicode(p_keycode & KEY_CODE_MASK);
 		ie->set_keycode(p_keycode & KEY_CODE_MASK);
@@ -1597,7 +1540,7 @@ Ref<Shortcut> ED_SHORTCUT(const String &p_path, const String &p_name, uint32_t p
 
 	if (!EditorSettings::get_singleton()) {
 		Ref<Shortcut> sc;
-		sc.instance();
+		sc.instantiate();
 		sc->set_name(p_name);
 		sc->set_shortcut(ie);
 		sc->set_meta("original", ie);
@@ -1611,7 +1554,7 @@ Ref<Shortcut> ED_SHORTCUT(const String &p_path, const String &p_name, uint32_t p
 		return sc;
 	}
 
-	sc.instance();
+	sc.instantiate();
 	sc->set_name(p_name);
 	sc->set_shortcut(ie);
 	sc->set_meta("original", ie); //to compare against changes
@@ -1642,7 +1585,7 @@ void EditorSettings::set_builtin_action_override(const String &p_name, const Arr
 
 			// Check equality of each event.
 			for (List<Ref<InputEvent>>::Element *E = builtin_events.front(); E; E = E->next()) {
-				if (!E->get()->shortcut_match(p_events[event_idx])) {
+				if (!E->get()->is_match(p_events[event_idx])) {
 					same_as_builtin = false;
 					break;
 				}

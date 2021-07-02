@@ -33,6 +33,11 @@
 #include "core/math/basis.h"
 #include "core/string/print_string.h"
 
+real_t Quaternion::angle_to(const Quaternion &p_to) const {
+	real_t d = dot(p_to);
+	return Math::acos(CLAMP(d * d * 2 - 1, -1, 1));
+}
+
 // get_euler_xyz returns a vector containing the Euler angles in the format
 // (ax,ay,az), where ax is the angle of rotation around x axis,
 // and similar for other axes.
@@ -181,7 +186,7 @@ Quaternion Quaternion::cubic_slerp(const Quaternion &p_b, const Quaternion &p_pr
 }
 
 Quaternion::operator String() const {
-	return String::num(x) + ", " + String::num(y) + ", " + String::num(z) + ", " + String::num(w);
+	return "(" + String::num_real(x, false) + ", " + String::num_real(y, false) + ", " + String::num_real(z, false) + ", " + String::num_real(w, false) + ")";
 }
 
 Quaternion::Quaternion(const Vector3 &p_axis, real_t p_angle) {

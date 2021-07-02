@@ -337,6 +337,9 @@ Error VulkanContext::_initialize_extensions() {
 				extension_names[enabled_extension_count++] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
 				enabled_debug_utils = true;
 			}
+			if (!strcmp(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME, instance_extensions[i].extensionName)) {
+				extension_names[enabled_extension_count++] = VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME;
+			}
 			if (enabled_extension_count >= MAX_EXTENSIONS) {
 				free(instance_extensions);
 				ERR_FAIL_V_MSG(ERR_BUG, "Enabled extension count reaches MAX_EXTENSIONS, BUG");
@@ -504,6 +507,8 @@ Error VulkanContext::_check_capabilities() {
 
 	// assume not supported until proven otherwise
 	multiview_capabilities.is_supported = false;
+	multiview_capabilities.geometry_shader_is_supported = false;
+	multiview_capabilities.tessellation_shader_is_supported = false;
 	multiview_capabilities.max_view_count = 0;
 	multiview_capabilities.max_instance_count = 0;
 	subgroup_capabilities.size = 0;
@@ -529,7 +534,8 @@ Error VulkanContext::_check_capabilities() {
 
 		device_features_func(gpu, &device_features);
 		multiview_capabilities.is_supported = multiview_features.multiview;
-		// For now we ignore if multiview is available in geometry and tessellation as we do not currently support those
+		multiview_capabilities.geometry_shader_is_supported = multiview_features.multiviewGeometryShader;
+		multiview_capabilities.tessellation_shader_is_supported = multiview_features.multiviewTessellationShader;
 	}
 
 	// check extended properties
@@ -573,7 +579,7 @@ Error VulkanContext::_check_capabilities() {
 
 #ifdef DEBUG_ENABLED
 			print_line("- Vulkan multiview supported:");
-			print_line("  max views: " + itos(multiview_capabilities.max_view_count));
+			print_line("  max view count: " + itos(multiview_capabilities.max_view_count));
 			print_line("  max instances: " + itos(multiview_capabilities.max_instance_count));
 		} else {
 			print_line("- Vulkan multiview not supported");
@@ -694,8 +700,25 @@ Error VulkanContext::_create_physical_device() {
 		free(physical_devices);
 		ERR_FAIL_V(ERR_CANT_CREATE);
 	}
-	/* for now, just grab the first physical device */
+
+	// TODO: At least on Linux Laptops integrated GPUs fail with Vulkan in many instances.
+	//   The device should really be a preference, but for now choosing a discrete GPU over the
+	//   integrated one is better than the default.
+
+	// Default to first device
 	uint32_t device_index = 0;
+
+	for (uint32_t i = 0; i < gpu_count; ++i) {
+		VkPhysicalDeviceProperties props;
+		vkGetPhysicalDeviceProperties(physical_devices[i], &props);
+
+		if (props.deviceType == VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+			// Prefer discrete GPU.
+			device_index = i;
+			break;
+		}
+	}
+
 	gpu = physical_devices[device_index];
 	free(physical_devices);
 
@@ -754,6 +777,10 @@ Error VulkanContext::_create_physical_device() {
 			if (!strcmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME, device_extensions[i].extensionName)) {
 				swapchainExtFound = 1;
 				extension_names[enabled_extension_count++] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+			}
+			if (!strcmp(VK_KHR_MULTIVIEW_EXTENSION_NAME, device_extensions[i].extensionName)) {
+				// if multiview is supported, enable it
+				extension_names[enabled_extension_count++] = VK_KHR_MULTIVIEW_EXTENSION_NAME;
 			}
 			if (enabled_extension_count >= MAX_EXTENSIONS) {
 				free(device_extensions);
@@ -947,17 +974,50 @@ Error VulkanContext::_create_device() {
 		queues[1].flags = 0;
 		sdevice.queueCreateInfoCount = 2;
 	}
+
+#ifdef VK_VERSION_1_2
+	VkPhysicalDeviceVulkan11Features vulkan11features;
+
+	vulkan11features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+	vulkan11features.pNext = nullptr;
+	// !BAS! Need to figure out which ones of these we want enabled...
+	vulkan11features.storageBuffer16BitAccess = 0;
+	vulkan11features.uniformAndStorageBuffer16BitAccess = 0;
+	vulkan11features.storagePushConstant16 = 0;
+	vulkan11features.storageInputOutput16 = 0;
+	vulkan11features.multiview = multiview_capabilities.is_supported;
+	vulkan11features.multiviewGeometryShader = multiview_capabilities.geometry_shader_is_supported;
+	vulkan11features.multiviewTessellationShader = multiview_capabilities.tessellation_shader_is_supported;
+	vulkan11features.variablePointersStorageBuffer = 0;
+	vulkan11features.variablePointers = 0;
+	vulkan11features.protectedMemory = 0;
+	vulkan11features.samplerYcbcrConversion = 0;
+	vulkan11features.shaderDrawParameters = 0;
+
+	sdevice.pNext = &vulkan11features;
+#elif VK_VERSION_1_1
+	VkPhysicalDeviceMultiviewFeatures multiview_features;
+
+	multiview_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES;
+	multiview_features.pNext = nullptr;
+	multiview_features.multiview = multiview_capabilities.is_supported;
+	multiview_features.multiviewGeometryShader = multiview_capabilities.geometry_shader_is_supported;
+	multiview_features.multiviewTessellationShader = multiview_capabilities.tessellation_shader_is_supported;
+
+	sdevice.pNext = &multiview_features;
+#endif
+
 	err = vkCreateDevice(gpu, &sdevice, nullptr, &device);
 	ERR_FAIL_COND_V(err, ERR_CANT_CREATE);
 
 	return OK;
 }
 
-Error VulkanContext::_initialize_queues(VkSurfaceKHR surface) {
+Error VulkanContext::_initialize_queues(VkSurfaceKHR p_surface) {
 	// Iterate over each queue to learn whether it supports presenting:
 	VkBool32 *supportsPresent = (VkBool32 *)malloc(queue_family_count * sizeof(VkBool32));
 	for (uint32_t i = 0; i < queue_family_count; i++) {
-		fpGetPhysicalDeviceSurfaceSupportKHR(gpu, i, surface, &supportsPresent[i]);
+		fpGetPhysicalDeviceSurfaceSupportKHR(gpu, i, p_surface, &supportsPresent[i]);
 	}
 
 	// Search for a graphics and a present queue in the array of queue
@@ -1031,10 +1091,10 @@ Error VulkanContext::_initialize_queues(VkSurfaceKHR surface) {
 
 	// Get the list of VkFormat's that are supported:
 	uint32_t formatCount;
-	VkResult err = fpGetPhysicalDeviceSurfaceFormatsKHR(gpu, surface, &formatCount, nullptr);
+	VkResult err = fpGetPhysicalDeviceSurfaceFormatsKHR(gpu, p_surface, &formatCount, nullptr);
 	ERR_FAIL_COND_V(err, ERR_CANT_CREATE);
 	VkSurfaceFormatKHR *surfFormats = (VkSurfaceFormatKHR *)malloc(formatCount * sizeof(VkSurfaceFormatKHR));
-	err = fpGetPhysicalDeviceSurfaceFormatsKHR(gpu, surface, &formatCount, surfFormats);
+	err = fpGetPhysicalDeviceSurfaceFormatsKHR(gpu, p_surface, &formatCount, surfFormats);
 	if (err) {
 		free(surfFormats);
 		ERR_FAIL_V(ERR_CANT_CREATE);
@@ -1109,9 +1169,6 @@ Error VulkanContext::_create_semaphores() {
 		err = vkCreateFence(device, &fence_ci, nullptr, &fences[i]);
 		ERR_FAIL_COND_V(err, ERR_CANT_CREATE);
 
-		err = vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &image_acquired_semaphores[i]);
-		ERR_FAIL_COND_V(err, ERR_CANT_CREATE);
-
 		err = vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &draw_complete_semaphores[i]);
 		ERR_FAIL_COND_V(err, ERR_CANT_CREATE);
 
@@ -1141,6 +1198,19 @@ Error VulkanContext::_window_create(DisplayServer::WindowID p_window_id, VkSurfa
 		// is created.
 		Error err = _initialize_queues(p_surface);
 		ERR_FAIL_COND_V(err != OK, ERR_CANT_CREATE);
+	} else {
+		// make sure any of the surfaces supports present (validation layer complains if this is not done).
+		bool any_supports_present = false;
+		for (uint32_t i = 0; i < queue_family_count; i++) {
+			VkBool32 supports;
+			fpGetPhysicalDeviceSurfaceSupportKHR(gpu, i, p_surface, &supports);
+			if (supports) {
+				any_supports_present = true;
+				break;
+			}
+		}
+
+		ERR_FAIL_COND_V_MSG(!any_supports_present, ERR_CANT_CREATE, "Surface passed for sub-window creation does not support presenting");
 	}
 
 	Window window;
@@ -1149,6 +1219,17 @@ Error VulkanContext::_window_create(DisplayServer::WindowID p_window_id, VkSurfa
 	window.height = p_height;
 	Error err = _update_swap_chain(&window);
 	ERR_FAIL_COND_V(err != OK, ERR_CANT_CREATE);
+
+	VkSemaphoreCreateInfo semaphoreCreateInfo = {
+		/*sType*/ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+		/*pNext*/ nullptr,
+		/*flags*/ 0,
+	};
+
+	for (uint32_t i = 0; i < FRAME_LAG; i++) {
+		VkResult vkerr = vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &window.image_acquired_semaphores[i]);
+		ERR_FAIL_COND_V(vkerr, ERR_CANT_CREATE);
+	}
 
 	windows[p_window_id] = window;
 	return OK;
@@ -1189,6 +1270,10 @@ VkFramebuffer VulkanContext::window_get_framebuffer(DisplayServer::WindowID p_wi
 void VulkanContext::window_destroy(DisplayServer::WindowID p_window_id) {
 	ERR_FAIL_COND(!windows.has(p_window_id));
 	_clean_up_swap_chain(&windows[p_window_id]);
+	for (uint32_t i = 0; i < FRAME_LAG; i++) {
+		vkDestroySemaphore(device, windows[p_window_id].image_acquired_semaphores[i], nullptr);
+	}
+
 	vkDestroySurfaceKHR(inst, windows[p_window_id].surface, nullptr);
 	windows.erase(p_window_id);
 }
@@ -1643,6 +1728,8 @@ Error VulkanContext::prepare_buffers() {
 	for (Map<int, Window>::Element *E = windows.front(); E; E = E->next()) {
 		Window *w = &E->get();
 
+		w->semaphore_acquired = false;
+
 		if (w->swapchain == VK_NULL_HANDLE) {
 			continue;
 		}
@@ -1651,7 +1738,7 @@ Error VulkanContext::prepare_buffers() {
 			// Get the index of the next available swapchain image:
 			err =
 					fpAcquireNextImageKHR(device, w->swapchain, UINT64_MAX,
-							image_acquired_semaphores[frame_index], VK_NULL_HANDLE, &w->current_buffer);
+							w->image_acquired_semaphores[frame_index], VK_NULL_HANDLE, &w->current_buffer);
 
 			if (err == VK_ERROR_OUT_OF_DATE_KHR) {
 				// swapchain is out of date (e.g. the window was resized) and
@@ -1664,8 +1751,10 @@ Error VulkanContext::prepare_buffers() {
 				// presentation engine will still present the image correctly.
 				print_verbose("Vulkan: Early suboptimal swapchain.");
 				break;
+			} else if (err != VK_SUCCESS) {
+				ERR_BREAK_MSG(err != VK_SUCCESS, "Vulkan: Did not create swapchain successfully.");
 			} else {
-				ERR_FAIL_COND_V(err, ERR_CANT_CREATE);
+				w->semaphore_acquired = true;
 			}
 		} while (err != VK_SUCCESS);
 	}
@@ -1715,14 +1804,25 @@ Error VulkanContext::swap_buffers() {
 		commands_to_submit = command_buffer_count;
 	}
 
+	VkSemaphore *semaphores_to_acquire = (VkSemaphore *)alloca(windows.size() * sizeof(VkSemaphore));
+	uint32_t semaphores_to_acquire_count = 0;
+
+	for (Map<int, Window>::Element *E = windows.front(); E; E = E->next()) {
+		Window *w = &E->get();
+
+		if (w->semaphore_acquired) {
+			semaphores_to_acquire[semaphores_to_acquire_count++] = w->image_acquired_semaphores[frame_index];
+		}
+	}
+
 	VkPipelineStageFlags pipe_stage_flags;
 	VkSubmitInfo submit_info;
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit_info.pNext = nullptr;
 	submit_info.pWaitDstStageMask = &pipe_stage_flags;
 	pipe_stage_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	submit_info.waitSemaphoreCount = 1;
-	submit_info.pWaitSemaphores = &image_acquired_semaphores[frame_index];
+	submit_info.waitSemaphoreCount = semaphores_to_acquire_count;
+	submit_info.pWaitSemaphores = semaphores_to_acquire;
 	submit_info.commandBufferCount = commands_to_submit;
 	submit_info.pCommandBuffers = commands_ptr;
 	submit_info.signalSemaphoreCount = 1;
@@ -2074,7 +2174,6 @@ VulkanContext::~VulkanContext() {
 	if (device_initialized) {
 		for (uint32_t i = 0; i < FRAME_LAG; i++) {
 			vkDestroyFence(device, fences[i], nullptr);
-			vkDestroySemaphore(device, image_acquired_semaphores[i], nullptr);
 			vkDestroySemaphore(device, draw_complete_semaphores[i], nullptr);
 			if (separate_present_queue) {
 				vkDestroySemaphore(device, image_ownership_semaphores[i], nullptr);

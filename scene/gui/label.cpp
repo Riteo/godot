@@ -217,6 +217,7 @@ void Label::_notification(int p_what) {
 		for (int64_t i = lines_skipped; i < last_line; i++) {
 			total_h += TS->shaped_text_get_size(lines_rid[i]).y + font->get_spacing(Font::SPACING_TOP) + font->get_spacing(Font::SPACING_BOTTOM) + line_spacing;
 		}
+		total_h += style->get_margin(SIDE_TOP) + style->get_margin(SIDE_BOTTOM);
 
 		int vbegin = 0, vsep = 0;
 		if (lines_visible > 0) {
@@ -452,6 +453,7 @@ void Label::set_text(const String &p_string) {
 		visible_chars = get_total_character_count() * percent_visible;
 	}
 	update();
+	minimum_size_changed();
 }
 
 void Label::set_text_direction(Control::TextDirection p_text_direction) {

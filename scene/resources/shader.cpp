@@ -30,7 +30,7 @@
 
 #include "shader.h"
 
-#include "core/os/file_access.h"
+#include "core/io/file_access.h"
 #include "scene/scene_string_names.h"
 #include "servers/rendering/shader_language.h"
 #include "servers/rendering_server.h"
@@ -167,7 +167,7 @@ RES ResourceFormatLoaderShader::load(const String &p_path, const String &p_origi
 	}
 
 	Ref<Shader> shader;
-	shader.instance();
+	shader.instantiate();
 
 	Vector<uint8_t> buffer = FileAccess::get_file_as_array(p_path);
 

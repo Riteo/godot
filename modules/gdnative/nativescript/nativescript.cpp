@@ -37,8 +37,8 @@
 #include "core/config/project_settings.h"
 #include "core/core_constants.h"
 #include "core/core_string_names.h"
+#include "core/io/file_access.h"
 #include "core/io/file_access_encrypted.h"
-#include "core/os/file_access.h"
 #include "core/os/os.h"
 
 #include "main/main.h"
@@ -170,7 +170,7 @@ String NativeScript::get_script_class_icon_path() const {
 	return script_class_icon_path;
 }
 
-bool NativeScript::can_instance() const {
+bool NativeScript::can_instantiate() const {
 	NativeScriptDesc *script_data = get_script_desc();
 
 #ifdef TOOLS_ENABLED
@@ -503,9 +503,9 @@ Variant NativeScript::_new(const Variant **p_args, int p_argcount, Callable::Cal
 	Object *owner = nullptr;
 
 	if (!(script_data->base_native_type == "")) {
-		owner = ClassDB::instance(script_data->base_native_type);
+		owner = ClassDB::instantiate(script_data->base_native_type);
 	} else {
-		owner = memnew(Reference);
+		owner = memnew(RefCounted);
 	}
 
 	if (!owner) {
@@ -513,7 +513,7 @@ Variant NativeScript::_new(const Variant **p_args, int p_argcount, Callable::Cal
 		return Variant();
 	}
 
-	Reference *r = Object::cast_to<Reference>(owner);
+	RefCounted *r = Object::cast_to<RefCounted>(owner);
 	if (r) {
 		ref = REF(r);
 	}
@@ -1035,7 +1035,7 @@ Ref<Script> NativeScriptLanguage::get_template(const String &p_class_name, const
 	return Ref<NativeScript>(s);
 }
 
-bool NativeScriptLanguage::validate(const String &p_script, int &r_line_error, int &r_col_error, String &r_test_error, const String &p_path, List<String> *r_functions, List<ScriptLanguage::Warning> *r_warnings, Set<int> *r_safe_lines) const {
+bool NativeScriptLanguage::validate(const String &p_script, const String &p_path, List<String> *r_functions, List<ScriptLanguage::ScriptError> *r_errors, List<ScriptLanguage::Warning> *r_warnings, Set<int> *r_safe_lines) const {
 	return true;
 }
 
@@ -1422,7 +1422,7 @@ void NativeScriptLanguage::init_library(const Ref<GDNativeLibrary> &lib) {
 
 	if (!E) {
 		Ref<GDNative> gdn;
-		gdn.instance();
+		gdn.instantiate();
 		gdn->set_library(lib);
 
 		// TODO check the return value?

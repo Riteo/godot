@@ -33,11 +33,11 @@
 #include "core/config/project_settings.h"
 #include "core/core_bind.h"
 #include "core/crypto/crypto_core.h"
+#include "core/io/dir_access.h"
+#include "core/io/file_access.h"
 #include "core/io/marshalls.h"
 #include "core/io/zip_io.h"
 #include "core/object/class_db.h"
-#include "core/os/dir_access.h"
-#include "core/os/file_access.h"
 #include "core/version.h"
 #include "editor/editor_export.h"
 #include "editor/editor_node.h"
@@ -1049,19 +1049,19 @@ public:
 		// Capabilities
 		const char **basic = uwp_capabilities;
 		while (*basic) {
-			r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "capabilities/" + String(*basic).camelcase_to_underscore(false)), false));
+			r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "capabilities/" + String(*basic)), false));
 			basic++;
 		}
 
 		const char **uap = uwp_uap_capabilities;
 		while (*uap) {
-			r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "capabilities/" + String(*uap).camelcase_to_underscore(false)), false));
+			r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "capabilities/" + String(*uap)), false));
 			uap++;
 		}
 
 		const char **device = uwp_device_capabilities;
 		while (*device) {
-			r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "capabilities/" + String(*device).camelcase_to_underscore(false)), false));
+			r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "capabilities/" + String(*device)), false));
 			device++;
 		}
 	}
@@ -1429,7 +1429,7 @@ public:
 
 	EditorExportPlatformUWP() {
 		Ref<Image> img = memnew(Image(_uwp_logo));
-		logo.instance();
+		logo.instantiate();
 		logo->create_from_image(img);
 	}
 };
@@ -1446,6 +1446,6 @@ void register_uwp_exporter() {
 #endif // WINDOWS_ENABLED
 
 	Ref<EditorExportPlatformUWP> exporter;
-	exporter.instance();
+	exporter.instantiate();
 	EditorExport::get_singleton()->add_export_platform(exporter);
 }

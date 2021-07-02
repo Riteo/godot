@@ -32,8 +32,8 @@
 
 #include "canvas_item_editor_plugin.h"
 #include "core/input/input.h"
+#include "core/io/file_access.h"
 #include "core/math/geometry_2d.h"
-#include "core/os/file_access.h"
 #include "core/os/keyboard.h"
 #include "editor/editor_scale.h"
 #include "editor/editor_settings.h"
@@ -162,7 +162,7 @@ void Polygon2DEditor::_update_bone_list() {
 	}
 
 	Ref<ButtonGroup> bg;
-	bg.instance();
+	bg.instantiate();
 	for (int i = 0; i < node->get_bone_count(); i++) {
 		CheckBox *cb = memnew(CheckBox);
 		NodePath np = node->get_bone_path(i);
@@ -1231,7 +1231,7 @@ Polygon2DEditor::Polygon2DEditor(EditorNode *p_editor) :
 	uv_edit->add_child(uv_main_vb);
 	HBoxContainer *uv_mode_hb = memnew(HBoxContainer);
 
-	uv_edit_group.instance();
+	uv_edit_group.instantiate();
 
 	uv_edit_mode[0] = memnew(Button);
 	uv_mode_hb->add_child(uv_edit_mode[0]);

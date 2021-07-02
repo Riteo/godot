@@ -83,6 +83,16 @@
 				Constructs a quaternion defined by the given values.
 			</description>
 		</method>
+		<method name="angle_to" qualifiers="const">
+			<return type="float">
+			</return>
+			<argument index="0" name="to" type="Quaternion">
+			</argument>
+			<description>
+				Returns the angle between this quaternion and [code]to[/code]. This is the magnitude of the angle you would need to rotate by to get from one to the other.
+				[b]Note:[/b] This method has an abnormally high amount of floating-point error, so methods such as [code]is_zero_approx[/code] will not work reliably.
+			</description>
+		</method>
 		<method name="cubic_slerp" qualifiers="const">
 			<return type="Quaternion">
 			</return>
@@ -167,17 +177,17 @@
 			</description>
 		</method>
 		<method name="operator *" qualifiers="operator">
-			<return type="Quaternion">
+			<return type="Vector3">
 			</return>
-			<argument index="0" name="right" type="Quaternion">
+			<argument index="0" name="right" type="Vector3">
 			</argument>
 			<description>
 			</description>
 		</method>
 		<method name="operator *" qualifiers="operator">
-			<return type="Vector3">
+			<return type="Quaternion">
 			</return>
-			<argument index="0" name="right" type="Vector3">
+			<argument index="0" name="right" type="Quaternion">
 			</argument>
 			<description>
 			</description>
@@ -201,20 +211,8 @@
 		<method name="operator +" qualifiers="operator">
 			<return type="Quaternion">
 			</return>
-			<description>
-			</description>
-		</method>
-		<method name="operator +" qualifiers="operator">
-			<return type="Quaternion">
-			</return>
 			<argument index="0" name="right" type="Quaternion">
 			</argument>
-			<description>
-			</description>
-		</method>
-		<method name="operator -" qualifiers="operator">
-			<return type="Quaternion">
-			</return>
 			<description>
 			</description>
 		</method>
@@ -255,6 +253,18 @@
 			</return>
 			<argument index="0" name="index" type="int">
 			</argument>
+			<description>
+			</description>
+		</method>
+		<method name="operator unary+" qualifiers="operator">
+			<return type="Quaternion">
+			</return>
+			<description>
+			</description>
+		</method>
+		<method name="operator unary-" qualifiers="operator">
+			<return type="Quaternion">
+			</return>
 			<description>
 			</description>
 		</method>
@@ -301,7 +311,7 @@
 		</member>
 	</members>
 	<constants>
-		<constant name="IDENTITY" value="Quaternion( 0, 0, 0, 1 )">
+		<constant name="IDENTITY" value="Quaternion(0, 0, 0, 1)">
 			The identity quaternion, representing no rotation. Equivalent to an identity [Basis] matrix. If a vector is transformed by an identity quaternion, it will not change.
 		</constant>
 	</constants>

@@ -32,11 +32,11 @@
 #define CORE_BIND_H
 
 #include "core/io/compression.h"
+#include "core/io/dir_access.h"
+#include "core/io/file_access.h"
 #include "core/io/image.h"
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
-#include "core/os/dir_access.h"
-#include "core/os/file_access.h"
 #include "core/os/os.h"
 #include "core/os/semaphore.h"
 #include "core/os/thread.h"
@@ -199,14 +199,6 @@ public:
 
 	void set_use_file_access_save_and_swap(bool p_enable);
 
-	Dictionary get_date(bool utc) const;
-	Dictionary get_time(bool utc) const;
-	Dictionary get_datetime(bool utc) const;
-	Dictionary get_datetime_from_unix_time(int64_t unix_time_val) const;
-	int64_t get_unix_time_from_datetime(Dictionary datetime) const;
-	Dictionary get_time_zone_info() const;
-	double get_unix_time() const;
-
 	uint64_t get_static_memory_usage() const;
 	uint64_t get_static_memory_peak_usage() const;
 
@@ -237,6 +229,10 @@ public:
 	String get_system_dir(SystemDir p_dir) const;
 
 	String get_user_data_dir() const;
+	String get_external_data_dir() const;
+	String get_config_dir() const;
+	String get_data_dir() const;
+	String get_cache_dir() const;
 
 	Error set_thread_name(const String &p_name);
 	Thread::ID get_thread_caller_id() const;
@@ -352,8 +348,8 @@ public:
 	_Geometry3D() { singleton = this; }
 };
 
-class _File : public Reference {
-	GDCLASS(_File, Reference);
+class _File : public RefCounted {
+	GDCLASS(_File, RefCounted);
 
 	FileAccess *f = nullptr;
 	bool big_endian = false;
@@ -454,8 +450,8 @@ public:
 VARIANT_ENUM_CAST(_File::ModeFlags);
 VARIANT_ENUM_CAST(_File::CompressionMode);
 
-class _Directory : public Reference {
-	GDCLASS(_Directory, Reference);
+class _Directory : public RefCounted {
+	GDCLASS(_Directory, RefCounted);
 	DirAccess *d;
 	bool dir_open = false;
 
@@ -524,8 +520,8 @@ public:
 	~_Marshalls() { singleton = nullptr; }
 };
 
-class _Mutex : public Reference {
-	GDCLASS(_Mutex, Reference);
+class _Mutex : public RefCounted {
+	GDCLASS(_Mutex, RefCounted);
 	Mutex mutex;
 
 	static void _bind_methods();
@@ -536,8 +532,8 @@ public:
 	void unlock();
 };
 
-class _Semaphore : public Reference {
-	GDCLASS(_Semaphore, Reference);
+class _Semaphore : public RefCounted {
+	GDCLASS(_Semaphore, RefCounted);
 	Semaphore semaphore;
 
 	static void _bind_methods();
@@ -548,8 +544,8 @@ public:
 	void post();
 };
 
-class _Thread : public Reference {
-	GDCLASS(_Thread, Reference);
+class _Thread : public RefCounted {
+	GDCLASS(_Thread, RefCounted);
 
 protected:
 	Variant ret;
@@ -589,8 +585,8 @@ public:
 	StringName get_parent_class(const StringName &p_class) const;
 	bool class_exists(const StringName &p_class) const;
 	bool is_parent_class(const StringName &p_class, const StringName &p_inherits) const;
-	bool can_instance(const StringName &p_class) const;
-	Variant instance(const StringName &p_class) const;
+	bool can_instantiate(const StringName &p_class) const;
+	Variant instantiate(const StringName &p_class) const;
 
 	bool has_signal(StringName p_class, StringName p_signal) const;
 	Dictionary get_signal(StringName p_class, StringName p_signal) const;
@@ -660,55 +656,10 @@ public:
 	void set_editor_hint(bool p_enabled);
 	bool is_editor_hint() const;
 
+	void set_print_error_messages(bool p_enabled);
+	bool is_printing_error_messages() const;
+
 	_Engine() { singleton = this; }
-};
-
-class _JSON;
-
-class JSONParseResult : public Reference {
-	GDCLASS(JSONParseResult, Reference);
-
-	friend class _JSON;
-
-	Error error;
-	String error_string;
-	int error_line = -1;
-
-	Variant result;
-
-protected:
-	static void _bind_methods();
-
-public:
-	void set_error(Error p_error);
-	Error get_error() const;
-
-	void set_error_string(const String &p_error_string);
-	String get_error_string() const;
-
-	void set_error_line(int p_error_line);
-	int get_error_line() const;
-
-	void set_result(const Variant &p_result);
-	Variant get_result() const;
-
-	JSONParseResult() {}
-};
-
-class _JSON : public Object {
-	GDCLASS(_JSON, Object);
-
-protected:
-	static void _bind_methods();
-	static _JSON *singleton;
-
-public:
-	static _JSON *get_singleton() { return singleton; }
-
-	String print(const Variant &p_value, const String &p_indent = "", bool p_sort_keys = false);
-	Ref<JSONParseResult> parse(const String &p_json);
-
-	_JSON() { singleton = this; }
 };
 
 class _EngineDebugger : public Object {

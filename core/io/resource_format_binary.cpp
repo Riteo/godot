@@ -31,10 +31,10 @@
 #include "resource_format_binary.h"
 
 #include "core/config/project_settings.h"
+#include "core/io/dir_access.h"
 #include "core/io/file_access_compressed.h"
 #include "core/io/image.h"
 #include "core/io/marshalls.h"
-#include "core/os/dir_access.h"
 #include "core/version.h"
 
 //#define print_bl(m_what) print_line(m_what)
@@ -704,7 +704,7 @@ Error ResourceLoaderBinary::load() {
 		if (res.is_null()) {
 			//did not replace
 
-			Object *obj = ClassDB::instance(t);
+			Object *obj = ClassDB::instantiate(t);
 			if (!obj) {
 				error = ERR_FILE_CORRUPT;
 				ERR_FAIL_V_MSG(ERR_FILE_CORRUPT, local_path + ":Resource of unrecognized type in file: " + t + ".");

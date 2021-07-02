@@ -129,7 +129,6 @@ public:
 	StringName _update_scroll;
 	StringName _update_xform;
 
-	StringName _clips_input;
 	StringName _structured_text_parser;
 
 	StringName _proxgroup_add;
@@ -138,10 +137,10 @@ public:
 	StringName grouped;
 	StringName ungrouped;
 
-	StringName has_point;
-	StringName get_drag_data;
-	StringName can_drop_data;
-	StringName drop_data;
+	StringName _has_point;
+	StringName _get_drag_data;
+	StringName _can_drop_data;
+	StringName _drop_data;
 
 	StringName screen_entered;
 	StringName screen_exited;
@@ -184,6 +183,7 @@ public:
 	StringName _mouse_exit;
 
 	StringName frame_changed;
+	StringName texture_changed;
 
 	StringName playback_speed;
 	StringName playback_active;

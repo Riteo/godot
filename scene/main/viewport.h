@@ -288,6 +288,8 @@ private:
 	void _update_listener();
 	void _update_listener_2d();
 
+	bool disable_3d = false;
+
 	void _propagate_enter_world(Node *p_node);
 	void _propagate_exit_world(Node *p_node);
 	void _propagate_viewport_notification(Node *p_node, int p_what);
@@ -397,8 +399,6 @@ private:
 
 	void _gui_input_event(Ref<InputEvent> p_event);
 
-	void update_worlds();
-
 	_FORCE_INLINE_ Transform2D _get_input_pre_xform() const;
 
 	Ref<InputEvent> _make_input_local(const Ref<InputEvent> &ev);
@@ -504,6 +504,9 @@ public:
 
 	void set_as_audio_listener_2d(bool p_enable);
 	bool is_audio_listener_2d() const;
+
+	void set_disable_3d(bool p_disable);
+	bool is_3d_disabled() const;
 
 	void update_canvas_items();
 

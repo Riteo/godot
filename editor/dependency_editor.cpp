@@ -30,8 +30,8 @@
 
 #include "dependency_editor.h"
 
+#include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
-#include "core/os/file_access.h"
 #include "editor_node.h"
 #include "editor_scale.h"
 #include "scene/gui/margin_container.h"
@@ -769,7 +769,7 @@ OrphanResourcesDialog::OrphanResourcesDialog() {
 	files = memnew(Tree);
 	files->set_columns(2);
 	files->set_column_titles_visible(true);
-	files->set_column_min_width(1, 100);
+	files->set_column_custom_minimum_width(1, 100);
 	files->set_column_expand(0, true);
 	files->set_column_expand(1, false);
 	files->set_column_title(0, TTR("Resource"));

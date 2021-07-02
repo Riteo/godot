@@ -31,6 +31,7 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
+#include "core/extension/gdnative_interface.h"
 #include "core/object/object_id.h"
 #include "core/os/rw_lock.h"
 #include "core/os/spin_lock.h"
@@ -57,8 +58,7 @@
 
 enum PropertyHint {
 	PROPERTY_HINT_NONE, ///< no hint provided.
-	PROPERTY_HINT_RANGE, ///< hint_text = "min,max,step,slider; //slider is optional"
-	PROPERTY_HINT_EXP_RANGE, ///< hint_text = "min,max,step", exponential edit
+	PROPERTY_HINT_RANGE, ///< hint_text = "min,max[,step][,or_greater][,or_lesser][,noslider][,radians][,degrees][,exp][,suffix:<keyword>] range.
 	PROPERTY_HINT_ENUM, ///< hint_text= "val1,val2,val3,etc"
 	PROPERTY_HINT_EXP_EASING, /// exponential easing function (Math::ease) use "attenuation" hint string to revert (flip h), "full" to also include in/out. (ie: "attenuation,inout")
 	PROPERTY_HINT_LENGTH, ///< hint_text= "length" (as integer)
@@ -101,6 +101,7 @@ enum PropertyHint {
 };
 
 enum PropertyUsageFlags {
+	PROPERTY_USAGE_NONE = 0,
 	PROPERTY_USAGE_STORAGE = 1,
 	PROPERTY_USAGE_EDITOR = 2,
 	PROPERTY_USAGE_NETWORK = 4,
@@ -150,7 +151,7 @@ struct PropertyInfo {
 	String hint_string;
 	uint32_t usage = PROPERTY_USAGE_DEFAULT;
 
-	_FORCE_INLINE_ PropertyInfo added_usage(int p_fl) const {
+	_FORCE_INLINE_ PropertyInfo added_usage(uint32_t p_fl) const {
 		PropertyInfo pi = *this;
 		pi.usage |= p_fl;
 		return pi;
@@ -162,7 +163,7 @@ struct PropertyInfo {
 
 	PropertyInfo() {}
 
-	PropertyInfo(Variant::Type p_type, const String p_name, PropertyHint p_hint = PROPERTY_HINT_NONE, const String &p_hint_string = "", uint32_t p_usage = PROPERTY_USAGE_DEFAULT, const StringName &p_class_name = StringName()) :
+	PropertyInfo(const Variant::Type p_type, const String p_name, const PropertyHint p_hint = PROPERTY_HINT_NONE, const String &p_hint_string = "", const uint32_t p_usage = PROPERTY_USAGE_DEFAULT, const StringName &p_class_name = StringName()) :
 			type(p_type),
 			name(p_name),
 			hint(p_hint),
@@ -238,6 +239,44 @@ struct MethodInfo {
 ////else
 //return nullptr;
 
+// API used to extend in GDNative and other C compatible compiled languages
+class MethodBind;
+
+struct ObjectNativeExtension {
+	ObjectNativeExtension *parent = nullptr;
+	List<ObjectNativeExtension *> children;
+	StringName parent_class_name;
+	StringName class_name;
+	bool editor_class = false;
+	GDNativeExtensionClassSet set;
+	GDNativeExtensionClassGet get;
+	GDNativeExtensionClassGetPropertyList get_property_list;
+	GDNativeExtensionClassFreePropertyList free_property_list;
+	GDNativeExtensionClassNotification notification;
+	GDNativeExtensionClassToString to_string;
+	GDNativeExtensionClassReference reference;
+	GDNativeExtensionClassReference unreference;
+
+	_FORCE_INLINE_ bool is_class(const String &p_class) const {
+		const ObjectNativeExtension *e = this;
+		while (e) {
+			if (p_class == e->class_name.operator String()) {
+				return true;
+			}
+			e = e->parent;
+		}
+		return false;
+	}
+	void *class_userdata = nullptr;
+
+	GDNativeExtensionClassCreateInstance create_instance;
+	GDNativeExtensionClassFreeInstance free_instance;
+	GDNativeExtensionClassGetVirtual get_virtual;
+};
+
+#define GDVIRTUAL_CALL(m_name, ...) _gdvirtual_##m_name##_call(__VA_ARGS__)
+#define GDVIRTUAL_BIND(m_name) ClassDB::add_virtual_method(get_class_static(), _gdvirtual_##m_name##_get_method_info());
+
 /*
    the following is an incomprehensible blob of hacks and workarounds to compensate for many of the fallencies in C++. As a plus, this macro pretty much alone defines the object model.
 */
@@ -262,9 +301,15 @@ private:                                                                        
                                                                                                                                                  \
 public:                                                                                                                                          \
 	virtual String get_class() const override {                                                                                                  \
+		if (_get_extension()) {                                                                                                                  \
+			return _get_extension()->class_name.operator String();                                                                               \
+		}                                                                                                                                        \
 		return String(#m_class);                                                                                                                 \
 	}                                                                                                                                            \
 	virtual const StringName *_get_class_namev() const override {                                                                                \
+		if (_get_extension()) {                                                                                                                  \
+			return &_get_extension()->class_name;                                                                                                \
+		}                                                                                                                                        \
 		if (!_class_name) {                                                                                                                      \
 			_class_name = get_class_static();                                                                                                    \
 		}                                                                                                                                        \
@@ -297,7 +342,12 @@ public:                                                                         
 	static String inherits_static() {                                                                                                            \
 		return String(#m_inherits);                                                                                                              \
 	}                                                                                                                                            \
-	virtual bool is_class(const String &p_class) const override { return (p_class == (#m_class)) ? true : m_inherits::is_class(p_class); }       \
+	virtual bool is_class(const String &p_class) const override {                                                                                \
+		if (_get_extension() && _get_extension()->is_class(p_class)) {                                                                           \
+			return true;                                                                                                                         \
+		}                                                                                                                                        \
+		return (p_class == (#m_class)) ? true : m_inherits::is_class(p_class);                                                                   \
+	}                                                                                                                                            \
 	virtual bool is_class_ptr(void *p_ptr) const override { return (p_ptr == get_class_ptr_static()) ? true : m_inherits::is_class_ptr(p_ptr); } \
                                                                                                                                                  \
 	static void get_valid_parents_static(List<String> *p_parents) {                                                                              \
@@ -440,6 +490,9 @@ private:
 	friend bool predelete_handler(Object *);
 	friend void postinitialize_handler(Object *);
 
+	ObjectNativeExtension *_extension = nullptr;
+	GDExtensionClassInstancePtr _extension_instance = nullptr;
+
 	struct SignalData {
 		struct Slot {
 			int reference_count = 0;
@@ -487,7 +540,7 @@ private:
 
 	_FORCE_INLINE_ void _construct_object(bool p_reference);
 
-	friend class Reference;
+	friend class RefCounted;
 	bool type_is_reference = false;
 	SafeNumeric<uint32_t> instance_binding_count;
 	void *_script_instance_bindings[MAX_SCRIPT_INSTANCE_BINDINGS];
@@ -495,6 +548,9 @@ private:
 	Object(bool p_reference);
 
 protected:
+	friend class NativeExtensionMethodBind;
+	_ALWAYS_INLINE_ const ObjectNativeExtension *_get_extension() const { return _extension; }
+	_ALWAYS_INLINE_ GDExtensionClassInstancePtr _get_extension_instance() const { return _extension_instance; }
 	virtual void _initialize_classv() { initialize_class(); }
 	virtual bool _setv(const StringName &p_name, const Variant &p_property) { return false; };
 	virtual bool _getv(const StringName &p_name, Variant &r_property) const { return false; };
@@ -610,13 +666,25 @@ public:
 	static String get_parent_class_static() { return String(); }
 	static String get_category_static() { return String(); }
 
-	virtual String get_class() const { return "Object"; }
+	virtual String get_class() const {
+		if (_extension)
+			return _extension->class_name.operator String();
+		return "Object";
+	}
 	virtual String get_save_class() const { return get_class(); } //class stored when saving
 
-	virtual bool is_class(const String &p_class) const { return (p_class == "Object"); }
+	virtual bool is_class(const String &p_class) const {
+		if (_extension && _extension->is_class(p_class)) {
+			return true;
+		}
+		return (p_class == "Object");
+	}
 	virtual bool is_class_ptr(void *p_ptr) const { return get_class_ptr_static() == p_ptr; }
 
 	_FORCE_INLINE_ const StringName &get_class_name() const {
+		if (_extension) {
+			return _extension->class_name;
+		}
 		if (!_class_ptr) {
 			return *_get_class_namev();
 		} else {
@@ -723,7 +791,7 @@ public:
 
 	void clear_internal_resource_paths();
 
-	_ALWAYS_INLINE_ bool is_reference() const { return type_is_reference; }
+	_ALWAYS_INLINE_ bool is_ref_counted() const { return type_is_reference; }
 
 	Object();
 	virtual ~Object();
@@ -743,7 +811,7 @@ class ObjectDB {
 	struct ObjectSlot { //128 bits per slot
 		uint64_t validator : OBJECTDB_VALIDATOR_BITS;
 		uint64_t next_free : OBJECTDB_SLOT_MAX_COUNT_BITS;
-		uint64_t is_reference : 1;
+		uint64_t is_ref_counted : 1;
 		Object *object;
 	};
 

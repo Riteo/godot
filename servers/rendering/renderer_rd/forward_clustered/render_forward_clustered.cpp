@@ -183,8 +183,10 @@ void RenderForwardClustered::RenderBufferDataForwardClustered::clear() {
 	}
 }
 
-void RenderForwardClustered::RenderBufferDataForwardClustered::configure(RID p_color_buffer, RID p_depth_buffer, int p_width, int p_height, RS::ViewportMSAA p_msaa) {
+void RenderForwardClustered::RenderBufferDataForwardClustered::configure(RID p_color_buffer, RID p_depth_buffer, int p_width, int p_height, RS::ViewportMSAA p_msaa, uint32_t p_view_count) {
 	clear();
+
+	ERR_FAIL_COND_MSG(p_view_count != 1, "Multiple views is currently not supported in this renderer, please use the mobile renderer for VR support");
 
 	msaa = p_msaa;
 
@@ -901,6 +903,9 @@ void RenderForwardClustered::_fill_render_list(RenderListType p_render_list, con
 
 		uint32_t flags = inst->base_flags; //fill flags if appropriate
 
+		if (inst->non_uniform_scale) {
+			flags |= INSTANCE_DATA_FLAGS_NON_UNIFORM_SCALE;
+		}
 		bool uses_lightmap = false;
 		bool uses_gi = false;
 
@@ -1091,6 +1096,8 @@ void RenderForwardClustered::_setup_lightmaps(const PagedArray<RID> &p_lightmaps
 }
 
 void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Color &p_default_bg_color) {
+	ERR_FAIL_COND_MSG(p_render_data->view_count != 1, "Multiview is currently not supported in the clustered renderer. Please use the mobile renderer for VR.");
+
 	RenderBufferDataForwardClustered *render_buffer = nullptr;
 	if (p_render_data->render_buffers.is_valid()) {
 		render_buffer = (RenderBufferDataForwardClustered *)render_buffers_get_data(p_render_data->render_buffers);
@@ -1431,7 +1438,7 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 			projection = correction * p_render_data->cam_projection;
 		}
 		RD::get_singleton()->draw_command_begin_label("Draw Sky");
-		sky.draw(env, can_continue_color, can_continue_depth, opaque_framebuffer, projection, p_render_data->cam_transform, time);
+		sky.draw(env, can_continue_color, can_continue_depth, opaque_framebuffer, 1, &projection, p_render_data->cam_transform, time);
 		RD::get_singleton()->draw_command_end_label();
 	}
 
@@ -2590,6 +2597,8 @@ void RenderForwardClustered::_geometry_instance_update(GeometryInstance *p_geome
 
 	//Fill push constant
 
+	ginstance->base_flags = 0;
+
 	bool store_transform = true;
 
 	if (ginstance->data->base_type == RS::INSTANCE_MULTIMESH) {
@@ -2733,6 +2742,7 @@ void RenderForwardClustered::geometry_instance_set_transform(GeometryInstance *p
 
 	float max_scale = MAX(model_scale_vec.x, MAX(model_scale_vec.y, model_scale_vec.z));
 	float min_scale = MIN(model_scale_vec.x, MIN(model_scale_vec.y, model_scale_vec.z));
+
 	ginstance->non_uniform_scale = max_scale >= 0.0 && (min_scale / max_scale) < 0.9;
 
 	ginstance->lod_model_scale = max_scale;

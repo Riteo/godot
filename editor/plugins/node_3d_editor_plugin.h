@@ -34,7 +34,6 @@
 #include "editor/editor_node.h"
 #include "editor/editor_plugin.h"
 #include "editor/editor_scale.h"
-#include "scene/3d/immediate_geometry_3d.h"
 #include "scene/3d/light_3d.h"
 #include "scene/3d/visual_instance_3d.h"
 #include "scene/3d/world_environment.h"
@@ -52,7 +51,7 @@ class EditorNode3DGizmo : public Node3DGizmo {
 	GDCLASS(EditorNode3DGizmo, Node3DGizmo);
 
 	bool selected;
-	bool instanced;
+	bool instantiated;
 
 public:
 	void set_selected(bool p_selected) { selected = p_selected; }
@@ -387,6 +386,7 @@ private:
 		Vector3 orig_gizmo_pos;
 		int edited_gizmo = 0;
 		Point2 mouse_pos;
+		Point2 original_mouse_pos;
 		bool snap = false;
 		Ref<EditorNode3DGizmo> gizmo;
 		int gizmo_handle = 0;
@@ -600,8 +600,6 @@ private:
 
 	ToolMode tool_mode;
 
-	RenderingServer::ScenarioDebugMode scenario_debug;
-
 	RID origin;
 	RID origin_instance;
 	bool origin_enabled;
@@ -763,6 +761,8 @@ private:
 	VBoxContainer *sun_vb;
 	Popup *sun_environ_popup;
 	Control *sun_direction;
+	EditorSpinSlider *sun_angle_altitude;
+	EditorSpinSlider *sun_angle_azimuth;
 	ColorPickerButton *sun_color;
 	EditorSpinSlider *sun_energy;
 	EditorSpinSlider *sun_max_distance;
@@ -770,8 +770,9 @@ private:
 
 	void _sun_direction_draw();
 	void _sun_direction_input(const Ref<InputEvent> &p_event);
+	void _sun_direction_angle_set();
 
-	Basis sun_rotation;
+	Vector2 sun_rotation;
 
 	Ref<Shader> sun_direction_shader;
 	Ref<ShaderMaterial> sun_direction_material;
@@ -816,7 +817,6 @@ protected:
 
 public:
 	static Node3DEditor *get_singleton() { return singleton; }
-	void snap_cursor_to_plane(const Plane &p_plane);
 
 	Vector3 snap_point(Vector3 p_target, Vector3 p_start = Vector3(0, 0, 0)) const;
 
@@ -889,12 +889,7 @@ class Node3DEditorPlugin : public EditorPlugin {
 	Node3DEditor *spatial_editor;
 	EditorNode *editor;
 
-protected:
-	static void _bind_methods();
-
 public:
-	void snap_cursor_to_plane(const Plane &p_plane);
-
 	Node3DEditor *get_spatial_editor() { return spatial_editor; }
 	virtual String get_name() const override { return "3D"; }
 	bool has_main_screen() const override { return true; }

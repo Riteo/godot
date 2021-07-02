@@ -31,9 +31,9 @@
 #include "script_create_dialog.h"
 
 #include "core/config/project_settings.h"
+#include "core/io/file_access.h"
 #include "core/io/resource_saver.h"
 #include "core/object/script_language.h"
-#include "core/os/file_access.h"
 #include "core/string/string_builder.h"
 #include "editor/create_dialog.h"
 #include "editor/editor_node.h"
@@ -602,7 +602,7 @@ void ScriptCreateDialog::_path_changed(const String &p_path) {
 	_update_dialog();
 }
 
-void ScriptCreateDialog::_path_entered(const String &p_path) {
+void ScriptCreateDialog::_path_submitted(const String &p_path) {
 	ok_pressed();
 }
 
@@ -731,13 +731,13 @@ void ScriptCreateDialog::_update_dialog() {
 
 	get_ok_button()->set_disabled(!script_ok);
 
-	Callable entered_call = callable_mp(this, &ScriptCreateDialog::_path_entered);
+	Callable entered_call = callable_mp(this, &ScriptCreateDialog::_path_submitted);
 	if (script_ok) {
-		if (!file_path->is_connected("text_entered", entered_call)) {
-			file_path->connect("text_entered", entered_call);
+		if (!file_path->is_connected("text_submitted", entered_call)) {
+			file_path->connect("text_submitted", entered_call);
 		}
-	} else if (file_path->is_connected("text_entered", entered_call)) {
-		file_path->disconnect("text_entered", entered_call);
+	} else if (file_path->is_connected("text_submitted", entered_call)) {
+		file_path->disconnect("text_submitted", entered_call);
 	}
 }
 
@@ -784,6 +784,7 @@ ScriptCreateDialog::ScriptCreateDialog() {
 
 	status_panel = memnew(PanelContainer);
 	status_panel->set_h_size_flags(Control::SIZE_FILL);
+	status_panel->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 	status_panel->add_child(vb);
 
 	/* Spacing */
@@ -795,10 +796,7 @@ ScriptCreateDialog::ScriptCreateDialog() {
 	vb->add_child(gc);
 	vb->add_child(spacing);
 	vb->add_child(status_panel);
-	HBoxContainer *hb = memnew(HBoxContainer);
-	hb->add_child(vb);
-
-	add_child(hb);
+	add_child(vb);
 
 	/* Language */
 
@@ -827,7 +825,7 @@ ScriptCreateDialog::ScriptCreateDialog() {
 
 	base_type = "Object";
 
-	hb = memnew(HBoxContainer);
+	HBoxContainer *hb = memnew(HBoxContainer);
 	hb->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	parent_name = memnew(LineEdit);
 	parent_name->connect("text_changed", callable_mp(this, &ScriptCreateDialog::_parent_name_changed));

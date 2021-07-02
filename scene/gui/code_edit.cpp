@@ -122,7 +122,7 @@ void CodeEdit::_notification(int p_what) {
 					ERR_CONTINUE(l < 0 || l >= code_completion_options_count);
 
 					Ref<TextLine> tl;
-					tl.instance();
+					tl.instantiate();
 					tl->add_string(code_completion_options[l].display, cache.font, cache.font_size);
 
 					int yofs = (row_height - tl->get_size().y) / 2;
@@ -218,6 +218,11 @@ void CodeEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 	Ref<InputEventMouseButton> mb = p_gui_input;
 
 	if (mb.is_valid()) {
+		/* Ignore mouse clicks in IME input mode. */
+		if (has_ime_text()) {
+			return;
+		}
+
 		if (code_completion_active && code_completion_rect.has_point(mb->get_position())) {
 			if (!mb->is_pressed()) {
 				return;
@@ -243,11 +248,37 @@ void CodeEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 					}
 					update();
 				} break;
+				default:
+					break;
 			}
 			return;
 		}
 		cancel_code_completion();
 		set_code_hint("");
+
+		if (mb->is_pressed()) {
+			Vector2i mpos = mb->get_position();
+			if (is_layout_rtl()) {
+				mpos.x = get_size().x - mpos.x;
+			}
+
+			int line, col;
+			_get_mouse_pos(Point2i(mpos.x, mpos.y), line, col);
+
+			if (mb->get_button_index() == MOUSE_BUTTON_LEFT) {
+				if (is_line_folded(line)) {
+					int wrap_index = get_line_wrap_index_at_col(line, col);
+					if (wrap_index == times_line_wraps(line)) {
+						int eol_icon_width = cache.folded_eol_icon->get_width();
+						int left_margin = get_total_gutter_width() + eol_icon_width + get_line_width(line, wrap_index) - get_h_scroll();
+						if (mpos.x > left_margin && mpos.x <= left_margin + eol_icon_width + 3) {
+							unfold_line(line);
+							return;
+						}
+					}
+				}
+			}
+		}
 	}
 
 	Ref<InputEventKey> k = p_gui_input;
@@ -329,7 +360,7 @@ void CodeEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 			return;
 		}
 		if (k->is_action("ui_text_backspace", true)) {
-			backspace_at_cursor();
+			backspace();
 			_filter_code_completion_candidates();
 			accept_event();
 			return;
@@ -356,6 +387,36 @@ void CodeEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 		set_code_hint("");
 	}
 
+	/* Indentation */
+	if (k->is_action("ui_text_indent", true)) {
+		do_indent();
+		accept_event();
+		return;
+	}
+
+	if (k->is_action("ui_text_dedent", true)) {
+		do_unindent();
+		accept_event();
+		return;
+	}
+
+	// Override new line actions, for auto indent
+	if (k->is_action("ui_text_newline_above", true)) {
+		_new_line(false, true);
+		accept_event();
+		return;
+	}
+	if (k->is_action("ui_text_newline_blank", true)) {
+		_new_line(false);
+		accept_event();
+		return;
+	}
+	if (k->is_action("ui_text_newline", true)) {
+		_new_line();
+		accept_event();
+		return;
+	}
+
 	/* Remove shift otherwise actions will not match. */
 	k = k->duplicate();
 	k->set_shift_pressed(false);
@@ -380,7 +441,459 @@ Control::CursorShape CodeEdit::get_cursor_shape(const Point2 &p_pos) const {
 	if ((code_completion_active && code_completion_rect.has_point(p_pos)) || (is_readonly() && (!is_selecting_enabled() || get_line_count() == 0))) {
 		return CURSOR_ARROW;
 	}
+
+	int line, col;
+	_get_mouse_pos(p_pos, line, col);
+
+	if (is_line_folded(line)) {
+		int wrap_index = get_line_wrap_index_at_col(line, col);
+		if (wrap_index == times_line_wraps(line)) {
+			int eol_icon_width = cache.folded_eol_icon->get_width();
+			int left_margin = get_total_gutter_width() + eol_icon_width + get_line_width(line, wrap_index) - get_h_scroll();
+			if (p_pos.x > left_margin && p_pos.x <= left_margin + eol_icon_width + 3) {
+				return CURSOR_POINTING_HAND;
+			}
+		}
+	}
+
 	return TextEdit::get_cursor_shape(p_pos);
+}
+
+/* Indent management */
+void CodeEdit::set_indent_size(const int p_size) {
+	ERR_FAIL_COND_MSG(p_size <= 0, "Indend size must be greater than 0.");
+	if (indent_size == p_size) {
+		return;
+	}
+
+	indent_size = p_size;
+	if (indent_using_spaces) {
+		indent_text = String(" ").repeat(p_size);
+	} else {
+		indent_text = "\t";
+	}
+	set_tab_size(p_size);
+}
+
+int CodeEdit::get_indent_size() const {
+	return indent_size;
+}
+
+void CodeEdit::set_indent_using_spaces(const bool p_use_spaces) {
+	indent_using_spaces = p_use_spaces;
+	if (indent_using_spaces) {
+		indent_text = String(" ").repeat(indent_size);
+	} else {
+		indent_text = "\t";
+	}
+}
+
+bool CodeEdit::is_indent_using_spaces() const {
+	return indent_using_spaces;
+}
+
+void CodeEdit::set_auto_indent_enabled(bool p_enabled) {
+	auto_indent = p_enabled;
+}
+
+bool CodeEdit::is_auto_indent_enabled() const {
+	return auto_indent;
+}
+
+void CodeEdit::set_auto_indent_prefixes(const TypedArray<String> &p_prefixes) {
+	auto_indent_prefixes.clear();
+	for (int i = 0; i < p_prefixes.size(); i++) {
+		const String prefix = p_prefixes[i];
+		auto_indent_prefixes.insert(prefix[0]);
+	}
+}
+
+TypedArray<String> CodeEdit::get_auto_indent_prefixes() const {
+	TypedArray<String> prefixes;
+	for (const Set<char32_t>::Element *E = auto_indent_prefixes.front(); E; E = E->next()) {
+		prefixes.push_back(String::chr(E->get()));
+	}
+	return prefixes;
+}
+
+void CodeEdit::do_indent() {
+	if (is_readonly()) {
+		return;
+	}
+
+	if (is_selection_active()) {
+		indent_lines();
+		return;
+	}
+
+	if (!indent_using_spaces) {
+		_insert_text_at_cursor("\t");
+		return;
+	}
+
+	int spaces_to_add = _calculate_spaces_till_next_right_indent(cursor_get_column());
+	if (spaces_to_add > 0) {
+		_insert_text_at_cursor(String(" ").repeat(spaces_to_add));
+	}
+}
+
+void CodeEdit::indent_lines() {
+	if (is_readonly()) {
+		return;
+	}
+
+	begin_complex_operation();
+
+	/* This value informs us by how much we changed selection position by indenting right. */
+	/* Default is 1 for tab indentation.                                                   */
+	int selection_offset = 1;
+
+	int start_line = cursor_get_line();
+	int end_line = start_line;
+	if (is_selection_active()) {
+		start_line = get_selection_from_line();
+		end_line = get_selection_to_line();
+
+		/* Ignore the last line if the selection is not past the first column. */
+		if (get_selection_to_column() == 0) {
+			selection_offset = 0;
+			end_line--;
+		}
+	}
+
+	for (int i = start_line; i <= end_line; i++) {
+		const String line_text = get_line(i);
+		if (line_text.size() == 0 && is_selection_active()) {
+			continue;
+		}
+
+		if (!indent_using_spaces) {
+			set_line(i, '\t' + line_text);
+			continue;
+		}
+
+		/* We don't really care where selection is - we just need to know indentation level at the beginning of the line. */
+		/* Since we will add this many spaces, we want to move the whole selection and caret by this much.                */
+		int spaces_to_add = _calculate_spaces_till_next_right_indent(get_first_non_whitespace_column(i));
+		set_line(i, String(" ").repeat(spaces_to_add) + line_text);
+		selection_offset = spaces_to_add;
+	}
+
+	/* Fix selection and caret being off after shifting selection right.*/
+	if (is_selection_active()) {
+		select(start_line, get_selection_from_column() + selection_offset, get_selection_to_line(), get_selection_to_column() + selection_offset);
+	}
+	cursor_set_column(cursor_get_column() + selection_offset, false);
+
+	end_complex_operation();
+}
+
+void CodeEdit::do_unindent() {
+	if (is_readonly()) {
+		return;
+	}
+
+	int cc = cursor_get_column();
+
+	if (is_selection_active() || cc <= 0) {
+		unindent_lines();
+		return;
+	}
+
+	int cl = cursor_get_line();
+	const String &line = get_line(cl);
+
+	if (line[cc - 1] == '\t') {
+		_remove_text(cl, cc - 1, cl, cc);
+		cursor_set_column(MAX(0, cc - 1));
+		return;
+	}
+
+	if (line[cc - 1] != ' ') {
+		return;
+	}
+
+	int spaces_to_remove = _calculate_spaces_till_next_left_indent(cc);
+	if (spaces_to_remove > 0) {
+		for (int i = 1; i <= spaces_to_remove; i++) {
+			if (line[cc - i] != ' ') {
+				spaces_to_remove = i - 1;
+				break;
+			}
+		}
+		_remove_text(cl, cc - spaces_to_remove, cl, cc);
+		cursor_set_column(MAX(0, cc - spaces_to_remove));
+	}
+}
+
+void CodeEdit::unindent_lines() {
+	if (is_readonly()) {
+		return;
+	}
+
+	begin_complex_operation();
+
+	/* Moving caret and selection after unindenting can get tricky because                                                      */
+	/* changing content of line can move caret and selection on its own (if new line ends before previous position of either),  */
+	/* therefore we just remember initial values and at the end of the operation offset them by number of removed characters.   */
+	int removed_characters = 0;
+	int initial_selection_end_column = 0;
+	int initial_cursor_column = cursor_get_column();
+
+	int start_line = cursor_get_line();
+	int end_line = start_line;
+	if (is_selection_active()) {
+		start_line = get_selection_from_line();
+		end_line = get_selection_to_line();
+
+		/* Ignore the last line if the selection is not past the first column. */
+		initial_selection_end_column = get_selection_to_column();
+		if (initial_selection_end_column == 0) {
+			end_line--;
+		}
+	}
+
+	bool first_line_edited = false;
+	bool last_line_edited = false;
+
+	for (int i = start_line; i <= end_line; i++) {
+		String line_text = get_line(i);
+
+		if (line_text.begins_with("\t")) {
+			line_text = line_text.substr(1, line_text.length());
+
+			set_line(i, line_text);
+			removed_characters = 1;
+
+			first_line_edited = (i == start_line) ? true : first_line_edited;
+			last_line_edited = (i == end_line) ? true : last_line_edited;
+			continue;
+		}
+
+		if (line_text.begins_with(" ")) {
+			/* When unindenting we aim to remove spaces before line that has selection no matter what is selected,         */
+			/* Here we remove only enough spaces to align text to nearest full multiple of indentation_size.               */
+			/* In case where selection begins at the start of indentation_size multiple we remove whole indentation level. */
+			int spaces_to_remove = _calculate_spaces_till_next_left_indent(get_first_non_whitespace_column(i));
+			line_text = line_text.substr(spaces_to_remove, line_text.length());
+
+			set_line(i, line_text);
+			removed_characters = spaces_to_remove;
+
+			first_line_edited = (i == start_line) ? true : first_line_edited;
+			last_line_edited = (i == end_line) ? true : last_line_edited;
+		}
+	}
+
+	if (is_selection_active()) {
+		/* Fix selection being off by one on the first line. */
+		if (first_line_edited) {
+			select(get_selection_from_line(), get_selection_from_column() - removed_characters, get_selection_to_line(), initial_selection_end_column);
+		}
+
+		/* Fix selection being off by one on the last line. */
+		if (last_line_edited) {
+			select(get_selection_from_line(), get_selection_from_column(), get_selection_to_line(), initial_selection_end_column - removed_characters);
+		}
+	}
+	cursor_set_column(initial_cursor_column - removed_characters, false);
+
+	end_complex_operation();
+}
+
+int CodeEdit::_calculate_spaces_till_next_left_indent(int p_column) const {
+	int spaces_till_indent = p_column % indent_size;
+	if (spaces_till_indent == 0) {
+		spaces_till_indent = indent_size;
+	}
+	return spaces_till_indent;
+}
+
+int CodeEdit::_calculate_spaces_till_next_right_indent(int p_column) const {
+	return indent_size - p_column % indent_size;
+}
+
+/* TODO: remove once brace completion is refactored. */
+static char32_t _get_right_pair_symbol(char32_t c) {
+	if (c == '"') {
+		return '"';
+	}
+	if (c == '\'') {
+		return '\'';
+	}
+	if (c == '(') {
+		return ')';
+	}
+	if (c == '[') {
+		return ']';
+	}
+	if (c == '{') {
+		return '}';
+	}
+	return 0;
+}
+
+static bool _is_pair_left_symbol(char32_t c) {
+	return c == '"' ||
+		   c == '\'' ||
+		   c == '(' ||
+		   c == '[' ||
+		   c == '{';
+}
+
+void CodeEdit::_new_line(bool p_split_current_line, bool p_above) {
+	if (is_readonly()) {
+		return;
+	}
+
+	const int cc = cursor_get_column();
+	const int cl = cursor_get_line();
+	const String line = get_line(cl);
+
+	String ins = "\n";
+
+	/* Append current indentation. */
+	int space_count = 0;
+	int line_col = 0;
+	for (; line_col < cc; line_col++) {
+		if (line[line_col] == '\t') {
+			ins += indent_text;
+			space_count = 0;
+			continue;
+		}
+
+		if (line[line_col] == ' ') {
+			space_count++;
+
+			if (space_count == indent_size) {
+				ins += indent_text;
+				space_count = 0;
+			}
+			continue;
+		}
+		break;
+	}
+
+	if (is_line_folded(cl)) {
+		unfold_line(cl);
+	}
+
+	/* Indent once again if the previous line needs it, ie ':'.          */
+	/* Then add an addition new line for any closing pairs aka '()'.     */
+	/* Skip this in comments or if we are going above.                   */
+	bool brace_indent = false;
+	if (auto_indent && !p_above && cc > 0 && is_in_comment(cl) == -1) {
+		bool should_indent = false;
+		char32_t indent_char = ' ';
+
+		for (; line_col < cc; line_col++) {
+			char32_t c = line[line_col];
+			if (auto_indent_prefixes.has(c)) {
+				should_indent = true;
+				indent_char = c;
+				continue;
+			}
+
+			/* Make sure this is the last char, trailing whitespace or comments are okay. */
+			if (should_indent && (!_is_whitespace(c) && is_in_comment(cl, cc) == -1)) {
+				should_indent = false;
+			}
+		}
+
+		if (should_indent) {
+			ins += indent_text;
+
+			/* TODO: Change when brace completion is refactored. */
+			char32_t closing_char = _get_right_pair_symbol(indent_char);
+			if (closing_char != 0 && closing_char == line[cc]) {
+				/* No need to move the brace below if we are not taking the text with us. */
+				if (p_split_current_line) {
+					brace_indent = true;
+					ins += "\n" + ins.substr(1, ins.length() - 2);
+				} else {
+					brace_indent = false;
+					ins = "\n" + ins.substr(1, ins.length() - 2);
+				}
+			}
+		}
+	}
+
+	begin_complex_operation();
+
+	bool first_line = false;
+	if (!p_split_current_line) {
+		if (p_above) {
+			if (cl > 0) {
+				cursor_set_line(cl - 1, false);
+				cursor_set_column(get_line(cursor_get_line()).length());
+			} else {
+				cursor_set_column(0);
+				first_line = true;
+			}
+		} else {
+			cursor_set_column(line.length());
+		}
+	}
+
+	insert_text_at_cursor(ins);
+
+	if (first_line) {
+		cursor_set_line(0);
+	} else if (brace_indent) {
+		cursor_set_line(cursor_get_line() - 1, false);
+		cursor_set_column(get_line(cursor_get_line()).length());
+	}
+
+	end_complex_operation();
+}
+
+void CodeEdit::backspace() {
+	if (is_readonly()) {
+		return;
+	}
+
+	int cc = cursor_get_column();
+	int cl = cursor_get_line();
+
+	if (cc == 0 && cl == 0) {
+		return;
+	}
+
+	if (is_selection_active()) {
+		delete_selection();
+		return;
+	}
+
+	if (cl > 0 && is_line_hidden(cl - 1)) {
+		unfold_line(cursor_get_line() - 1);
+	}
+
+	int prev_line = cc ? cl : cl - 1;
+	int prev_column = cc ? (cc - 1) : (get_line(cl - 1).length());
+
+	merge_gutters(cl, prev_line);
+
+	/* TODO: Change when brace completion is refactored. */
+	if (auto_brace_completion_enabled && cc > 0 && _is_pair_left_symbol(get_line(cl)[cc - 1])) {
+		_consume_backspace_for_pair_symbol(prev_line, prev_column);
+		cursor_set_line(prev_line, false, true);
+		cursor_set_column(prev_column);
+		return;
+	}
+
+	/* For space indentation we need to do a simple unindent if there are no chars to the left, acting in the */
+	/* same way as tabs.                                                                                      */
+	if (indent_using_spaces && cc != 0) {
+		if (get_first_non_whitespace_column(cl) > cc) {
+			prev_column = cc - _calculate_spaces_till_next_left_indent(cc);
+			prev_line = cl;
+		}
+	}
+
+	_remove_text(prev_line, prev_column, cl, cc);
+
+	cursor_set_line(prev_line, false, true);
+	cursor_set_column(prev_column);
 }
 
 /* Main Gutter */
@@ -561,7 +1074,7 @@ bool CodeEdit::is_line_numbers_zero_padded() const {
 void CodeEdit::_line_number_draw_callback(int p_line, int p_gutter, const Rect2 &p_region) {
 	String fc = TS->format_number(String::num(p_line + 1).lpad(line_number_digits, line_number_padding));
 	Ref<TextLine> tl;
-	tl.instance();
+	tl.instantiate();
 	tl->add_string(fc, cache.font, cache.font_size);
 	int yofs = p_region.position.y + (get_row_height() - tl->get_size().y) / 2;
 	Color number_color = get_line_gutter_item_color(p_line, line_number_gutter);
@@ -581,7 +1094,7 @@ bool CodeEdit::is_drawing_fold_gutter() const {
 }
 
 void CodeEdit::_fold_gutter_draw_callback(int p_line, int p_gutter, Rect2 p_region) {
-	if (!can_fold(p_line) && !is_folded(p_line)) {
+	if (!can_fold_line(p_line) && !is_line_folded(p_line)) {
 		set_line_gutter_clickable(p_line, fold_gutter, false);
 		return;
 	}
@@ -593,11 +1106,191 @@ void CodeEdit::_fold_gutter_draw_callback(int p_line, int p_gutter, Rect2 p_regi
 	p_region.position += Point2(horizontal_padding, vertical_padding);
 	p_region.size -= Point2(horizontal_padding, vertical_padding) * 2;
 
-	if (can_fold(p_line)) {
+	if (can_fold_line(p_line)) {
 		can_fold_icon->draw_rect(get_canvas_item(), p_region, false, folding_color);
 		return;
 	}
 	folded_icon->draw_rect(get_canvas_item(), p_region, false, folding_color);
+}
+
+/* Line Folding */
+void CodeEdit::set_line_folding_enabled(bool p_enabled) {
+	line_folding_enabled = p_enabled;
+	set_hiding_enabled(p_enabled);
+}
+
+bool CodeEdit::is_line_folding_enabled() const {
+	return line_folding_enabled;
+}
+
+bool CodeEdit::can_fold_line(int p_line) const {
+	ERR_FAIL_INDEX_V(p_line, get_line_count(), false);
+	if (!line_folding_enabled) {
+		return false;
+	}
+
+	if (p_line + 1 >= get_line_count() || get_line(p_line).strip_edges().size() == 0) {
+		return false;
+	}
+
+	if (is_line_hidden(p_line) || is_line_folded(p_line)) {
+		return false;
+	}
+
+	/* Check for full multiline line or block strings / comments. */
+	int in_comment = is_in_comment(p_line);
+	int in_string = (in_comment == -1) ? is_in_string(p_line) : -1;
+	if (in_string != -1 || in_comment != -1) {
+		if (get_delimiter_start_position(p_line, get_line(p_line).size() - 1).y != p_line) {
+			return false;
+		}
+
+		int delimter_end_line = get_delimiter_end_position(p_line, get_line(p_line).size() - 1).y;
+		/* No end line, therefore we have a multiline region over the rest of the file. */
+		if (delimter_end_line == -1) {
+			return true;
+		}
+		/* End line is the same therefore we have a block. */
+		if (delimter_end_line == p_line) {
+			/* Check we are the start of the block. */
+			if (p_line - 1 >= 0) {
+				if ((in_string != -1 && is_in_string(p_line - 1) != -1) || (in_comment != -1 && is_in_comment(p_line - 1) != -1)) {
+					return false;
+				}
+			}
+			/* Check it continues for at least one line. */
+			return ((in_string != -1 && is_in_string(p_line + 1) != -1) || (in_comment != -1 && is_in_comment(p_line + 1) != -1));
+		}
+		return ((in_string != -1 && is_in_string(delimter_end_line) != -1) || (in_comment != -1 && is_in_comment(delimter_end_line) != -1));
+	}
+
+	/* Otherwise check indent levels. */
+	int start_indent = get_indent_level(p_line);
+	for (int i = p_line + 1; i < get_line_count(); i++) {
+		if (is_in_string(i) != -1 || is_in_comment(i) != -1 || get_line(i).strip_edges().size() == 0) {
+			continue;
+		}
+		return (get_indent_level(i) > start_indent);
+	}
+	return false;
+}
+
+void CodeEdit::fold_line(int p_line) {
+	ERR_FAIL_INDEX(p_line, get_line_count());
+	if (!is_line_folding_enabled() || !can_fold_line(p_line)) {
+		return;
+	}
+
+	/* Find the last line to be hidden. */
+	int end_line = get_line_count();
+
+	int in_comment = is_in_comment(p_line);
+	int in_string = (in_comment == -1) ? is_in_string(p_line) : -1;
+	if (in_string != -1 || in_comment != -1) {
+		end_line = get_delimiter_end_position(p_line, get_line(p_line).size() - 1).y;
+		/* End line is the same therefore we have a block. */
+		if (end_line == p_line) {
+			for (int i = p_line + 1; i < get_line_count(); i++) {
+				if ((in_string != -1 && is_in_string(i) == -1) || (in_comment != -1 && is_in_comment(i) == -1)) {
+					end_line = i - 1;
+					break;
+				}
+			}
+		}
+	} else {
+		int start_indent = get_indent_level(p_line);
+		for (int i = p_line + 1; i < get_line_count(); i++) {
+			if (get_line(p_line).strip_edges().size() == 0 || is_in_string(i) != -1 || is_in_comment(i) != -1) {
+				end_line = i;
+				continue;
+			}
+
+			if (get_indent_level(i) <= start_indent && get_line(i).strip_edges().size() != 0) {
+				end_line = i - 1;
+				break;
+			}
+		}
+	}
+
+	for (int i = p_line + 1; i <= end_line; i++) {
+		set_line_as_hidden(i, true);
+	}
+
+	/* Fix selection. */
+	if (is_selection_active()) {
+		if (is_line_hidden(get_selection_from_line()) && is_line_hidden(get_selection_to_line())) {
+			deselect();
+		} else if (is_line_hidden(get_selection_from_line())) {
+			select(p_line, 9999, get_selection_to_line(), get_selection_to_column());
+		} else if (is_line_hidden(get_selection_to_line())) {
+			select(get_selection_from_line(), get_selection_from_column(), p_line, 9999);
+		}
+	}
+
+	/* Reset caret. */
+	if (is_line_hidden(cursor_get_line())) {
+		cursor_set_line(p_line, false, false);
+		cursor_set_column(get_line(p_line).length(), false);
+	}
+	update();
+}
+
+void CodeEdit::unfold_line(int p_line) {
+	ERR_FAIL_INDEX(p_line, get_line_count());
+	if (!is_line_folded(p_line) && !is_line_hidden(p_line)) {
+		return;
+	}
+
+	int fold_start = p_line;
+	for (; fold_start > 0; fold_start--) {
+		if (is_line_folded(fold_start)) {
+			break;
+		}
+	}
+	fold_start = is_line_folded(fold_start) ? fold_start : p_line;
+
+	for (int i = fold_start + 1; i < get_line_count(); i++) {
+		if (!is_line_hidden(i)) {
+			break;
+		}
+		set_line_as_hidden(i, false);
+	}
+	update();
+}
+
+void CodeEdit::fold_all_lines() {
+	for (int i = 0; i < get_line_count(); i++) {
+		fold_line(i);
+	}
+	update();
+}
+
+void CodeEdit::unfold_all_lines() {
+	unhide_all_lines();
+}
+
+void CodeEdit::toggle_foldable_line(int p_line) {
+	ERR_FAIL_INDEX(p_line, get_line_count());
+	if (is_line_folded(p_line)) {
+		unfold_line(p_line);
+		return;
+	}
+	fold_line(p_line);
+}
+
+bool CodeEdit::is_line_folded(int p_line) const {
+	ERR_FAIL_INDEX_V(p_line, get_line_count(), false);
+	return p_line + 1 < get_line_count() && !is_line_hidden(p_line) && is_line_hidden(p_line + 1);
+}
+
+TypedArray<int> CodeEdit::get_folded_lines() const {
+	TypedArray<int> folded_lines;
+	for (int i = 0; i < get_line_count(); i++) {
+		if (is_line_folded(i)) {
+			folded_lines.push_back(i);
+		}
+	}
+	return folded_lines;
 }
 
 /* Delimiters */
@@ -1050,6 +1743,25 @@ void CodeEdit::cancel_code_completion() {
 }
 
 void CodeEdit::_bind_methods() {
+	/* Indent management */
+	ClassDB::bind_method(D_METHOD("set_indent_size", "size"), &CodeEdit::set_indent_size);
+	ClassDB::bind_method(D_METHOD("get_indent_size"), &CodeEdit::get_indent_size);
+
+	ClassDB::bind_method(D_METHOD("set_indent_using_spaces", "use_spaces"), &CodeEdit::set_indent_using_spaces);
+	ClassDB::bind_method(D_METHOD("is_indent_using_spaces"), &CodeEdit::is_indent_using_spaces);
+
+	ClassDB::bind_method(D_METHOD("set_auto_indent_enabled", "enable"), &CodeEdit::set_auto_indent_enabled);
+	ClassDB::bind_method(D_METHOD("is_auto_indent_enabled"), &CodeEdit::is_auto_indent_enabled);
+
+	ClassDB::bind_method(D_METHOD("set_auto_indent_prefixes", "prefixes"), &CodeEdit::set_auto_indent_prefixes);
+	ClassDB::bind_method(D_METHOD("get_auto_indent_prefixes"), &CodeEdit::get_auto_indent_prefixes);
+
+	ClassDB::bind_method(D_METHOD("do_indent"), &CodeEdit::do_indent);
+	ClassDB::bind_method(D_METHOD("do_unindent"), &CodeEdit::do_unindent);
+
+	ClassDB::bind_method(D_METHOD("indent_lines"), &CodeEdit::indent_lines);
+	ClassDB::bind_method(D_METHOD("unindent_lines"), &CodeEdit::unindent_lines);
+
 	/* Main Gutter */
 	ClassDB::bind_method(D_METHOD("_main_gutter_draw_callback"), &CodeEdit::_main_gutter_draw_callback);
 
@@ -1094,6 +1806,21 @@ void CodeEdit::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_draw_fold_gutter", "enable"), &CodeEdit::set_draw_fold_gutter);
 	ClassDB::bind_method(D_METHOD("is_drawing_fold_gutter"), &CodeEdit::is_drawing_fold_gutter);
 
+	/* Line folding */
+	ClassDB::bind_method(D_METHOD("set_line_folding_enabled", "enabled"), &CodeEdit::set_line_folding_enabled);
+	ClassDB::bind_method(D_METHOD("is_line_folding_enabled"), &CodeEdit::is_line_folding_enabled);
+
+	ClassDB::bind_method(D_METHOD("can_fold_line", "line"), &CodeEdit::can_fold_line);
+
+	ClassDB::bind_method(D_METHOD("fold_line", "line"), &CodeEdit::fold_line);
+	ClassDB::bind_method(D_METHOD("unfold_line", "line"), &CodeEdit::unfold_line);
+	ClassDB::bind_method(D_METHOD("fold_all_lines"), &CodeEdit::fold_all_lines);
+	ClassDB::bind_method(D_METHOD("unfold_all_lines"), &CodeEdit::unfold_all_lines);
+	ClassDB::bind_method(D_METHOD("toggle_foldable_line", "line"), &CodeEdit::toggle_foldable_line);
+
+	ClassDB::bind_method(D_METHOD("is_line_folded", "line"), &CodeEdit::is_line_folded);
+	ClassDB::bind_method(D_METHOD("get_folded_lines"), &CodeEdit::get_folded_lines);
+
 	/* Delimiters */
 	// Strings
 	ClassDB::bind_method(D_METHOD("add_string_delimiter", "start_key", "end_key", "line_only"), &CodeEdit::add_string_delimiter, DEFVAL(false));
@@ -1121,8 +1848,8 @@ void CodeEdit::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_delimiter_start_key", "delimiter_index"), &CodeEdit::get_delimiter_start_key);
 	ClassDB::bind_method(D_METHOD("get_delimiter_end_key", "delimiter_index"), &CodeEdit::get_delimiter_end_key);
 
-	ClassDB::bind_method(D_METHOD("get_delimiter_start_postion", "line", "column"), &CodeEdit::get_delimiter_start_position);
-	ClassDB::bind_method(D_METHOD("get_delimiter_end_postion", "line", "column"), &CodeEdit::get_delimiter_end_position);
+	ClassDB::bind_method(D_METHOD("get_delimiter_start_position", "line", "column"), &CodeEdit::get_delimiter_start_position);
+	ClassDB::bind_method(D_METHOD("get_delimiter_end_position", "line", "column"), &CodeEdit::get_delimiter_end_position);
 
 	/* Code hint */
 	ClassDB::bind_method(D_METHOD("set_code_hint", "code_hint"), &CodeEdit::set_code_hint);
@@ -1175,6 +1902,8 @@ void CodeEdit::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "draw_fold_gutter"), "set_draw_fold_gutter", "is_drawing_fold_gutter");
 
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "line_folding"), "set_line_folding_enabled", "is_line_folding_enabled");
+
 	ADD_GROUP("Delimiters", "delimiter_");
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "delimiter_strings"), "set_string_delimiters", "get_string_delimiters");
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "delimiter_comments"), "set_comment_delimiters", "get_comment_delimiters");
@@ -1182,6 +1911,12 @@ void CodeEdit::_bind_methods() {
 	ADD_GROUP("Code Completion", "code_completion_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "code_completion_enabled"), "set_code_completion_enabled", "is_code_completion_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "code_completion_prefixes"), "set_code_completion_prefixes", "get_code_comletion_prefixes");
+
+	ADD_GROUP("Indentation", "indent_");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "indent_size"), "set_indent_size", "get_indent_size");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "indent_use_spaces"), "set_indent_using_spaces", "is_indent_using_spaces");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "indent_automatic"), "set_auto_indent_enabled", "is_auto_indent_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "indent_automatic_prefixes"), "set_auto_indent_prefixes", "get_auto_indent_prefixes");
 
 	/* Signals */
 	ADD_SIGNAL(MethodInfo("breakpoint_toggled", PropertyInfo(Variant::INT, "line")));
@@ -1205,9 +1940,9 @@ void CodeEdit::_gutter_clicked(int p_line, int p_gutter) {
 	}
 
 	if (p_gutter == fold_gutter) {
-		if (is_folded(p_line)) {
+		if (is_line_folded(p_line)) {
 			unfold_line(p_line);
-		} else if (can_fold(p_line)) {
+		} else if (can_fold_line(p_line)) {
 			fold_line(p_line);
 		}
 		return;
@@ -1526,6 +2261,9 @@ void CodeEdit::_clear_delimiters(DelimiterType p_type) {
 		}
 	}
 	delimiter_cache.clear();
+	if (!setting_delimiters) {
+		_update_delimiter_cache();
+	}
 }
 
 TypedArray<String> CodeEdit::_get_delimiters(DelimiterType p_type) const {
@@ -1806,6 +2544,12 @@ void CodeEdit::_lines_edited_from(int p_from_line, int p_to_line) {
 }
 
 CodeEdit::CodeEdit() {
+	/* Indent management */
+	auto_indent_prefixes.insert(':');
+	auto_indent_prefixes.insert('{');
+	auto_indent_prefixes.insert('[');
+	auto_indent_prefixes.insert('(');
+
 	/* Text Direction */
 	set_layout_direction(LAYOUT_DIRECTION_LTR);
 	set_text_direction(TEXT_DIRECTION_LTR);
